@@ -176,5 +176,5 @@ Dealership portal: dashboard (points, KPIs, company vs walk-in, goals with progr
 - The rate limiter trusts `X-Forwarded-For`; configure your proxy to set it and strip client-supplied values.
 - ESLint is not configured (TypeScript strict mode and the production build type-check are).
 - Dependencies are pinned to proven majors (Next 15, Prisma 6, Zod 3, Recharts 2) rather than the newest majors.
-- `public/brand/hero-dealership.jpg` and `hero-test-drive.jpg` are unused crops from the reference screenshots and can be deleted.
+- `public/brand/hero-dealership.jpg`, `public/brand/hero-test-drive.jpg` and `tests/support/mock-session.ts` are untracked leftovers (unused) and can be deleted.
 - A consent checkbox alone does not establish legal compliance — have the policy, wording and retention periods reviewed.

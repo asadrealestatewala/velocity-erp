@@ -1,0 +1,1222 @@
+// YADEA CRM — relational schema
+// Conventions: cuid ids, createdAt/updatedAt on mutable entities, soft-deletion via
+// isArchived/deletedAt where history must be preserved, explicit indexes for list filters.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────── Identity & access ─────────────────────────────
+
+enum RoleScope {
+  CENTRAL
+  DEALERSHIP
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  name        String
+  description String?
+  scope       RoleScope
+  isSystem    Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  permissions RolePermission[]
+  users       User[]
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  group       String
+  description String
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  users     User[]
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  name              String
+  phone             String?
+  passwordHash      String
+  roleId            String
+  departmentId      String?
+  isActive          Boolean   @default(true)
+  avatarFileId      String?
+  mustChangePassword Boolean  @default(false)
+  notificationPrefs Json      @default("{}")
+  lastLoginAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  role        Role                   @relation(fields: [roleId], references: [id])
+  department  Department?            @relation(fields: [departmentId], references: [id])
+  sessions    Session[]
+  memberships DealershipMembership[]
+
+  ownedContacts         Contact[]               @relation("ContactOwner")
+  createdContacts       Contact[]               @relation("ContactCreatedBy")
+  assignedLeads         Lead[]                  @relation("LeadAssignedUser")
+  ownedLeads            Lead[]                  @relation("LeadOwner")
+  createdLeads          Lead[]                  @relation("LeadCreatedBy")
+  stageChanges          LeadStageHistory[]
+  assignmentsMade       LeadAssignmentHistory[] @relation("AssignmentBy")
+  assignmentsFrom       LeadAssignmentHistory[] @relation("AssignmentFromUser")
+  assignmentsTo         LeadAssignmentHistory[] @relation("AssignmentToUser")
+  tasksAssigned         Task[]                  @relation("TaskAssignee")
+  tasksCreated          Task[]                  @relation("TaskCreator")
+  tasksCompleted        Task[]                  @relation("TaskCompleter")
+  activities            Activity[]
+  notes                 Note[]
+  documents             Document[]
+  payments              Payment[]
+  testDrivesAssigned    TestDriveBooking[]      @relation("TestDriveAssignee")
+  testDrivesCreated     TestDriveBooking[]      @relation("TestDriveCreator")
+  notifications         Notification[]
+  gamificationEvents    GamificationEvent[]
+  achievements          UserAchievement[]
+  auditLogs             AuditLog[]
+  reviewedApplications  DealershipApplication[] @relation("ApplicationReviewer")
+  applicationChanges    ApplicationStatusHistory[]
+  formsCreated          Form[]
+  formVersionsPublished FormVersion[]
+  submissionsReviewed   FormSubmission[]
+  filesUploaded         StoredFile[]
+  goals                 Goal[]
+
+  @@index([roleId])
+}
+
+model Session {
+  id        String   @id // SHA-256 hash of the session token; the raw token only lives in the cookie
+  userId    String
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ───────────────────────────── Locations ─────────────────────────────
+
+model Province {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  isActive    Boolean      @default(true)
+  sortOrder   Int          @default(0)
+  cities      City[]
+  dealerships Dealership[]
+  contacts    Contact[]
+  applications DealershipApplication[]
+}
+
+model City {
+  id           String                  @id @default(cuid())
+  name         String
+  provinceId   String
+  isActive     Boolean                 @default(true)
+  sortOrder    Int                     @default(0)
+  createdAt    DateTime                @default(now())
+  province     Province                @relation(fields: [provinceId], references: [id])
+  dealerships  Dealership[]
+  contacts     Contact[]
+  leads        Lead[]
+  testDrives   TestDriveBooking[]
+  applications DealershipApplication[]
+  submissions  FormSubmission[]
+
+  @@unique([provinceId, name])
+  @@index([isActive])
+}
+
+// ───────────────────────────── Dealerships ─────────────────────────────
+
+enum DealershipType {
+  DEALERSHIP
+  OUTLET
+  FRANCHISE
+  SUB_DEALER
+}
+
+enum DealershipStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum DealershipRole {
+  MANAGER
+  SALES_REP
+}
+
+model Dealership {
+  id               String           @id @default(cuid())
+  code             String           @unique
+  name             String
+  type             DealershipType   @default(DEALERSHIP)
+  legalName        String?
+  parentId         String?
+  contactName      String?
+  email            String?
+  phone            String?
+  provinceId       String?
+  cityId           String
+  address          String?
+  postalCode       String?
+  latitude         Decimal?         @db.Decimal(9, 6)
+  longitude        Decimal?         @db.Decimal(9, 6)
+  status           DealershipStatus @default(PENDING)
+  // Lead assignment is activated separately from status so onboarding can complete first.
+  acceptsLeads     Boolean          @default(false)
+  // When true, sales reps see every lead of the dealership; otherwise only their own.
+  repsSeeAllLeads  Boolean          @default(false)
+  openingDate      DateTime?        @db.Date
+  // { mon: { open: "09:00", close: "18:00", closed: false }, ... }
+  operatingHours   Json             @default("{}")
+  // Max concurrent test drives per time slot (0 = no overlap checking)
+  testDriveSlotCapacity Int         @default(0)
+  notes            String?
+  applicationId    String?          @unique
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  parent       Dealership?            @relation("DealershipParent", fields: [parentId], references: [id])
+  children     Dealership[]           @relation("DealershipParent")
+  province     Province?              @relation(fields: [provinceId], references: [id])
+  city         City                   @relation(fields: [cityId], references: [id])
+  application  DealershipApplication? @relation("ApplicationDealership", fields: [applicationId], references: [id])
+  memberships  DealershipMembership[]
+  bikeModels   DealershipBikeModel[]
+  leads        Lead[]                 @relation("LeadDealership")
+  preferredBy  Lead[]                 @relation("LeadPreferredDealership")
+  originLeads  Lead[]                 @relation("LeadOriginDealership")
+  assignFrom   LeadAssignmentHistory[] @relation("AssignmentFromDealership")
+  assignTo     LeadAssignmentHistory[] @relation("AssignmentToDealership")
+  testDrives   TestDriveBooking[]
+  tasks        Task[]
+  activities   Activity[]
+  contactNotes Note[]
+  documents    Document[]
+  payments     Payment[]
+  submissions  FormSubmission[]
+  gamificationEvents GamificationEvent[]
+  goals        Goal[]
+
+  @@index([cityId, status, acceptsLeads])
+  @@index([status])
+}
+
+model DealershipMembership {
+  id           String         @id @default(cuid())
+  userId       String
+  dealershipId String
+  role         DealershipRole
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dealership   Dealership     @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dealershipId])
+  @@index([dealershipId, isActive])
+}
+
+// ───────────────────────────── Catalog ─────────────────────────────
+
+enum ModelAvailability {
+  AVAILABLE
+  COMING_SOON
+  OUT_OF_STOCK
+  DISCONTINUED
+}
+
+model BikeModel {
+  id             String            @id @default(cuid())
+  name           String
+  code           String            @unique
+  category       String?
+  description    String?
+  imageFileId    String?
+  specifications Json              @default("{}")
+  price          Decimal?          @db.Decimal(12, 2)
+  currency       String            @default("PKR")
+  availability   ModelAvailability @default(AVAILABLE)
+  displayOrder   Int               @default(0)
+  isActive       Boolean           @default(true)
+  // Marks fictional demo records created by the seed script
+  isSeedExample  Boolean           @default(false)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  imageFile   StoredFile?           @relation(fields: [imageFileId], references: [id])
+  dealerships DealershipBikeModel[]
+  leads       Lead[]                @relation("LeadInterestedModel")
+  soldLeads   Lead[]                @relation("LeadSoldModel")
+  testDrives  TestDriveBooking[]
+  submissions FormSubmission[]
+
+  @@index([isActive, displayOrder])
+}
+
+model DealershipBikeModel {
+  dealershipId String
+  bikeModelId  String
+  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  bikeModel    BikeModel  @relation(fields: [bikeModelId], references: [id], onDelete: Cascade)
+
+  @@id([dealershipId, bikeModelId])
+  @@index([bikeModelId])
+}
+
+// ───────────────────────────── Pipeline config ─────────────────────────────
+
+model LeadSource {
+  id        String           @id @default(cuid())
+  key       String           @unique
+  name      String
+  isActive  Boolean          @default(true)
+  sortOrder Int              @default(0)
+  contacts  Contact[]
+  leads     Lead[]           @relation("LeadSource")
+  original  Lead[]           @relation("LeadOriginalSource")
+  submissions FormSubmission[]
+}
+
+enum StageKind {
+  OPEN
+  WON
+  LOST
+}
+
+model LeadStage {
+  id            String             @id @default(cuid())
+  key           String             @unique
+  name          String
+  color         String             @default("#64748b")
+  sortOrder     Int
+  kind          StageKind          @default(OPEN)
+  isActive      Boolean            @default(true)
+  isDefault     Boolean            @default(false)
+  notifyOnEnter Boolean            @default(false)
+  createdAt     DateTime           @default(now())
+  leads         Lead[]
+  historyFrom   LeadStageHistory[] @relation("StageFrom")
+  historyTo     LeadStageHistory[] @relation("StageTo")
+
+  @@index([sortOrder])
+}
+
+model LossReason {
+  id        String  @id @default(cuid())
+  name      String  @unique
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+  leads     Lead[]
+}
+
+enum CustomFieldEntity {
+  CONTACT
+  LEAD
+}
+
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  DATE
+  SELECT
+  CHECKBOX
+  TEXTAREA
+}
+
+model CustomFieldDefinition {
+  id        String            @id @default(cuid())
+  entity    CustomFieldEntity
+  key       String
+  label     String
+  type      CustomFieldType
+  options   Json              @default("[]")
+  isActive  Boolean           @default(true)
+  sortOrder Int               @default(0)
+  createdAt DateTime          @default(now())
+
+  @@unique([entity, key])
+}
+
+// ───────────────────────────── Contacts & leads ─────────────────────────────
+
+enum ContactType {
+  LEAD
+  CUSTOMER
+}
+
+model Contact {
+  id                     String      @id @default(cuid())
+  type                   ContactType @default(LEAD)
+  salutation             String?
+  firstName              String
+  lastName               String?
+  dateOfBirth            DateTime?   @db.Date
+  gender                 String?
+  profession             String?
+  phone                  String?
+  phoneNormalized        String?
+  alternatePhone         String?
+  email                  String?
+  emailNormalized        String?
+  businessName           String?
+  website                String?
+  address                String?
+  cityId                 String?
+  provinceId             String?
+  postalCode             String?
+  country                String?     @default("Pakistan")
+  avatarFileId           String?
+  sourceId               String?
+  ownerId                String?
+  consentMarketing       Boolean     @default(false)
+  consentRecordedAt      DateTime?
+  preferredContactMethod String?
+  communicationPrefs     Json        @default("{}")
+  customFields           Json        @default("{}")
+  // Points at the lead whose stage/assignment summarises this contact in list views.
+  currentLeadId          String?     @unique
+  lastActivityAt         DateTime?
+  isArchived             Boolean     @default(false)
+  archivedAt             DateTime?
+  createdById            String?
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+
+  city        City?         @relation(fields: [cityId], references: [id])
+  province    Province?     @relation(fields: [provinceId], references: [id])
+  avatarFile  StoredFile?   @relation("ContactAvatar", fields: [avatarFileId], references: [id])
+  source      LeadSource?   @relation(fields: [sourceId], references: [id])
+  owner       User?         @relation("ContactOwner", fields: [ownerId], references: [id])
+  createdBy   User?         @relation("ContactCreatedBy", fields: [createdById], references: [id])
+  currentLead Lead?         @relation("ContactCurrentLead", fields: [currentLeadId], references: [id])
+  leads       Lead[]        @relation("ContactLeads")
+  activities  Activity[]
+  tasks       Task[]
+  notes       Note[]
+  documents   Document[]
+  payments    Payment[]
+  testDrives  TestDriveBooking[]
+  submissions FormSubmission[]
+
+  @@index([phoneNormalized])
+  @@index([emailNormalized])
+  @@index([cityId])
+  @@index([createdAt])
+  @@index([isArchived, createdAt])
+  @@index([lastActivityAt])
+}
+
+enum LeadOrigin {
+  COMPANY
+  DEALERSHIP_WALK_IN
+}
+
+enum InquiryType {
+  TEST_DRIVE
+  GENERAL_INQUIRY
+  WALK_IN
+  MANUAL
+  OTHER
+}
+
+model Lead {
+  id                   String      @id @default(cuid())
+  number               Int         @unique @default(autoincrement())
+  contactId            String
+  stageId              String
+  sourceId             String?
+  originalSourceId     String?
+  origin               LeadOrigin  @default(COMPANY)
+  originDealershipId   String?
+  inquiryType          InquiryType @default(MANUAL)
+  inquiryCategory      String?
+  description          String?
+  dealershipId         String?
+  assignedUserId       String?
+  ownerId              String?
+  cityId               String?
+  interestedModelId    String?
+  preferredDealershipId String?
+  campaign             String?
+  referralDetails      String?
+  utmSource            String?
+  utmMedium            String?
+  utmCampaign          String?
+  utmTerm              String?
+  utmContent           String?
+  externalId           String?
+  sourceFormId         String?
+  customFields         Json        @default("{}")
+  assignedAt           DateTime?
+  firstContactedAt     DateTime?
+  lastContactedAt      DateTime?
+  nextFollowUpAt       DateTime?
+  stageChangedAt       DateTime    @default(now())
+  convertedAt          DateTime?
+  conversionValue      Decimal?    @db.Decimal(12, 2)
+  soldModelId          String?
+  conversionNotes      String?
+  lostAt               DateTime?
+  lossReasonId         String?
+  lossNotes            String?
+  lastActivityAt       DateTime?
+  isArchived           Boolean     @default(false)
+  createdById          String?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  contact            Contact                 @relation("ContactLeads", fields: [contactId], references: [id])
+  currentFor         Contact?                @relation("ContactCurrentLead")
+  stage              LeadStage               @relation(fields: [stageId], references: [id])
+  source             LeadSource?             @relation("LeadSource", fields: [sourceId], references: [id])
+  originalSource     LeadSource?             @relation("LeadOriginalSource", fields: [originalSourceId], references: [id])
+  originDealership   Dealership?             @relation("LeadOriginDealership", fields: [originDealershipId], references: [id])
+  dealership         Dealership?             @relation("LeadDealership", fields: [dealershipId], references: [id])
+  assignedUser       User?                   @relation("LeadAssignedUser", fields: [assignedUserId], references: [id])
+  owner              User?                   @relation("LeadOwner", fields: [ownerId], references: [id])
+  createdBy          User?                   @relation("LeadCreatedBy", fields: [createdById], references: [id])
+  city               City?                   @relation(fields: [cityId], references: [id])
+  interestedModel    BikeModel?              @relation("LeadInterestedModel", fields: [interestedModelId], references: [id])
+  soldModel          BikeModel?              @relation("LeadSoldModel", fields: [soldModelId], references: [id])
+  preferredDealership Dealership?            @relation("LeadPreferredDealership", fields: [preferredDealershipId], references: [id])
+  sourceForm         Form?                   @relation(fields: [sourceFormId], references: [id])
+  lossReason         LossReason?             @relation(fields: [lossReasonId], references: [id])
+  stageHistory       LeadStageHistory[]
+  assignmentHistory  LeadAssignmentHistory[]
+  activities         Activity[]
+  tasks              Task[]
+  notes              Note[]
+  documents          Document[]
+  payments           Payment[]
+  testDrives         TestDriveBooking[]
+  submissions        FormSubmission[]
+  gamificationEvents GamificationEvent[]
+
+  @@index([contactId])
+  @@index([stageId])
+  @@index([sourceId])
+  @@index([cityId])
+  @@index([dealershipId, createdAt])
+  @@index([assignedUserId])
+  @@index([origin])
+  @@index([createdAt])
+  @@index([nextFollowUpAt])
+  @@index([isArchived, dealershipId])
+}
+
+model LeadStageHistory {
+  id          String     @id @default(cuid())
+  leadId      String
+  fromStageId String?
+  toStageId   String
+  changedById String?
+  note        String?
+  changedAt   DateTime   @default(now())
+  lead        Lead       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fromStage   LeadStage? @relation("StageFrom", fields: [fromStageId], references: [id])
+  toStage     LeadStage  @relation("StageTo", fields: [toStageId], references: [id])
+  changedBy   User?      @relation(fields: [changedById], references: [id])
+
+  @@index([leadId, changedAt])
+  @@index([toStageId, changedAt])
+}
+
+enum AssignmentType {
+  AUTOMATIC
+  MANUAL
+}
+
+model LeadAssignmentHistory {
+  id               String         @id @default(cuid())
+  leadId           String
+  fromDealershipId String?
+  toDealershipId   String?
+  fromUserId       String?
+  toUserId         String?
+  type             AssignmentType
+  reason           String?
+  assignedById     String?
+  // Prevents duplicate automatic assignment events when a submission is processed twice
+  idempotencyKey   String?        @unique
+  createdAt        DateTime       @default(now())
+
+  lead           Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fromDealership Dealership? @relation("AssignmentFromDealership", fields: [fromDealershipId], references: [id])
+  toDealership   Dealership? @relation("AssignmentToDealership", fields: [toDealershipId], references: [id])
+  fromUser       User?       @relation("AssignmentFromUser", fields: [fromUserId], references: [id])
+  toUser         User?       @relation("AssignmentToUser", fields: [toUserId], references: [id])
+  assignedBy     User?       @relation("AssignmentBy", fields: [assignedById], references: [id])
+
+  @@index([leadId, createdAt])
+  @@index([toDealershipId, createdAt])
+}
+
+// ───────────────────────────── Activities, tasks, notes, docs, payments ─────────────────────────────
+// Child records carry dealershipId: the dealership context they belong to (null = central only).
+// Dealership users only ever see child records of their own dealership(s).
+
+enum ActivityType {
+  LEAD_CREATED
+  FORM_SUBMITTED
+  LEAD_ASSIGNED
+  LEAD_REASSIGNED
+  CALL_LOGGED
+  EMAIL_LOGGED
+  WHATSAPP_LOGGED
+  SMS_LOGGED
+  MEETING_LOGGED
+  NOTE_ADDED
+  TASK_CREATED
+  TASK_COMPLETED
+  TEST_DRIVE_SCHEDULED
+  TEST_DRIVE_RESCHEDULED
+  TEST_DRIVE_COMPLETED
+  TEST_DRIVE_UPDATED
+  STAGE_CHANGED
+  DOCUMENT_UPLOADED
+  PAYMENT_RECORDED
+  LEAD_CONVERTED
+  LEAD_LOST
+  CONTACT_UPDATED
+  SOURCE_CHANGED
+}
+
+model Activity {
+  id           String       @id @default(cuid())
+  type         ActivityType
+  contactId    String?
+  leadId       String?
+  dealershipId String?
+  userId       String?
+  title        String
+  body         String?
+  outcome      String?
+  direction    String?
+  metadata     Json         @default("{}")
+  occurredAt   DateTime     @default(now())
+  createdAt    DateTime     @default(now())
+
+  contact    Contact?    @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  lead       Lead?       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  dealership Dealership? @relation(fields: [dealershipId], references: [id])
+  user       User?       @relation(fields: [userId], references: [id])
+
+  @@index([contactId, occurredAt])
+  @@index([leadId, occurredAt])
+  @@index([dealershipId, occurredAt])
+  @@index([occurredAt])
+}
+
+enum TaskType {
+  CALL
+  FOLLOW_UP
+  EMAIL
+  TEST_DRIVE
+  MEETING
+  OTHER
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Task {
+  id                    String       @id @default(cuid())
+  title                 String
+  description           String?
+  type                  TaskType     @default(FOLLOW_UP)
+  contactId             String?
+  leadId                String?
+  dealershipId          String?
+  assignedToId          String
+  createdById           String?
+  dueAt                 DateTime
+  priority              TaskPriority @default(MEDIUM)
+  status                TaskStatus   @default(OPEN)
+  reminderMinutesBefore Int?
+  reminderSentAt        DateTime?
+  overdueNotifiedAt     DateTime?
+  completedAt           DateTime?
+  completedById         String?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  contact     Contact?    @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  lead        Lead?       @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  dealership  Dealership? @relation(fields: [dealershipId], references: [id])
+  assignedTo  User        @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  createdBy   User?       @relation("TaskCreator", fields: [createdById], references: [id])
+  completedBy User?       @relation("TaskCompleter", fields: [completedById], references: [id])
+
+  @@index([assignedToId, status, dueAt])
+  @@index([dealershipId, status, dueAt])
+  @@index([contactId])
+  @@index([status, dueAt])
+}
+
+enum NoteVisibility {
+  INTERNAL
+  CUSTOMER_SHAREABLE
+}
+
+model Note {
+  id            String         @id @default(cuid())
+  contactId     String?
+  leadId        String?
+  applicationId String?
+  dealershipId  String?
+  authorId      String
+  body          String
+  isPinned      Boolean        @default(false)
+  visibility    NoteVisibility @default(INTERNAL)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  contact     Contact?               @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  lead        Lead?                  @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  application DealershipApplication? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  dealership  Dealership?            @relation(fields: [dealershipId], references: [id])
+  author      User                   @relation(fields: [authorId], references: [id])
+
+  @@index([contactId, createdAt])
+  @@index([applicationId])
+}
+
+model StoredFile {
+  id           String   @id @default(cuid())
+  storageKey   String   @unique
+  originalName String
+  mimeType     String
+  size         Int
+  checksum     String
+  // Public files (e.g. bike model images) may be served without auth; everything else is checked.
+  isPublic     Boolean  @default(false)
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  uploadedBy        User?                           @relation(fields: [uploadedById], references: [id])
+  documents         Document[]
+  avatarFor         Contact[]                       @relation("ContactAvatar")
+  bikeModels        BikeModel[]
+  applicationDocs   DealershipApplicationDocument[]
+  submissionFiles   FormSubmissionFile[]
+}
+
+model Document {
+  id           String      @id @default(cuid())
+  contactId    String
+  leadId       String?
+  dealershipId String?
+  fileId       String
+  name         String
+  category     String      @default("Other")
+  description  String?
+  uploadedById String
+  deletedAt    DateTime?
+  createdAt    DateTime    @default(now())
+
+  contact    Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  lead       Lead?       @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  dealership Dealership? @relation(fields: [dealershipId], references: [id])
+  file       StoredFile  @relation(fields: [fileId], references: [id])
+  uploadedBy User        @relation(fields: [uploadedById], references: [id])
+
+  @@index([contactId])
+}
+
+enum PaymentType {
+  DEPOSIT
+  BOOKING_FEE
+  INSTALLMENT
+  FULL_PAYMENT
+  OTHER
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CARD
+  CHEQUE
+  MOBILE_WALLET
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  reference      String        @unique
+  contactId      String
+  leadId         String?
+  dealershipId   String?
+  type           PaymentType   @default(DEPOSIT)
+  amount         Decimal       @db.Decimal(12, 2)
+  currency       String        @default("PKR")
+  paymentDate    DateTime
+  method         PaymentMethod
+  status         PaymentStatus @default(PENDING)
+  transactionRef String?
+  description    String?
+  // Manually entered payments are never treated as independently verified.
+  isVerified     Boolean       @default(false)
+  recordedById   String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  contact    Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  lead       Lead?       @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  dealership Dealership? @relation(fields: [dealershipId], references: [id])
+  recordedBy User        @relation(fields: [recordedById], references: [id])
+
+  @@index([contactId])
+  @@index([dealershipId, paymentDate])
+}
+
+// ───────────────────────────── Test drives ─────────────────────────────
+
+enum TestDriveStatus {
+  REQUESTED
+  CONFIRMED
+  RESCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model TestDriveBooking {
+  id             String          @id @default(cuid())
+  number         Int             @unique @default(autoincrement())
+  contactId      String
+  leadId         String?
+  dealershipId   String
+  cityId         String
+  bikeModelId    String
+  scheduledAt    DateTime
+  assignedUserId String?
+  status         TestDriveStatus @default(REQUESTED)
+  confirmedAt    DateTime?
+  confirmedById  String?
+  completedAt    DateTime?
+  customerNotes  String?
+  internalNotes  String?
+  feedback       String?
+  submissionId   String?         @unique
+  createdById    String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  reminderSentAt DateTime?
+
+  contact      Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  lead         Lead?           @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  dealership   Dealership      @relation(fields: [dealershipId], references: [id])
+  city         City            @relation(fields: [cityId], references: [id])
+  bikeModel    BikeModel       @relation(fields: [bikeModelId], references: [id])
+  assignedUser User?           @relation("TestDriveAssignee", fields: [assignedUserId], references: [id])
+  createdBy    User?           @relation("TestDriveCreator", fields: [createdById], references: [id])
+  submission   FormSubmission? @relation(fields: [submissionId], references: [id])
+
+  @@index([dealershipId, scheduledAt])
+  @@index([status, scheduledAt])
+  @@index([contactId])
+}
+
+// ───────────────────────────── Forms ─────────────────────────────
+
+enum FormType {
+  TEST_DRIVE
+  GENERAL_INQUIRY
+  DEALERSHIP_APPLICATION
+  CUSTOM
+}
+
+enum FormStatus {
+  DRAFT
+  PUBLISHED
+  UNPUBLISHED
+}
+
+model Form {
+  id                 String     @id @default(cuid())
+  slug               String     @unique
+  name               String
+  type               FormType
+  status             FormStatus @default(DRAFT)
+  description        String?
+  // Working copy edited in the builder; becomes a FormVersion on publish.
+  draftSchema        Json
+  draftSettings      Json
+  publishedVersionId String?    @unique
+  createdById        String?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  createdBy        User?            @relation(fields: [createdById], references: [id])
+  publishedVersion FormVersion?     @relation("PublishedVersion", fields: [publishedVersionId], references: [id])
+  versions         FormVersion[]    @relation("FormVersions")
+  submissions      FormSubmission[]
+  leads            Lead[]
+}
+
+model FormVersion {
+  id            String           @id @default(cuid())
+  formId        String
+  version       Int
+  schema        Json
+  settings      Json
+  publishedAt   DateTime         @default(now())
+  publishedById String?
+  form          Form             @relation("FormVersions", fields: [formId], references: [id], onDelete: Cascade)
+  publishedFor  Form?            @relation("PublishedVersion")
+  publishedBy   User?            @relation(fields: [publishedById], references: [id])
+  submissions   FormSubmission[]
+
+  @@unique([formId, version])
+}
+
+enum SubmissionStatus {
+  NEW
+  REVIEWED
+  PROCESSED
+  DUPLICATE
+  SPAM
+  FAILED
+}
+
+model FormSubmission {
+  id              String           @id @default(cuid())
+  number          Int              @unique @default(autoincrement())
+  formId          String
+  formVersionId   String
+  status          SubmissionStatus @default(NEW)
+  data            Json
+  // Denormalised for listing and filtering
+  firstName       String?
+  lastName        String?
+  phone           String?
+  email           String?
+  cityId          String?
+  dealershipId    String?
+  bikeModelId     String?
+  testDriveAt     DateTime?
+  sourceId        String?
+  consentGiven    Boolean          @default(false)
+  consentText     String?
+  consentAt       DateTime?
+  privacyPolicyUrl String?
+  utm             Json             @default("{}")
+  referrer        String?
+  ipHash          String?
+  userAgent       String?
+  idempotencyKey  String           @unique
+  contactId       String?
+  leadId          String?
+  isDuplicate     Boolean          @default(false)
+  duplicateOfId   String?
+  processingLog   Json             @default("[]")
+  reviewedById    String?
+  reviewedAt      DateTime?
+  createdAt       DateTime         @default(now())
+
+  form        Form                   @relation(fields: [formId], references: [id])
+  formVersion FormVersion            @relation(fields: [formVersionId], references: [id])
+  city        City?                  @relation(fields: [cityId], references: [id])
+  dealership  Dealership?            @relation(fields: [dealershipId], references: [id])
+  bikeModel   BikeModel?             @relation(fields: [bikeModelId], references: [id])
+  source      LeadSource?            @relation(fields: [sourceId], references: [id])
+  contact     Contact?               @relation(fields: [contactId], references: [id])
+  lead        Lead?                  @relation(fields: [leadId], references: [id])
+  duplicateOf FormSubmission?        @relation("SubmissionDuplicate", fields: [duplicateOfId], references: [id])
+  duplicates  FormSubmission[]       @relation("SubmissionDuplicate")
+  reviewedBy  User?                  @relation(fields: [reviewedById], references: [id])
+  files       FormSubmissionFile[]
+  testDrive   TestDriveBooking?
+  application DealershipApplication?
+
+  @@index([formId, createdAt])
+  @@index([status])
+  @@index([createdAt])
+  @@index([contactId])
+}
+
+model FormSubmissionFile {
+  id           String         @id @default(cuid())
+  submissionId String
+  fieldKey     String
+  fileId       String
+  createdAt    DateTime       @default(now())
+  submission   FormSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  file         StoredFile     @relation(fields: [fileId], references: [id])
+
+  @@index([submissionId])
+}
+
+// ───────────────────────────── Dealership applications ─────────────────────────────
+
+enum ApplicationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  INFO_REQUIRED
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+model DealershipApplication {
+  id                 String            @id @default(cuid())
+  number             Int               @unique @default(autoincrement())
+  salutation         String?
+  firstName          String
+  lastName           String
+  email              String
+  phone              String
+  businessName       String
+  businessAddress    String
+  yearsInBusiness    Int
+  isOemDealer        Boolean?
+  provinceId         String?
+  cityId             String?
+  propertyOwnership  String?
+  businessStructure  String?
+  status             ApplicationStatus @default(SUBMITTED)
+  reviewerId         String?
+  decisionReason     String?
+  infoRequest        String?
+  consentGiven       Boolean           @default(false)
+  consentText        String?
+  consentAt          DateTime?
+  submissionId       String?           @unique
+  // { verified: bool, dealershipCreated: bool, managerInvited: bool, modelsConfigured: bool, leadsActivated: bool, notified: bool }
+  onboarding         Json              @default("{}")
+  approvedAt         DateTime?
+  rejectedAt         DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  province   Province?                       @relation(fields: [provinceId], references: [id])
+  city       City?                           @relation(fields: [cityId], references: [id])
+  reviewer   User?                           @relation("ApplicationReviewer", fields: [reviewerId], references: [id])
+  submission FormSubmission?                 @relation(fields: [submissionId], references: [id])
+  dealership Dealership?                     @relation("ApplicationDealership")
+  documents  DealershipApplicationDocument[]
+  history    ApplicationStatusHistory[]
+  notes      Note[]
+
+  @@index([status, createdAt])
+}
+
+model DealershipApplicationDocument {
+  id            String                @id @default(cuid())
+  applicationId String
+  fileId        String
+  category      String                @default("Supporting document")
+  createdAt     DateTime              @default(now())
+  application   DealershipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  file          StoredFile            @relation(fields: [fileId], references: [id])
+
+  @@index([applicationId])
+}
+
+model ApplicationStatusHistory {
+  id            String                @id @default(cuid())
+  applicationId String
+  fromStatus    ApplicationStatus?
+  toStatus      ApplicationStatus
+  note          String?
+  changedById   String?
+  createdAt     DateTime              @default(now())
+  application   DealershipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  changedBy     User?                 @relation(fields: [changedById], references: [id])
+
+  @@index([applicationId, createdAt])
+}
+
+// ───────────────────────────── Notifications & outbox ─────────────────────────────
+
+model Notification {
+  id         String    @id @default(cuid())
+  userId     String
+  type       String
+  title      String
+  body       String?
+  link       String?
+  entityType String?
+  entityId   String?
+  // De-duplicates notifications generated by repeated job runs
+  dedupeKey  String?   @unique
+  isRead     Boolean   @default(false)
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+}
+
+enum OutboxStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+// Transactional outbox: written in the same DB transaction as the business change,
+// delivered afterwards by the job runner.
+model OutboxMessage {
+  id        String       @id @default(cuid())
+  channel   String       @default("EMAIL")
+  to        String
+  subject   String
+  body      String
+  status    OutboxStatus @default(PENDING)
+  attempts  Int          @default(0)
+  lastError String?
+  sentAt    DateTime?
+  createdAt DateTime     @default(now())
+
+  @@index([status, createdAt])
+}
+
+// ───────────────────────────── Gamification ─────────────────────────────
+
+model GamificationEvent {
+  id           String      @id @default(cuid())
+  userId       String
+  dealershipId String?
+  type         String
+  points       Int
+  leadId       String?
+  // One award per (rule, subject) — blocks repeated / meaningless farming
+  uniqueKey    String      @unique
+  metadata     Json        @default("{}")
+  createdAt    DateTime    @default(now())
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dealership   Dealership? @relation(fields: [dealershipId], references: [id])
+  lead         Lead?       @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([dealershipId, createdAt])
+}
+
+model Achievement {
+  id          String            @id @default(cuid())
+  key         String            @unique
+  name        String
+  description String
+  icon        String            @default("award")
+  // { eventType: "LEAD_CONVERTED", count: 5 }
+  criteria    Json
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  achievementId String
+  earnedAt      DateTime    @default(now())
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+}
+
+enum GoalMetric {
+  RESPONSE_TIME_HOURS
+  FOLLOW_UP_COMPLETION_RATE
+  TEST_DRIVES_COMPLETED
+  CONVERSIONS
+  SALES_REVENUE
+}
+
+model Goal {
+  id           String      @id @default(cuid())
+  name         String
+  metric       GoalMetric
+  targetValue  Decimal     @db.Decimal(14, 2)
+  dealershipId String?
+  userId       String?
+  startsAt     DateTime
+  endsAt       DateTime
+  createdAt    DateTime    @default(now())
+  dealership   Dealership? @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  user         User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([dealershipId])
+  @@index([endsAt])
+}
+
+// ───────────────────────────── System ─────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  changes    Json     @default("{}")
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId, createdAt])
+  @@index([createdAt])
+  @@index([userId])
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model RateLimitBucket {
+  key         String   @id
+  count       Int
+  windowStart DateTime
+}

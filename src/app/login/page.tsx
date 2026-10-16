@@ -1,0 +1,31 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/server/auth/session";
+import { AuthLayout } from "@/components/auth/auth-layout";
+import { LoginForm } from "@/components/auth/login-form";
+import { sp } from "@/lib/utils";
+
+export const metadata = { title: "Sign in" };
+
+export default async function LoginPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const user = await getCurrentUser();
+  if (user) redirect(user.scope === "CENTRAL" ? "/crm/dashboard" : "/portal/dashboard");
+  const params = await searchParams;
+  return (
+    <AuthLayout
+      variant="crm"
+      title="Sign in to YADEA CRM"
+      subtitle="Central team access for sales, CRM and management."
+      footer={
+        <>
+          Dealership staff?{" "}
+          <Link href="/portal/login" className="link text-brand-600">
+            Go to the Dealer Portal →
+          </Link>
+        </>
+      }
+    >
+      <LoginForm portal="crm" next={sp(params.next)} />
+    </AuthLayout>
+  );
+}

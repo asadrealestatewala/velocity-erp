@@ -29,6 +29,25 @@ describe("contact form schema", () => {
   });
 });
 
+describe("demo credentials panel", () => {
+  it("is never exposed in production, and can be disabled locally", async () => {
+    const { getDemoAccounts } = await import("@/server/demo");
+    const env = process.env as Record<string, string | undefined>;
+    const before = { node: env.NODE_ENV, flag: env.SHOW_DEMO_CREDENTIALS };
+    try {
+      env.NODE_ENV = "production";
+      env.SHOW_DEMO_CREDENTIALS = "true";
+      expect(await getDemoAccounts()).toBeNull();
+      env.NODE_ENV = "development";
+      env.SHOW_DEMO_CREDENTIALS = "false";
+      expect(await getDemoAccounts()).toBeNull();
+    } finally {
+      env.NODE_ENV = before.node;
+      env.SHOW_DEMO_CREDENTIALS = before.flag;
+    }
+  });
+});
+
 describe("upload validation", () => {
   const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]);
   const pdf = Buffer.from("%PDF-1.7 ...");

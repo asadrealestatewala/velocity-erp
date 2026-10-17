@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/server/auth/session";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { LoginForm } from "@/components/auth/login-form";
 import { sp } from "@/lib/utils";
+import { getDemoAccounts } from "@/server/demo";
 
 export const metadata = { title: "Sign in" };
 
@@ -25,7 +26,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </>
       }
     >
-      <LoginForm portal="crm" next={sp(params.next)} />
+      <LoginForm portal="crm" next={sp(params.next)} demo={await getDemoAccounts()} />
     </AuthLayout>
   );
 }

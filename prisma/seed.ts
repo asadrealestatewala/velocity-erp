@@ -15,12 +15,13 @@ import { createLead, changeStage, recordInteraction } from "../src/server/servic
 import { assignLead } from "../src/server/services/assignment";
 import { normalizeEmail, normalizePhone } from "../src/lib/utils";
 import { award } from "../src/server/services/gamification";
+import { DEMO_PASSWORD } from "../src/lib/demo";
 
 const db = new PrismaClient();
 
-// Local development password for every seeded account. Override with SEED_PASSWORD.
+// Local development password for every seeded account (src/lib/demo.ts; override with SEED_PASSWORD).
 // NEVER use seeded accounts or this password in production.
-const DEV_PASSWORD = process.env.SEED_PASSWORD || "Yadea@Dev2026";
+const DEV_PASSWORD = DEMO_PASSWORD;
 
 // Deterministic PRNG so the demo looks the same on every machine
 let s = 42;

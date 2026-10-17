@@ -30,6 +30,8 @@ npm run dev                       # http://localhost:3000
 
 ### Demo accounts — local seed only
 
+The sign-in pages (`/login`, `/portal/login`) list all active demo accounts — click one to sign in. This panel is **hard-disabled when `NODE_ENV=production`** and can be hidden locally with `SHOW_DEMO_CREDENTIALS=false`.
+
 Every seeded account uses the password **`Yadea@Dev2026`** (override with the `SEED_PASSWORD` environment variable before seeding). These accounts and this password exist only in the local demo database. **Never seed demo data in production** (the seed script refuses to run when `NODE_ENV=production`).
 
 | Email | Role | Where |

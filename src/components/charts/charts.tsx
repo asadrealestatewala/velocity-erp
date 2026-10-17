@@ -1,10 +1,11 @@
 "use client";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import dynamic from "next/dynamic";
+
+// Recharts is loaded on demand; the legend and layout render immediately.
+const TrendPlot = dynamic(() => import("./trend-plot"), { ssr: false, loading: () => <div className="h-full w-full animate-pulse rounded-xl bg-ink-100/70" /> });
 
 // Validated categorical order (reference palette, light surface #fff): blue, orange.
 export const SERIES = ["#2a78d6", "#eb6834"] as const;
-const INK_MUTED = "#868fa0";
-const GRID = "#eceef2";
 
 type TrendPoint = Record<string, string | number>;
 
@@ -30,40 +31,7 @@ export function TrendChart({
         ))}
       </div>
       <div style={{ height }} role="img" aria-label={`Trend of ${series.map((s) => s.label).join(" and ")}`}>
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
-            <defs>
-              {series.map((s, i) => (
-                <linearGradient key={s.key} id={`g-${s.key}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={SERIES[i]} stopOpacity={0.18} />
-                  <stop offset="100%" stopColor={SERIES[i]} stopOpacity={0} />
-                </linearGradient>
-              ))}
-            </defs>
-            <CartesianGrid stroke={GRID} vertical={false} />
-            <XAxis dataKey="label" tick={{ fontSize: 11, fill: INK_MUTED }} tickLine={false} axisLine={{ stroke: "#d6dae1" }} minTickGap={24} />
-            <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: INK_MUTED }} tickLine={false} axisLine={false} width={44} />
-            <Tooltip
-              cursor={{ stroke: "#b1b8c4", strokeDasharray: "3 3" }}
-              contentStyle={{ borderRadius: 10, border: "1px solid #d6dae1", fontSize: 12, boxShadow: "0 8px 24px -8px rgb(16 24 40 / .2)" }}
-              labelStyle={{ color: "#111418", fontWeight: 600, marginBottom: 4 }}
-              itemStyle={{ color: "#363e4d", padding: 0 }}
-            />
-            {series.map((s, i) => (
-              <Area
-                key={s.key}
-                type="monotone"
-                dataKey={s.key}
-                name={s.label}
-                stroke={SERIES[i]}
-                strokeWidth={2}
-                fill={`url(#g-${s.key})`}
-                dot={false}
-                activeDot={{ r: 4, strokeWidth: 2, stroke: "#fff" }}
-              />
-            ))}
-          </AreaChart>
-        </ResponsiveContainer>
+        <TrendPlot data={data} series={series} colors={SERIES} />
       </div>
     </div>
   );

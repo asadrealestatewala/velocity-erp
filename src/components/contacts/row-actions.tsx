@@ -41,12 +41,13 @@ export function ContactRowActions({
           </>
         )}
       </Menu>
-      {lead && can.assign && (
-        <AssignDialog leadId={lead.id} current={{ dealershipId: lead.dealershipId, userId: lead.userId }} mode={can.assign} open={dialog === "assign"} onOpenChange={(o) => setDialog(o ? "assign" : null)} />
+      {/* Dialogs mount only when opened — a list of 25–100 rows otherwise renders hundreds of hidden dialogs. */}
+      {lead && can.assign && dialog === "assign" && (
+        <AssignDialog leadId={lead.id} current={{ dealershipId: lead.dealershipId, userId: lead.userId }} mode={can.assign} open onOpenChange={(o) => setDialog(o ? "assign" : null)} />
       )}
-      {lead && can.followUp && <FollowUpDialog leadId={lead.id} open={dialog === "follow"} onOpenChange={(o) => setDialog(o ? "follow" : null)} />}
-      <Dialog
-        open={dialog === "archive"}
+      {lead && can.followUp && dialog === "follow" && <FollowUpDialog leadId={lead.id} open onOpenChange={(o) => setDialog(o ? "follow" : null)} />}
+      {dialog === "archive" && <Dialog
+        open
         onOpenChange={(o) => setDialog(o ? "archive" : null)}
         title={archived ? "Restore contact?" : "Archive contact?"}
         size="sm"
@@ -64,7 +65,7 @@ export function ContactRowActions({
             ? "The contact and its leads return to active lists."
             : "Archived contacts and their leads are hidden from active lists and reports. Nothing is deleted — you can restore it at any time."}
         </p>
-      </Dialog>
+      </Dialog>}
     </>
   );
 }

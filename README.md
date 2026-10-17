@@ -53,8 +53,11 @@ The seed also creates: 4 provinces, 8 cities, 6 dealerships (active, pending/onb
 
 | Command | Purpose |
 |---|---|
-| `npm run dev` | Development server on :3000 |
+| `npm run dev` | Development server on :3000 (Turbopack — fast incremental compiles) |
+| `npm run dev:webpack` | Development server with the classic webpack compiler |
+| `npm run preview` | Production build + server on :3000 — **use this to demo or evaluate speed** |
 | `npm run build` / `npm start` | Production build / server |
+| `npx tsx scripts/bench.ts [url] [rounds] [email]` | Times every main page as a signed-in user |
 | `npm run typecheck` | TypeScript check |
 | `npx prisma migrate dev --name <change>` | Create a new migration (development) |
 | `npm run db:deploy` | Apply migrations (production/CI) |
@@ -169,7 +172,13 @@ Dealership portal: dashboard (points, KPIs, company vs walk-in, goals with progr
 | SMS / WhatsApp sending | ❌ Not integrated — interactions are logged manually on the timeline |
 | Payment provider | ❌ Not integrated — payments are recorded manually and flagged as unverified |
 
-## 8. Known limitations & assumptions
+## 8. Performance
+
+Development mode compiles each page on first visit and runs React's extra development checks on every request, so it is several times slower than production. On the reference machine (2-core i5-6300U, 8 GB RAM) a production build serves CRM pages in a median of ~90 ms (portal ~70 ms, slowest: dashboard ~250 ms) versus 0.4–3.5 s warm and 5–20 s on first visit in webpack dev mode. Measure with `scripts/bench.ts`.
+
+Built-in optimisations: route-level loading skeletons (instant feedback on navigation), Recharts loaded lazily (dashboard JS 228 kB → 126 kB), per-row dialogs mounted only when opened, parallel database queries per page, and indexes on every list filter. Keep memory free on small machines — each running Next.js server uses several hundred MB.
+
+## 9. Known limitations & assumptions
 
 - Dashboards aggregate trend data in the application layer; fine for tens of thousands of leads per period — move to SQL aggregation / materialised views at larger scale. Search uses `ILIKE`; add `pg_trgm` indexes for very large contact tables.
 - An out-of-scope record renders the "not found" page, but because the layout has already streamed, the HTTP status can be 200 rather than 404. No record data is sent.

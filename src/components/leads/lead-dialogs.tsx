@@ -287,7 +287,8 @@ export function StageSelect({
           <option key={s.id} value={s.id}>{s.name}</option>
         ))}
       </select>
-      <StageOutcomeDialog leadId={leadId} target={target} onClose={() => setTarget(null)} lossReasons={lossReasons} models={models} />
+      {/* Mounted only when needed: tables render one StageSelect per row. */}
+      {target && <StageOutcomeDialog leadId={leadId} target={target} onClose={() => setTarget(null)} lossReasons={lossReasons} models={models} />}
     </>
   );
 }

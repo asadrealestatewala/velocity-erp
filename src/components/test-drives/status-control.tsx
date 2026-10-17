@@ -49,8 +49,8 @@ export function TestDriveStatusControl({ bookingId, status, canManage }: { booki
           {options.map((o) => <option key={o} value={o}>{VERB[o]}</option>)}
         </select>
       )}
-      <Dialog
-        open={!!target}
+      {target && <Dialog
+        open
         onOpenChange={(o) => !o && setTarget(null)}
         size="sm"
         title={target === "RESCHEDULED" ? "Reschedule test drive" : "Complete test drive"}
@@ -70,7 +70,7 @@ export function TestDriveStatusControl({ bookingId, status, canManage }: { booki
         ) : (
           <Field label="Customer feedback" help="Optional — how did the ride go?">{(p) => <Textarea {...p} rows={3} value={feedback} onChange={(e) => setFeedback(e.target.value)} />}</Field>
         )}
-      </Dialog>
+      </Dialog>}
     </div>
   );
 }

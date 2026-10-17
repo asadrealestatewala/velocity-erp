@@ -39,28 +39,5 @@ export async function logActivity(
   return act;
 }
 
-export const ACTIVITY_LABELS: Record<ActivityType, string> = {
-  LEAD_CREATED: "Lead created",
-  FORM_SUBMITTED: "Form submitted",
-  LEAD_ASSIGNED: "Lead assigned",
-  LEAD_REASSIGNED: "Lead reassigned",
-  CALL_LOGGED: "Phone call",
-  EMAIL_LOGGED: "Email",
-  WHATSAPP_LOGGED: "WhatsApp",
-  SMS_LOGGED: "SMS",
-  MEETING_LOGGED: "Meeting",
-  NOTE_ADDED: "Note added",
-  TASK_CREATED: "Task created",
-  TASK_COMPLETED: "Task completed",
-  TEST_DRIVE_SCHEDULED: "Test drive scheduled",
-  TEST_DRIVE_RESCHEDULED: "Test drive rescheduled",
-  TEST_DRIVE_COMPLETED: "Test drive completed",
-  TEST_DRIVE_UPDATED: "Test drive updated",
-  STAGE_CHANGED: "Stage changed",
-  DOCUMENT_UPLOADED: "Document uploaded",
-  PAYMENT_RECORDED: "Payment recorded",
-  LEAD_CONVERTED: "Lead converted",
-  LEAD_LOST: "Lead lost",
-  CONTACT_UPDATED: "Contact updated",
-  SOURCE_CHANGED: "Source changed",
-};
+// Labels live in a client-safe module (the activity timeline UI uses them too).
+export { ACTIVITY_LABELS } from "@/lib/activity-labels";

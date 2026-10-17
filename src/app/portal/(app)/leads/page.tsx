@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { endOfDay } from "date-fns";
-import { Plus, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { db } from "@/lib/db";
 import { can, dealershipIds, leadScope, managedDealershipIds, requirePortalPage } from "@/server/authz";
 import { lookups, opt } from "@/server/lookups";
@@ -54,7 +54,6 @@ export default async function PortalLeadsPage({ searchParams }: { searchParams: 
       <PageHeader
         title={title}
         description={p.origin === "COMPANY" ? "Assigned to you by YADEA from central marketing, website forms and social channels." : p.origin === "DEALERSHIP_WALK_IN" ? "Created by your team for customers who visited or contacted your dealership directly." : `${total} lead(s)`}
-        actions={can(user, "contacts.create") ? <ButtonLink href="/portal/leads/new"><Plus className="h-4 w-4" /> New walk-in lead</ButtonLink> : undefined}
       />
       <FilterBar
         keep={["view", "origin"]}

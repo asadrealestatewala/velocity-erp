@@ -15,3 +15,4 @@ npm-debug.log*
 .next-e2e/
 .next-build/
 .next-turbo/
+scripts/*.tmp

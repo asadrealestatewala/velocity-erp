@@ -66,7 +66,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         ]}
       />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         <StatCard label="Total contacts" value={fmtNumber(kpi.totalContacts)} icon={Users} delta={kpi.contactsDelta === null ? null : { value: kpi.contactsDelta }} hint={`+${kpi.newContacts} new`} href="/crm/contacts" />
         <StatCard label="Leads in period" value={fmtNumber(kpi.leadsInPeriod)} icon={UserPlus} tone="blue" delta={kpi.leadsDelta === null ? null : { value: kpi.leadsDelta }} hint={`${fmtNumber(kpi.totalLeads)} total`} />
         <StatCard label="New leads today" value={kpi.newToday} icon={Sparkles} tone="violet" />

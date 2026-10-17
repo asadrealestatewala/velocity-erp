@@ -1,12 +1,13 @@
 "use client";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { format } from "date-fns";
 import {
-  Activity as ActivityIcon, ArrowRightLeft, Bike, CheckCircle2, CheckSquare, CircleDollarSign, Download, FileText, FileUp, Flag, Mail,
-  MessageCircle, MessageSquare, Phone, Pin, PinOff, Plus, StickyNote, Trash2, UserPlus, Users, XCircle, Inbox, Pencil,
+  Activity as ActivityIcon, ArrowRightLeft, Bike, CheckCircle2, CheckSquare, ChevronDown, ChevronsDownUp, ChevronsUpDown, CircleDollarSign, Download,
+  FileText, FileUp, Flag, Mail, MessageCircle, MessageSquare, Phone, Pin, PinOff, Plus, RefreshCw, StickyNote, Trash2, UserPlus, Users, X, XCircle, Inbox, Pencil,
 } from "lucide-react";
-import { cn, fmtDate, fmtDateTime, fmtMoney, fmtRelative } from "@/lib/utils";
+import { cn, fmtDate, fmtDateTime, fmtMoney, fmtRelative, fmtTime, isoDay } from "@/lib/utils";
+import { ACTIVITY_GROUPS, ACTIVITY_LABELS, type ActivityTypeKey } from "@/lib/activity-labels";
 import { Badge } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/form";
@@ -17,7 +18,7 @@ import {
   addNoteAction, createTaskAction, deleteDocumentAction, recordPaymentAction, setTaskStatusAction, updateNoteAction, updatePaymentStatusAction, uploadDocumentAction,
 } from "@/server/actions/work";
 
-type Activity = { id: string; type: string; title: string; body: string | null; outcome: string | null; occurredAt: Date; user: { name: string } | null };
+type Activity = { id: string; type: string; title: string; body: string | null; outcome: string | null; direction: string | null; occurredAt: Date; user: { name: string } | null };
 type Task = { id: string; title: string; description: string | null; type: string; dueAt: Date; priority: string; status: string; assignedTo: { id: string; name: string }; completedAt: Date | null };
 type Note = { id: string; body: string; isPinned: boolean; visibility: string; createdAt: Date; updatedAt: Date; dealershipId: string | null; author: { id: string; name: string } };
 type Doc = { id: string; name: string; category: string; description: string | null; createdAt: Date; uploadedBy: { name: string }; file: { id: string; originalName: string; mimeType: string; size: number } };
@@ -32,7 +33,10 @@ const ACT_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 const ACT_TONE: Record<string, string> = {
   LEAD_CONVERTED: "bg-emerald-100 text-emerald-700", LEAD_LOST: "bg-red-100 text-red-700", FORM_SUBMITTED: "bg-blue-100 text-blue-700",
-  PAYMENT_RECORDED: "bg-emerald-50 text-emerald-700", STAGE_CHANGED: "bg-violet-100 text-violet-700",
+  PAYMENT_RECORDED: "bg-emerald-50 text-emerald-700", STAGE_CHANGED: "bg-violet-100 text-violet-700", CALL_LOGGED: "bg-sky-100 text-sky-700",
+  WHATSAPP_LOGGED: "bg-green-100 text-green-700", EMAIL_LOGGED: "bg-sky-100 text-sky-700", SMS_LOGGED: "bg-sky-100 text-sky-700",
+  TEST_DRIVE_SCHEDULED: "bg-amber-100 text-amber-700", TEST_DRIVE_RESCHEDULED: "bg-amber-100 text-amber-700", TEST_DRIVE_COMPLETED: "bg-emerald-100 text-emerald-700",
+  TASK_COMPLETED: "bg-emerald-100 text-emerald-700",
 };
 
 const TABS = [
@@ -44,6 +48,10 @@ const TABS = [
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
+/**
+ * Contact records dock: an icon rail (right) that opens a drawer (left) with Activity / Tasks / Notes / Documents / Payments.
+ * Desktop: sticky beside the profile, collapsible with the ✕ button. Mobile: the rail becomes a horizontal tab strip above the drawer.
+ */
 export function ContactSidePanel(props: {
   contactId: string;
   leadId: string | null;
@@ -63,79 +71,222 @@ export function ContactSidePanel(props: {
   const tabs = TABS.filter((t) => (t.key === "tasks" ? props.can.tasks : t.key === "documents" ? props.can.docsView : t.key === "payments" ? props.can.paymentsView : true));
   const initial = (search.get("tab") as TabKey) || "activity";
   const [tab, setTab] = useState<TabKey>(tabs.some((t) => t.key === initial) ? initial : "activity");
-  const counts: Partial<Record<TabKey, number>> = {
+  const [open, setOpen] = useState(true);
+  const [refreshing, startRefresh] = useTransition();
+  const railRef = useRef<HTMLDivElement>(null);
+
+  const totals: Record<TabKey, number> = {
+    activity: props.activities.length,
+    tasks: props.tasks.length,
+    notes: props.notes.length,
+    documents: props.documents.length,
+    payments: props.payments.length,
+  };
+  const badge: Partial<Record<TabKey, number>> = {
     tasks: props.tasks.filter((t) => t.status === "OPEN" || t.status === "IN_PROGRESS").length,
     notes: props.notes.length,
     documents: props.documents.length,
     payments: props.payments.length,
   };
+  const current = tabs.find((t) => t.key === tab) ?? tabs[0]!;
+
   const select = (k: TabKey) => {
+    // Clicking the active icon of an open drawer collapses it (like the reference rail).
+    if (k === tab && open) return setOpen(false);
     setTab(k);
+    setOpen(true);
     const p = new URLSearchParams(search.toString());
     p.set("tab", k);
     router.replace(`${pathname}?${p.toString()}`, { scroll: false });
   };
+  const move = (dir: 1 | -1) => {
+    const i = tabs.findIndex((x) => x.key === tab);
+    const next = tabs[(i + dir + tabs.length) % tabs.length]!;
+    setTab(next.key);
+    setOpen(true);
+    railRef.current?.querySelector<HTMLButtonElement>(`#tab-${next.key}`)?.focus();
+  };
 
   return (
-    <div className="card flex flex-col overflow-hidden xl:sticky xl:top-20 xl:max-h-[calc(100dvh-6rem)]">
-      <div role="tablist" aria-label="Contact records" className="scrollbar-thin flex shrink-0 overflow-x-auto border-b border-ink-100 px-2">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            role="tab"
-            id={`tab-${t.key}`}
-            aria-selected={tab === t.key}
-            aria-controls={`panel-${t.key}`}
-            onClick={() => select(t.key)}
-            onKeyDown={(e) => {
-              const i = tabs.findIndex((x) => x.key === tab);
-              if (e.key === "ArrowRight") select(tabs[(i + 1) % tabs.length]!.key);
-              if (e.key === "ArrowLeft") select(tabs[(i - 1 + tabs.length) % tabs.length]!.key);
-            }}
-            className={cn(
-              "flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-3 text-[13px] font-medium transition-colors",
-              tab === t.key ? "border-brand-500 text-brand-700" : "border-transparent text-ink-500 hover:text-ink-900",
-            )}
-          >
-            <t.icon className="h-4 w-4" />
-            {t.label}
-            {!!counts[t.key] && <span className="rounded-full bg-ink-100 px-1.5 text-[11px] text-ink-600">{counts[t.key]}</span>}
-          </button>
-        ))}
-      </div>
-      <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="scrollbar-thin flex-1 overflow-y-auto p-4">
-        {tab === "activity" && <ActivityTab items={props.activities} />}
-        {tab === "tasks" && <TasksTab {...props} />}
-        {tab === "notes" && <NotesTab {...props} />}
-        {tab === "documents" && <DocumentsTab {...props} />}
-        {tab === "payments" && <PaymentsTab {...props} />}
+    <div className="flex flex-col gap-3 xl:sticky xl:top-[88px] xl:h-[calc(100dvh-104px)] xl:flex-row">
+      {open && (
+        <section className="card flex min-h-[460px] min-w-0 flex-1 flex-col overflow-hidden max-xl:max-h-[80dvh] xl:w-[400px] xl:flex-none 2xl:w-[440px]" aria-labelledby="dock-title">
+          <header className="flex h-[68px] shrink-0 items-center gap-2 border-b border-ink-200 px-5">
+            <h2 id="dock-title" className="truncate text-[19px] font-bold text-ink-900">
+              {current.label} <span className="font-medium text-ink-400">({totals[current.key]})</span>
+            </h2>
+            <div className="ml-auto flex items-center gap-0.5">
+              <button
+                onClick={() => startRefresh(() => router.refresh())}
+                className="rounded-md p-2 text-ink-400 transition hover:bg-ink-100 hover:text-ink-700"
+                aria-label={`Refresh ${current.label.toLowerCase()}`}
+                title="Refresh"
+              >
+                <RefreshCw className={cn("h-[18px] w-[18px]", refreshing && "animate-spin")} />
+              </button>
+              <button onClick={() => setOpen(false)} className="rounded-md p-2 text-ink-400 transition hover:bg-ink-100 hover:text-ink-700" aria-label="Close panel" title="Close">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </header>
+          <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="scrollbar-thin flex-1 overflow-y-auto p-4">
+            {tab === "activity" && <ActivityTab items={props.activities} />}
+            {tab === "tasks" && <TasksTab {...props} />}
+            {tab === "notes" && <NotesTab {...props} />}
+            {tab === "documents" && <DocumentsTab {...props} />}
+            {tab === "payments" && <PaymentsTab {...props} />}
+          </div>
+        </section>
+      )}
+
+      <div
+        ref={railRef}
+        role="tablist"
+        aria-orientation="vertical"
+        aria-label="Contact records"
+        className="card scrollbar-thin order-first flex shrink-0 flex-row gap-1 overflow-x-auto p-1.5 xl:order-last xl:w-[60px] xl:flex-col xl:items-center xl:gap-2 xl:overflow-visible xl:px-0 xl:py-3"
+      >
+        {tabs.map((t) => {
+          const active = open && tab === t.key;
+          return (
+            <button
+              key={t.key}
+              role="tab"
+              id={`tab-${t.key}`}
+              aria-selected={active}
+              aria-controls={`panel-${t.key}`}
+              tabIndex={tab === t.key ? 0 : -1}
+              title={t.label}
+              aria-label={t.label}
+              onClick={() => select(t.key)}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowDown" || e.key === "ArrowRight") { e.preventDefault(); move(1); }
+                if (e.key === "ArrowUp" || e.key === "ArrowLeft") { e.preventDefault(); move(-1); }
+              }}
+              className={cn(
+                "relative flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg px-3 text-[14px] font-medium transition-colors xl:w-11 xl:px-0",
+                active ? "bg-brand-50 text-brand-600" : "text-ink-500 hover:bg-ink-100 hover:text-ink-800",
+              )}
+            >
+              <t.icon className="h-5 w-5 shrink-0" />
+              <span className="xl:hidden">{t.label}</span>
+              {!!badge[t.key] && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] rounded-full bg-brand-500 px-1 text-center text-[10.5px] leading-[18px] font-semibold text-white max-xl:static max-xl:bg-ink-100 max-xl:text-ink-600">
+                  {badge[t.key]! > 99 ? "99+" : badge[t.key]}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
 }
 
+/** Activity as a collapsible sequence: grouped by day, newest first, each entry drops down to its details. */
 function ActivityTab({ items }: { items: Activity[] }) {
-  if (!items.length) return <p className="py-10 text-center text-sm text-ink-400">No activity yet.</p>;
+  const [filter, setFilter] = useState("all");
+  const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(items[0] ? [items[0].id] : []));
+
+  const shown = useMemo(() => {
+    const g = ACTIVITY_GROUPS.find((x) => x.key === filter);
+    return g ? items.filter((a) => (g.types as string[]).includes(a.type)) : items;
+  }, [items, filter]);
+
+  const days = useMemo(() => {
+    const today = isoDay(new Date());
+    const yesterday = isoDay(new Date(Date.now() - 86400_000));
+    const map = new Map<string, { label: string; rows: Activity[] }>();
+    for (const a of shown) {
+      const k = isoDay(new Date(a.occurredAt));
+      if (!map.has(k)) map.set(k, { label: k === today ? "Today" : k === yesterday ? "Yesterday" : fmtDate(a.occurredAt), rows: [] });
+      map.get(k)!.rows.push(a);
+    }
+    return [...map.entries()];
+  }, [shown]);
+
+  const allOpen = shown.length > 0 && shown.every((a) => openIds.has(a.id));
+  const toggle = (id: string) =>
+    setOpenIds((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+
+  if (!items.length)
+    return <p className="px-4 py-12 text-center text-[15px] leading-relaxed text-ink-400">No activity yet. Actions you take across the CRM will appear here.</p>;
+
   return (
-    <ol className="relative space-y-4 before:absolute before:top-2 before:bottom-2 before:left-[15px] before:w-px before:bg-ink-200">
-      {items.map((a) => {
-        const Icon = ACT_ICON[a.type] ?? ActivityIcon;
-        return (
-          <li key={a.id} className="relative flex gap-3">
-            <span className={cn("relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-4 ring-white", ACT_TONE[a.type] ?? "bg-ink-100 text-ink-600")}>
-              <Icon className="h-4 w-4" />
-            </span>
-            <div className="min-w-0 flex-1 pt-0.5">
-              <p className="text-sm font-medium text-ink-900">{a.title}</p>
-              {a.body && <p className="mt-0.5 text-[13px] whitespace-pre-line text-ink-600">{a.body}</p>}
-              <p className="mt-1 text-xs text-ink-400" title={fmtDateTime(a.occurredAt)}>
-                {a.user?.name ?? "System"} · {fmtDateTime(a.occurredAt)}
-              </p>
-            </div>
-          </li>
-        );
-      })}
-    </ol>
+    <div>
+      <div className="mb-3 flex items-center gap-2">
+        <Select aria-label="Filter activity" value={filter} onChange={(e) => setFilter(e.target.value)} className="h-9 flex-1 py-1 text-[14px]">
+          <option value="all">All activity ({items.length})</option>
+          {ACTIVITY_GROUPS.map((g) => {
+            const n = items.filter((a) => (g.types as string[]).includes(a.type)).length;
+            return n ? <option key={g.key} value={g.key}>{g.label} ({n})</option> : null;
+          })}
+        </Select>
+        <button
+          onClick={() => setOpenIds(allOpen ? new Set() : new Set(shown.map((a) => a.id)))}
+          className="flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-ink-200 px-2.5 text-[13px] font-medium text-ink-600 hover:bg-ink-50"
+          title={allOpen ? "Collapse all entries" : "Expand all entries"}
+        >
+          {allOpen ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
+          {allOpen ? "Collapse" : "Expand"}
+        </button>
+      </div>
+
+      {days.length === 0 && <p className="py-10 text-center text-[14px] text-ink-400">Nothing in this category yet.</p>}
+      <div className="space-y-5">
+        {days.map(([key, day]) => (
+          <section key={key} aria-label={day.label}>
+            <h3 className="eyebrow mb-1.5 px-1 !text-[12px]" suppressHydrationWarning>{day.label}</h3>
+            <ol className="relative before:absolute before:top-5 before:bottom-5 before:left-[25px] before:w-px before:bg-ink-200">
+              {day.rows.map((a) => {
+                const Icon = ACT_ICON[a.type] ?? ActivityIcon;
+                const isOpen = openIds.has(a.id);
+                const label = ACTIVITY_LABELS[a.type as ActivityTypeKey] ?? a.type;
+                return (
+                  <li key={a.id} className="relative">
+                    <button
+                      onClick={() => toggle(a.id)}
+                      aria-expanded={isOpen}
+                      aria-controls={`act-${a.id}`}
+                      className={cn("flex w-full items-start gap-3 rounded-lg px-2 py-2 text-left transition-colors", isOpen ? "bg-ink-50" : "hover:bg-ink-50/70")}
+                    >
+                      <span className={cn("relative z-10 mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-4 ring-white", ACT_TONE[a.type] ?? "bg-ink-100 text-ink-600")}>
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[14.5px] leading-snug font-semibold text-ink-900">{a.title}</span>
+                        <span className="block text-[13px] text-ink-500">{label} · {a.user?.name ?? "System"}</span>
+                      </span>
+                      <span className="flex shrink-0 items-center gap-1 pt-0.5 text-[12.5px] text-ink-400" suppressHydrationWarning>
+                        {fmtTime(a.occurredAt)}
+                        <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isOpen && "rotate-180")} />
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <div id={`act-${a.id}`} className="mt-1 mb-2 ml-[52px] animate-fade-in space-y-2 rounded-lg border border-ink-200 bg-white p-3 text-[13.5px]">
+                        {a.body ? <p className="whitespace-pre-line text-ink-700">{a.body}</p> : <p className="text-ink-400">No additional details.</p>}
+                        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px]">
+                          <dt className="text-ink-400">Type</dt><dd className="text-ink-700">{label}</dd>
+                          {a.direction && (<><dt className="text-ink-400">Direction</dt><dd className="text-ink-700">{a.direction === "INBOUND" ? "Inbound (customer contacted us)" : "Outbound (we contacted the customer)"}</dd></>)}
+                          {a.outcome && (<><dt className="text-ink-400">Outcome</dt><dd className="text-ink-700">{a.outcome}</dd></>)}
+                          <dt className="text-ink-400">By</dt><dd className="text-ink-700">{a.user?.name ?? "System"}</dd>
+                          <dt className="text-ink-400">When</dt><dd className="text-ink-700" suppressHydrationWarning>{fmtDateTime(a.occurredAt)} · {fmtRelative(a.occurredAt)}</dd>
+                        </dl>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        ))}
+      </div>
+    </div>
   );
 }
 

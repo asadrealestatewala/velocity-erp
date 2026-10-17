@@ -43,7 +43,7 @@ export async function ContactDetailView({ user, id, base, leadParam }: { user: C
       <PageHeader
         breadcrumbs={[{ label: "Contacts", href: `${base}/contacts` }, { label: name }]}
       />
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px] 2xl:grid-cols-[minmax(0,1fr)_460px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto]">
         <div className="min-w-0 space-y-4">
           {/* Header */}
           <Card className="overflow-hidden">

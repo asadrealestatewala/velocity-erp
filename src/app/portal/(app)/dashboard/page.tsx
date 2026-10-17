@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { startOfMonth, subDays } from "date-fns";
 import {
-  AlarmClock, Bike, Building2, CheckCircle2, CheckSquare, Flame, Footprints, Phone, Plus, Target, Trophy, UserCheck, Users, XCircle, Sparkles,
+  AlarmClock, Bike, Building2, CheckCircle2, CheckSquare, Flame, Footprints, Phone, Target, Trophy, UserCheck, Users, XCircle, Sparkles,
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { can, dealershipIds, leadScope, requirePortalPage, taskScope, testDriveScope } from "@/server/authz";
 import { getKpis, goalProgress, GOAL_LABELS } from "@/server/services/analytics";
 import { Card, CardHeader, EmptyState, PageHeader, ProgressBar, StatCard, Badge } from "@/components/ui/misc";
-import { ButtonLink } from "@/components/ui/button";
 import { BadgeGrid } from "@/components/gamification/badges";
 import { Celebrate } from "@/components/gamification/celebrate";
 import { fmtDateTime, fmtMoney, fmtRelative, fullName } from "@/lib/utils";
@@ -55,7 +54,6 @@ export default async function PortalDashboard({ searchParams }: { searchParams: 
       <PageHeader
         title={`Hi ${user.name.split(" ")[0]} 👋`}
         description={`${user.memberships.map((m) => m.dealershipName).join(", ")} · last 30 days`}
-        actions={can(user, "contacts.create") ? <ButtonLink href="/portal/leads/new"><Plus className="h-4 w-4" /> New walk-in lead</ButtonLink> : undefined}
       />
 
       {/* Gamified hero */}
@@ -93,7 +91,7 @@ export default async function PortalDashboard({ searchParams }: { searchParams: 
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
         <StatCard label="Leads received (30d)" value={kpi.leadsInPeriod} icon={Users} delta={kpi.leadsDelta === null ? null : { value: kpi.leadsDelta }} />
         <StatCard label="New leads" value={newLeads.length} icon={Sparkles} tone="violet" href="/portal/leads?stage=NEW" />
         <StatCard label="Need follow-up" value={kpi.followUp} icon={AlarmClock} tone="amber" href="/portal/leads?followUp=due" />

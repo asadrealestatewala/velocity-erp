@@ -5,8 +5,9 @@ export const PASSWORD = process.env.SEED_PASSWORD || "Yadea@Dev2026";
 
 export async function signIn(page: Page, email: string, portal = false) {
   await page.goto(portal ? "/portal/login" : "/login");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  // exact: the demo-accounts panel has a "Copy demo password" button that would also match a substring.
+  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(portal ? /\/portal\/dashboard/ : /\/crm\/dashboard/, { timeout: 90_000 });
 }

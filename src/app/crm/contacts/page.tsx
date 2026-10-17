@@ -1,10 +1,9 @@
-import { Download, Plus } from "lucide-react";
+import { Download } from "lucide-react";
 import { db } from "@/lib/db";
 import { can, requireCentralPage } from "@/server/authz";
 import { listContacts, type ContactFilters as F } from "@/server/queries/contacts";
 import { lookups } from "@/server/lookups";
 import { PageHeader } from "@/components/ui/misc";
-import { ButtonLink } from "@/components/ui/button";
 import { parseListParams } from "@/components/ui/table";
 import { ContactsTable } from "@/components/contacts/contacts-table";
 import { ContactFilters } from "@/components/contacts/contact-filters";
@@ -33,9 +32,7 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
                 <Download className="h-4 w-4" /> Export CSV
               </a>
             )}
-            {can(user, "contacts.create") && (
-              <ButtonLink href="/crm/contacts/new"><Plus className="h-4 w-4" /> New contact</ButtonLink>
-            )}
+
           </>
         }
       />

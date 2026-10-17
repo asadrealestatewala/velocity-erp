@@ -4,18 +4,33 @@
    Brand orange sampled from the supplied logo; charcoal from the wordmark.
    Change these to re-theme the whole platform. */
 @theme {
-  --color-brand-50: #fff6ed;
-  --color-brand-100: #ffead4;
-  --color-brand-200: #ffd1a8;
-  --color-brand-300: #ffb070;
-  --color-brand-400: #fb8a3c;
-  --color-brand-500: #f07400;
-  --color-brand-600: #d95f00;
-  --color-brand-700: #b44a04;
-  --color-brand-800: #8f3b0b;
-  --color-brand-900: #74330c;
+  /* Primary (actions, links, active states) — blue, matching the reference CRM. */
+  --color-brand-50: #eef3ff;
+  --color-brand-100: #dce6ff;
+  --color-brand-200: #bdd0ff;
+  --color-brand-300: #93b2ff;
+  --color-brand-400: #6189f6;
+  --color-brand-500: #3a66e6;
+  --color-brand-600: #2f54c8;
+  --color-brand-700: #2744a2;
+  --color-brand-800: #223b81;
+  --color-brand-900: #1f3366;
 
-  --color-ink-50: #f6f7f9;
+  /* YADEA orange — brand marks, notification badges, public forms. */
+  --color-accent-50: #fff6ed;
+  --color-accent-100: #ffead4;
+  --color-accent-300: #ffb070;
+  --color-accent-400: #fb8a3c;
+  --color-accent-500: #f07400;
+  --color-accent-600: #d95f00;
+
+  /* Sidebar navy */
+  --color-navy-950: #08111f;
+  --color-navy-900: #0d1b2e;
+  --color-navy-800: #15283f;
+  --color-navy-700: #1e3552;
+  --color-navy-600: #2c4a6e;
+  --color-ink-50: #f5f7fb;
   --color-ink-100: #eceef2;
   --color-ink-200: #d6dae1;
   --color-ink-300: #b1b8c4;
@@ -23,8 +38,8 @@
   --color-ink-500: #667085;
   --color-ink-600: #4b5466;
   --color-ink-700: #363e4d;
-  --color-ink-800: #1f2530;
-  --color-ink-900: #111418;
+  --color-ink-800: #1e293b;
+  --color-ink-900: #0f172a;
   --color-ink-950: #0a0c0f;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -55,22 +70,27 @@
   html { -webkit-text-size-adjust: 100%; }
   body {
     @apply bg-ink-50 text-ink-900 antialiased;
-    font-feature-settings: "cv11", "ss01";
+    font-feature-settings: "calt", "kern";
+    font-size: 15px;
+    line-height: 1.5;
   }
   :focus-visible { @apply outline-2 outline-offset-2 outline-brand-500; }
   ::selection { @apply bg-brand-200 text-ink-900; }
 }
 
 @layer components {
-  .card { @apply rounded-2xl border border-ink-200/70 bg-white shadow-[var(--shadow-card)]; }
+  .card { @apply rounded-xl border border-ink-200 bg-white shadow-[0_1px_2px_rgb(15_23_42/0.04)]; }
   .input {
-    @apply block w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400
+    @apply block w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-[15px] text-ink-900 placeholder:text-ink-400
       transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none
       disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-400 aria-[invalid=true]:border-red-400 aria-[invalid=true]:ring-red-500/10;
   }
-  .label { @apply mb-1.5 block text-[13px] font-medium text-ink-700; }
-  .th { @apply px-4 py-3 text-left text-xs font-semibold tracking-wide text-ink-500 uppercase whitespace-nowrap; }
-  .td { @apply px-4 py-3 text-sm text-ink-700 align-middle; }
+  .label { @apply mb-1.5 block text-[13.5px] font-medium text-ink-700; }
+  /* Table header: bold, sentence-case on a light band — as in the reference dashboard. */
+  .th { @apply px-4 py-3 text-left text-[13px] font-semibold text-ink-700 whitespace-nowrap; }
+  .td { @apply px-4 py-3 text-[14.5px] text-ink-700 align-middle; }
   .link { @apply font-medium text-ink-900 hover:text-brand-600 hover:underline underline-offset-2; }
   .scrollbar-thin { scrollbar-width: thin; }
+  /* Small uppercase section label used for card titles and KPI captions. */
+  .eyebrow { @apply text-[12.5px] font-semibold tracking-[0.06em] text-ink-500 uppercase; }
 }

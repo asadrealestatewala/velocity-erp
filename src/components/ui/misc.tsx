@@ -12,10 +12,10 @@ export function Card({ className, children, ...p }: React.HTMLAttributes<HTMLDiv
 
 export function CardHeader({ title, description, action, className }: { title: React.ReactNode; description?: React.ReactNode; action?: React.ReactNode; className?: string }) {
   return (
-    <div className={cn("flex items-start justify-between gap-3 border-b border-ink-100 px-5 py-4", className)}>
+    <div className={cn("flex items-start justify-between gap-3 border-b border-ink-200 px-5 py-3.5", className)}>
       <div className="min-w-0">
-        <h3 className="text-[15px] font-semibold text-ink-900">{title}</h3>
-        {description && <p className="mt-0.5 text-[13px] text-ink-500">{description}</p>}
+        <h3 className="eyebrow !text-ink-700">{title}</h3>
+        {description && <p className="mt-1 text-[13px] text-ink-500">{description}</p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>
@@ -145,34 +145,35 @@ export function StatCard({
   tone?: "brand" | "blue" | "green" | "red" | "violet" | "amber" | "gray";
   href?: string;
 }) {
-  const toneCls = {
-    brand: "bg-brand-50 text-brand-600",
-    blue: "bg-blue-50 text-blue-600",
-    green: "bg-emerald-50 text-emerald-600",
-    red: "bg-red-50 text-red-600",
-    violet: "bg-violet-50 text-violet-600",
-    amber: "bg-amber-50 text-amber-600",
-    gray: "bg-ink-100 text-ink-600",
+  const iconCls = {
+    brand: "text-brand-500",
+    blue: "text-blue-500",
+    green: "text-emerald-500",
+    red: "text-red-500",
+    violet: "text-violet-500",
+    amber: "text-amber-500",
+    gray: "text-ink-400",
   }[tone];
   const good = delta ? (delta.goodWhenUp ?? true) === delta.value >= 0 : true;
+  // Reference layout: uppercase caption in a divided header band, then a large bold figure with a muted caption.
   const body = (
-    <div className="card h-full p-4 transition hover:shadow-[var(--shadow-pop)]">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-[13px] font-medium text-ink-500">{label}</p>
-        <span className={cn("flex h-8 w-8 items-center justify-center rounded-lg", toneCls)}>
-          <Icon className="h-4 w-4" />
-        </span>
+    <div className="card h-full overflow-hidden transition hover:border-ink-300 hover:shadow-[var(--shadow-card)]">
+      <div className="flex min-h-[46px] items-center justify-between gap-2 border-b border-ink-200 px-5 py-2.5">
+        <p className="eyebrow leading-snug">{label}</p>
+        <Icon className={cn("h-[18px] w-[18px] shrink-0", iconCls)} aria-hidden />
       </div>
-      <p className="mt-1 text-2xl font-bold tracking-tight text-ink-900 tabular-nums">{value}</p>
-      <div className="mt-1 flex items-center gap-2 text-xs">
-        {delta && delta.value !== 0 ? (
-          <span className={cn("font-semibold", good ? "text-emerald-600" : "text-red-600")}>
-            {delta.value > 0 ? "▲" : "▼"} {Math.abs(delta.value)}%
-          </span>
-        ) : delta ? (
-          <span className="font-medium text-ink-400">— 0%</span>
-        ) : null}
-        {hint && <span className="text-ink-400">{hint}</span>}
+      <div className="px-5 py-4">
+        <p className="text-[34px] leading-none font-bold tracking-tight text-ink-900 tabular-nums">{value}</p>
+        <div className="mt-2.5 flex min-h-5 items-center gap-2 text-[13.5px]">
+          {delta && delta.value !== 0 ? (
+            <span className={cn("font-semibold", good ? "text-emerald-600" : "text-red-600")}>
+              {delta.value > 0 ? "▲" : "▼"} {Math.abs(delta.value)}%
+            </span>
+          ) : delta ? (
+            <span className="font-medium text-ink-400">— 0%</span>
+          ) : null}
+          {hint && <span className="text-ink-500">{hint}</span>}
+        </div>
       </div>
     </div>
   );
@@ -195,14 +196,17 @@ export function ProgressBar({ value, max = 100, className, color }: { value: num
 }
 
 export function DescriptionList({ items, cols = 2 }: { items: { label: string; value: React.ReactNode }[]; cols?: 1 | 2 | 3 }) {
+  // Columns follow the width of the card (container query), not the window — the contact page puts a records dock beside it.
   return (
-    <dl className={cn("grid gap-x-6 gap-y-4", cols === 1 ? "grid-cols-1" : cols === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3")}>
-      {items.map((it) => (
-        <div key={it.label} className="min-w-0">
-          <dt className="text-xs font-medium text-ink-500">{it.label}</dt>
-          <dd className="mt-0.5 text-sm break-words text-ink-900">{it.value ?? "—"}</dd>
-        </div>
-      ))}
-    </dl>
+    <div className="@container">
+      <dl className={cn("grid gap-x-6 gap-y-4", cols === 1 ? "grid-cols-1" : cols === 2 ? "grid-cols-1 @sm:grid-cols-2" : "grid-cols-1 @sm:grid-cols-2 @3xl:grid-cols-3")}>
+        {items.map((it) => (
+          <div key={it.label} className="min-w-0">
+            <dt className="text-[13px] font-medium text-ink-500">{it.label}</dt>
+            <dd className="mt-0.5 text-[14.5px] break-words text-ink-900">{it.value ?? "—"}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }

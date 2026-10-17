@@ -4,21 +4,22 @@ import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const variants = {
-  primary: "bg-brand-500 text-white hover:bg-brand-600 shadow-sm shadow-brand-500/20",
+  primary: "bg-brand-500 text-white hover:bg-brand-600 shadow-sm",
   secondary: "bg-white text-ink-800 border border-ink-200 hover:bg-ink-50 hover:border-ink-300",
   ghost: "text-ink-600 hover:bg-ink-100 hover:text-ink-900",
   danger: "bg-red-600 text-white hover:bg-red-700",
   dark: "bg-ink-900 text-white hover:bg-ink-800",
-  outlineBrand: "border border-brand-300 text-brand-700 bg-brand-50 hover:bg-brand-100",
+  // Outlined primary, as used for secondary actions in the reference dashboard
+  outlineBrand: "border border-brand-500 text-brand-600 bg-white hover:bg-brand-50",
 } as const;
 
 const sizes = {
-  xs: "h-7 px-2 text-xs gap-1 rounded-md",
-  sm: "h-8 px-3 text-[13px] gap-1.5 rounded-lg",
-  md: "h-9 px-4 text-sm gap-2 rounded-lg",
-  lg: "h-11 px-6 text-[15px] gap-2 rounded-xl",
-  icon: "h-9 w-9 rounded-lg justify-center",
-  iconSm: "h-7 w-7 rounded-md justify-center",
+  xs: "h-8 px-2.5 text-[13px] gap-1 rounded-md",
+  sm: "h-9 px-3.5 text-[14px] gap-1.5 rounded-md",
+  md: "h-10 px-4 text-[15px] gap-2 rounded-md",
+  lg: "h-12 px-6 text-[16px] gap-2 rounded-lg",
+  icon: "h-10 w-10 rounded-md justify-center",
+  iconSm: "h-8 w-8 rounded-md justify-center",
 } as const;
 
 export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {

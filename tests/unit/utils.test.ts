@@ -30,21 +30,19 @@ describe("contact form schema", () => {
 });
 
 describe("demo credentials panel", () => {
-  it("is never exposed in production, and can be disabled locally", async () => {
-    const { getDemoAccounts } = await import("@/server/demo");
-    const env = process.env as Record<string, string | undefined>;
-    const before = { node: env.NODE_ENV, flag: env.SHOW_DEMO_CREDENTIALS };
-    try {
-      env.NODE_ENV = "production";
-      env.SHOW_DEMO_CREDENTIALS = "true";
-      expect(await getDemoAccounts()).toBeNull();
-      env.NODE_ENV = "development";
-      env.SHOW_DEMO_CREDENTIALS = "false";
-      expect(await getDemoAccounts()).toBeNull();
-    } finally {
-      env.NODE_ENV = before.node;
-      env.SHOW_DEMO_CREDENTIALS = before.flag;
+  it("is shown only when the app is served from a local address", async () => {
+    const { demoCredentialsAllowed } = await import("@/server/demo");
+    for (const appUrl of ["http://localhost:3000", "http://127.0.0.1:3000", "http://crm.localhost:3000", undefined]) {
+      expect(demoCredentialsAllowed({ appUrl })).toBe(true);
     }
+    // A real deployment never exposes it, even if the flag is left on.
+    for (const appUrl of ["https://crm.yadea.example", "https://yadea.com.pk", "http://192.168.1.20:3000", "http://localhost.evil.com", "not a url"]) {
+      expect(demoCredentialsAllowed({ appUrl, flag: "true" })).toBe(false);
+    }
+  });
+  it("can be switched off explicitly, even locally", async () => {
+    const { demoCredentialsAllowed } = await import("@/server/demo");
+    expect(demoCredentialsAllowed({ appUrl: "http://localhost:3000", flag: "false" })).toBe(false);
   });
 });
 

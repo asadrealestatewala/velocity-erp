@@ -47,8 +47,8 @@ function DemoAccounts({ demo, portal, onUse }: { demo: NonNullable<DemoInfo>; po
       <div className="flex items-start gap-2">
         <FlaskConical className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
         <div className="min-w-0 flex-1">
-          <h2 id="demo-accounts" className="text-sm font-semibold text-amber-900">Demo accounts — local development only</h2>
-          <p className="mt-0.5 text-xs text-amber-800">Click an account to sign in. Hidden automatically in production.</p>
+          <h2 id="demo-accounts" className="text-sm font-semibold text-amber-900">Demo accounts — local use only</h2>
+          <p className="mt-0.5 text-xs text-amber-800">Click an account to sign in. This panel only appears when the app runs on localhost.</p>
         </div>
       </div>
       <div className="mt-3 flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-amber-200">

@@ -5,14 +5,26 @@ import { DEMO_EMAIL_DOMAIN, DEMO_PASSWORD } from "@/lib/demo";
 export type DemoAccount = { email: string; name: string; role: string; scope: "CENTRAL" | "DEALERSHIP"; dealership: string | null };
 export type DemoInfo = { password: string; accounts: DemoAccount[] } | null;
 
+const isLocalHost = (host: string) => host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host.endsWith(".localhost");
+
 /**
- * Demo credentials shown on the sign-in pages.
- * Never in production (hard-blocked), and can be switched off locally with SHOW_DEMO_CREDENTIALS=false.
- * Only lists active seeded accounts that actually exist in the database.
+ * Whether the demo-credentials panel may be shown. It is allowed only when the app is served from a
+ * local address (APP_URL), so a real deployment at a public domain never exposes it — regardless of
+ * NODE_ENV (the local `npm run preview` runs in production mode for speed). Turn it off anywhere
+ * with SHOW_DEMO_CREDENTIALS=false.
  */
+export function demoCredentialsAllowed({ appUrl, flag }: { appUrl?: string; flag?: string }) {
+  if (flag === "false") return false;
+  try {
+    return isLocalHost(new URL(appUrl || "http://localhost:3000").hostname);
+  } catch {
+    return false;
+  }
+}
+
+/** Demo credentials shown on the sign-in pages. Only lists active seeded accounts that exist in the database. */
 export async function getDemoAccounts(): Promise<DemoInfo> {
-  if (process.env.NODE_ENV === "production") return null;
-  if (process.env.SHOW_DEMO_CREDENTIALS === "false") return null;
+  if (!demoCredentialsAllowed({ appUrl: process.env.APP_URL, flag: process.env.SHOW_DEMO_CREDENTIALS })) return null;
   const users = await db.user.findMany({
     where: { email: { endsWith: `@${DEMO_EMAIL_DOMAIN}` }, isActive: true },
     select: {

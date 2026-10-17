@@ -3,12 +3,13 @@ import Link from "next/link";
 
 export function AuthLayout({ title, subtitle, children, footer, variant }: { title: string; subtitle: string; children: React.ReactNode; footer: React.ReactNode; variant: "crm" | "portal" }) {
   return (
-    <div className="grid min-h-dvh lg:grid-cols-2">
+    <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-2">
       <div className="relative hidden overflow-hidden bg-ink-950 lg:block">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_20%,rgba(240,116,0,0.35),transparent_55%),radial-gradient(ellipse_at_80%_90%,rgba(240,116,0,0.18),transparent_50%)]" />
         <div className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(rgba(255,255,255,.6)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.6)_1px,transparent_1px)] [background-size:48px_48px]" />
         <div className="relative flex h-full flex-col justify-between p-12 text-white">
-          <Image src="/brand/yadea-logo-light.png" alt="YADEA" width={170} height={37} className="h-9 w-auto" priority />
+          {/* self-start: in a flex column an auto-width image would otherwise stretch to the full panel width. */}
+          <Image src="/brand/yadea-logo-light.png" alt="YADEA" width={167} height={36} className="h-9 w-auto max-w-none shrink-0 self-start object-contain" priority />
           <div>
             <p className="mb-3 inline-block rounded-full bg-white/10 px-3 py-1 text-xs font-semibold tracking-wider uppercase ring-1 ring-white/15">
               {variant === "crm" ? "Central CRM" : "Dealer Portal"}
@@ -25,10 +26,10 @@ export function AuthLayout({ title, subtitle, children, footer, variant }: { tit
           <p className="text-xs text-ink-500">© {new Date().getFullYear()} YADEA · Electric two-wheelers</p>
         </div>
       </div>
-      <div className="flex items-center justify-center px-4 py-12 sm:px-8">
+      <div className="flex min-w-0 items-center justify-center px-4 py-12 sm:px-8">
         <div className="w-full max-w-sm">
           <Link href="/" className="mb-8 inline-block lg:hidden">
-            <Image src="/brand/yadea-logo-dark.png" alt="YADEA" width={140} height={30} className="h-8 w-auto" priority />
+            <Image src="/brand/yadea-logo-dark.png" alt="YADEA" width={149} height={32} className="h-8 w-auto max-w-none object-contain" priority />
           </Link>
           <h1 className="text-2xl font-bold tracking-tight text-ink-900">{title}</h1>
           <p className="mt-1 mb-8 text-sm text-ink-500">{subtitle}</p>

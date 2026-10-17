@@ -58,7 +58,7 @@ function DemoAccounts({ demo, portal, onUse }: { demo: NonNullable<DemoInfo>; po
           <Copy className="h-3.5 w-3.5" />
         </button>
       </div>
-      <div className="scrollbar-thin mt-3 max-h-80 space-y-3 overflow-y-auto pr-1">
+      <div className="scrollbar-thin mt-3 max-h-[min(20rem,32dvh)] space-y-3 overflow-y-auto pr-1">
         {groups.map((scope) => {
           const list = demo.accounts.filter((a) => a.scope === scope);
           if (!list.length) return null;

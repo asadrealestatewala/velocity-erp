@@ -8,6 +8,7 @@ import { can, isCentral, managedDealershipIds, requireUser } from "@/server/auth
 import { audit } from "@/server/audit";
 import { AppError, forbidden, notFound, runAction } from "@/server/errors";
 import { notify } from "@/server/services/notifications";
+import { userPhoneFields } from "@/server/user-phone";
 
 type Actor = Awaited<ReturnType<typeof requireUser>>;
 
@@ -55,7 +56,8 @@ export async function addTeamMemberAction(input: z.input<typeof addSchema>) {
         if (v.role === "MANAGER" && existing.role.key !== "DEALER_MANAGER") await tx.user.update({ where: { id: userId }, data: { roleId: role.id } });
       } else {
         password = tempPassword();
-        const u = await tx.user.create({ data: { email: v.email, name: v.name, phone: v.phone, passwordHash: await hashPassword(password), roleId: role.id, mustChangePassword: true } });
+        const phoneFields = await userPhoneFields(v.phone, { tx });
+        const u = await tx.user.create({ data: { email: v.email, name: v.name, ...phoneFields, passwordHash: await hashPassword(password), roleId: role.id, mustChangePassword: true } });
         userId = u.id;
       }
       const m = await tx.dealershipMembership.upsert({

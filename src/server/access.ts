@@ -25,6 +25,12 @@ export function assertDealershipMember(user: CurrentUser, dealershipId: string |
   if (!dealershipId || !dealershipIds(user).includes(dealershipId)) throw forbidden();
 }
 
+/** Operations on a showroom's own stock, orders and accounts: the user must be an active member (central staff are not). */
+export function requireOwnDealership(user: CurrentUser, dealershipId: string | null | undefined): string {
+  if (!dealershipId || !dealershipIds(user).includes(dealershipId)) throw forbidden("You can only work with your own dealership.");
+  return dealershipId;
+}
+
 /** A task/follow-up assignee must be someone who can see the lead. */
 export async function assertAssignable(user: CurrentUser, assigneeId: string, dealershipId: string | null) {
   if (assigneeId === user.id) return;

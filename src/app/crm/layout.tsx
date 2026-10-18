@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireCentralPage, can, leadScope } from "@/server/authz";
 import { AppShell, type QuickAction } from "@/components/shell/app-shell";
 import { CRM_NAV } from "@/components/shell/nav";
+import { assistantConfigFor } from "@/server/assistant/config";
 
 export default async function CrmLayout({ children }: { children: React.ReactNode }) {
   const user = await requireCentralPage();
@@ -17,7 +18,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
   if (canAssign) actions.push({ label: "Assign leads", href: "/crm/contacts?assigned=no", variant: "outline", icon: "share", badge: unassigned });
   return (
     <Suspense>
-      <AppShell variant="crm" nav={nav} user={{ name: user.name, email: user.email, roleName: user.roleName }} unread={unread} actions={actions}>
+      <AppShell variant="crm" nav={nav} user={{ name: user.name, email: user.email, roleName: user.roleName }} unread={unread} actions={actions} assistant={assistantConfigFor(user)}>
         {children}
       </AppShell>
     </Suspense>

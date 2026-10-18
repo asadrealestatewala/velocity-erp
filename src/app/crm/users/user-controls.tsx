@@ -40,7 +40,7 @@ export function UserDialog({ user, roles, departments, isSelf }: { user?: { id: 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Full name" required error={save.fieldErrors.name}>{(p) => <Input {...p} value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />}</Field>
           <Field label="Email" required error={save.fieldErrors.email}>{(p) => <Input {...p} type="email" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} />}</Field>
-          <Field label="Phone">{(p) => <Input {...p} value={v.phone} onChange={(e) => setV({ ...v, phone: e.target.value })} />}</Field>
+          <Field label="Mobile number" help="Can also be used to sign in. Each number belongs to one account." error={save.fieldErrors.phone}>{(p) => <Input {...p} inputMode="tel" placeholder="03xx xxxxxxx" value={v.phone} onChange={(e) => setV({ ...v, phone: e.target.value })} />}</Field>
           <Field label="Role" help={isSelf ? "You can't change your own role." : undefined}>{(p) => <Select {...p} disabled={isSelf} value={v.roleId} onChange={(e) => setV({ ...v, roleId: e.target.value })}>{roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</Select>}</Field>
           <Field label="Department">{(p) => <Select {...p} value={v.departmentId} onChange={(e) => setV({ ...v, departmentId: e.target.value })}><option value="">—</option>{departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</Select>}</Field>
           <div className="pt-6"><Checkbox label="Active" disabled={isSelf} checked={v.isActive} onChange={(e) => setV({ ...v, isActive: e.target.checked })} /></div>

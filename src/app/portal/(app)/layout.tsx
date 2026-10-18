@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { can, requirePortalPage } from "@/server/authz";
 import { AppShell, type QuickAction } from "@/components/shell/app-shell";
 import { PORTAL_NAV } from "@/components/shell/nav";
+import { assistantConfigFor } from "@/server/assistant/config";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const user = await requirePortalPage();
@@ -19,6 +20,7 @@ export default async function PortalLayout({ children }: { children: React.React
         unread={unread}
         subtitle={user.memberships.map((m) => m.dealershipName).join(", ")}
         actions={actions}
+        assistant={assistantConfigFor(user)}
       >
         {children}
       </AppShell>

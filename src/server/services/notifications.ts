@@ -15,6 +15,12 @@ export const NOTIFICATION_TYPES = {
   APPLICATION_INFO_REQUEST: "Additional information request",
   DEALERSHIP_ONBOARDING: "Dealership onboarding",
   MILESTONE: "Performance milestone",
+  STOCK_LOW: "Low showroom stock",
+  PROCUREMENT_NEW: "New dealership stock order",
+  PROCUREMENT_UPDATE: "Stock order update",
+  LEDGER_UPDATE: "Ledger / payment update",
+  DOCUMENT_SHARED: "Document shared with you",
+  MESSAGE_RECEIVED: "New customer message",
 } as const;
 export type NotificationType = keyof typeof NOTIFICATION_TYPES;
 

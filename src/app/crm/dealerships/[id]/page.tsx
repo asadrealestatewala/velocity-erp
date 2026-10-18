@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { subDays } from "date-fns";
-import { Pencil } from "lucide-react";
+import { Boxes, Pencil } from "lucide-react";
 import { db } from "@/lib/db";
-import { can, requireCentralPage } from "@/server/authz";
+import { PROCUREMENT_ENTRY_PERMISSIONS, can, requireCentralPage } from "@/server/authz";
 import { getDealershipPerformance } from "@/server/services/analytics";
 import { Badge, Card, CardHeader, DescriptionList, PageHeader, StageBadge, StatCard } from "@/components/ui/misc";
 import { ButtonLink } from "@/components/ui/button";
@@ -48,7 +48,14 @@ export default async function DealershipPage({ params }: { params: Promise<{ id:
         title={d.name}
         description={<span className="flex flex-wrap items-center gap-2"><span className="font-mono">{d.code}</span>· {humanize(d.type)} · {d.city.name}<Badge tone={DEALERSHIP_STATUS[d.status]!.tone}>{DEALERSHIP_STATUS[d.status]!.label}</Badge>{d.acceptsLeads ? <Badge tone="green" dot="#16a34a">Receiving leads</Badge> : <Badge tone="gray">Not receiving leads</Badge>}</span>}
         breadcrumbs={[{ label: "Dealerships", href: "/crm/dealerships" }, { label: d.name }]}
-        actions={manage ? <><StatusControls id={d.id} status={d.status} acceptsLeads={d.acceptsLeads} /><ButtonLink href={`/crm/dealerships/${d.id}/edit`} variant="secondary"><Pencil className="h-4 w-4" /> Edit</ButtonLink></> : undefined}
+        actions={
+          <>
+            {PROCUREMENT_ENTRY_PERMISSIONS.some((perm) => can(user, perm)) && (
+              <ButtonLink href={`/procurement/dealers/${d.id}`} variant="outlineBrand"><Boxes className="h-4 w-4" /> Stock, orders &amp; accounts</ButtonLink>
+            )}
+            {manage && <><StatusControls id={d.id} status={d.status} acceptsLeads={d.acceptsLeads} /><ButtonLink href={`/crm/dealerships/${d.id}/edit`} variant="secondary"><Pencil className="h-4 w-4" /> Edit</ButtonLink></>}
+          </>
+        }
       />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <StatCard label="Open leads" value={leadsOpen} icon={Users} href={`/crm/contacts?dealership=${d.id}`} />

@@ -56,55 +56,74 @@ model Department {
 }
 
 model User {
-  id                String    @id @default(cuid())
-  email             String    @unique
-  name              String
-  phone             String?
-  passwordHash      String
-  roleId            String
-  departmentId      String?
-  isActive          Boolean   @default(true)
-  avatarFileId      String?
-  mustChangePassword Boolean  @default(false)
-  notificationPrefs Json      @default("{}")
-  lastLoginAt       DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  name               String
+  phone              String?
+  // Digits-only form of phone (country code applied) — makes mobile-number sign-in unambiguous.
+  phoneNormalized    String?   @unique
+  passwordHash       String
+  roleId             String
+  departmentId       String?
+  isActive           Boolean   @default(true)
+  avatarFileId       String?
+  mustChangePassword Boolean   @default(false)
+  notificationPrefs  Json      @default("{}")
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   role        Role                   @relation(fields: [roleId], references: [id])
   department  Department?            @relation(fields: [departmentId], references: [id])
   sessions    Session[]
   memberships DealershipMembership[]
 
-  ownedContacts         Contact[]               @relation("ContactOwner")
-  createdContacts       Contact[]               @relation("ContactCreatedBy")
-  assignedLeads         Lead[]                  @relation("LeadAssignedUser")
-  ownedLeads            Lead[]                  @relation("LeadOwner")
-  createdLeads          Lead[]                  @relation("LeadCreatedBy")
+  ownedContacts         Contact[]                  @relation("ContactOwner")
+  createdContacts       Contact[]                  @relation("ContactCreatedBy")
+  assignedLeads         Lead[]                     @relation("LeadAssignedUser")
+  ownedLeads            Lead[]                     @relation("LeadOwner")
+  createdLeads          Lead[]                     @relation("LeadCreatedBy")
   stageChanges          LeadStageHistory[]
-  assignmentsMade       LeadAssignmentHistory[] @relation("AssignmentBy")
-  assignmentsFrom       LeadAssignmentHistory[] @relation("AssignmentFromUser")
-  assignmentsTo         LeadAssignmentHistory[] @relation("AssignmentToUser")
-  tasksAssigned         Task[]                  @relation("TaskAssignee")
-  tasksCreated          Task[]                  @relation("TaskCreator")
-  tasksCompleted        Task[]                  @relation("TaskCompleter")
+  assignmentsMade       LeadAssignmentHistory[]    @relation("AssignmentBy")
+  assignmentsFrom       LeadAssignmentHistory[]    @relation("AssignmentFromUser")
+  assignmentsTo         LeadAssignmentHistory[]    @relation("AssignmentToUser")
+  tasksAssigned         Task[]                     @relation("TaskAssignee")
+  tasksCreated          Task[]                     @relation("TaskCreator")
+  tasksCompleted        Task[]                     @relation("TaskCompleter")
   activities            Activity[]
   notes                 Note[]
   documents             Document[]
   payments              Payment[]
-  testDrivesAssigned    TestDriveBooking[]      @relation("TestDriveAssignee")
-  testDrivesCreated     TestDriveBooking[]      @relation("TestDriveCreator")
+  testDrivesAssigned    TestDriveBooking[]         @relation("TestDriveAssignee")
+  testDrivesCreated     TestDriveBooking[]         @relation("TestDriveCreator")
   notifications         Notification[]
   gamificationEvents    GamificationEvent[]
   achievements          UserAchievement[]
   auditLogs             AuditLog[]
-  reviewedApplications  DealershipApplication[] @relation("ApplicationReviewer")
+  reviewedApplications  DealershipApplication[]    @relation("ApplicationReviewer")
   applicationChanges    ApplicationStatusHistory[]
   formsCreated          Form[]
   formVersionsPublished FormVersion[]
   submissionsReviewed   FormSubmission[]
   filesUploaded         StoredFile[]
   goals                 Goal[]
+
+  movementsMade        InventoryMovement[]        @relation("MovementBy")
+  salesOrdersCreated   SalesOrder[]               @relation("SalesOrderCreator")
+  salesOrdersConfirmed SalesOrder[]               @relation("SalesOrderConfirmer")
+  procRequested        ProcurementOrder[]         @relation("ProcRequester")
+  procHandled          ProcurementOrder[]         @relation("ProcHandler")
+  procReceived         ProcurementOrder[]         @relation("ProcReceiver")
+  procHistory          ProcurementStatusHistory[] @relation("ProcHistoryBy")
+  ledgerRecorded       LedgerEntry[]              @relation("LedgerRecorder")
+  ledgerVerified       LedgerEntry[]              @relation("LedgerVerifier")
+  vouchersCreated      ExpenseVoucher[]           @relation("VoucherCreator")
+  vouchersReviewed     ExpenseVoucher[]           @relation("VoucherReviewer")
+  voucherFiles         VoucherAttachment[]        @relation("VoucherAttachmentUploader")
+  dealerDocsUploaded   DealershipDocument[]       @relation("DealerDocUploader")
+  messagesSent         Message[]                  @relation("MessageSender")
+  assistantActions     AssistantAction[]          @relation("AssistantActionUser")
+  knowledgeEntries     KnowledgeEntry[]           @relation("KnowledgeAuthor")
 
   @@index([roleId])
 }
@@ -125,13 +144,13 @@ model Session {
 // ───────────────────────────── Locations ─────────────────────────────
 
 model Province {
-  id          String       @id @default(cuid())
-  name        String       @unique
-  isActive    Boolean      @default(true)
-  sortOrder   Int          @default(0)
-  cities      City[]
-  dealerships Dealership[]
-  contacts    Contact[]
+  id           String                  @id @default(cuid())
+  name         String                  @unique
+  isActive     Boolean                 @default(true)
+  sortOrder    Int                     @default(0)
+  cities       City[]
+  dealerships  Dealership[]
+  contacts     Contact[]
   applications DealershipApplication[]
 }
 
@@ -176,57 +195,66 @@ enum DealershipRole {
 }
 
 model Dealership {
-  id               String           @id @default(cuid())
-  code             String           @unique
-  name             String
-  type             DealershipType   @default(DEALERSHIP)
-  legalName        String?
-  parentId         String?
-  contactName      String?
-  email            String?
-  phone            String?
-  provinceId       String?
-  cityId           String
-  address          String?
-  postalCode       String?
-  latitude         Decimal?         @db.Decimal(9, 6)
-  longitude        Decimal?         @db.Decimal(9, 6)
-  status           DealershipStatus @default(PENDING)
+  id                    String           @id @default(cuid())
+  code                  String           @unique
+  name                  String
+  type                  DealershipType   @default(DEALERSHIP)
+  legalName             String?
+  parentId              String?
+  contactName           String?
+  email                 String?
+  phone                 String?
+  provinceId            String?
+  cityId                String
+  address               String?
+  postalCode            String?
+  latitude              Decimal?         @db.Decimal(9, 6)
+  longitude             Decimal?         @db.Decimal(9, 6)
+  status                DealershipStatus @default(PENDING)
   // Lead assignment is activated separately from status so onboarding can complete first.
-  acceptsLeads     Boolean          @default(false)
+  acceptsLeads          Boolean          @default(false)
   // When true, sales reps see every lead of the dealership; otherwise only their own.
-  repsSeeAllLeads  Boolean          @default(false)
-  openingDate      DateTime?        @db.Date
+  repsSeeAllLeads       Boolean          @default(false)
+  openingDate           DateTime?        @db.Date
   // { mon: { open: "09:00", close: "18:00", closed: false }, ... }
-  operatingHours   Json             @default("{}")
+  operatingHours        Json             @default("{}")
   // Max concurrent test drives per time slot (0 = no overlap checking)
-  testDriveSlotCapacity Int         @default(0)
-  notes            String?
-  applicationId    String?          @unique
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  testDriveSlotCapacity Int              @default(0)
+  notes                 String?
+  applicationId         String?          @unique
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
 
-  parent       Dealership?            @relation("DealershipParent", fields: [parentId], references: [id])
-  children     Dealership[]           @relation("DealershipParent")
-  province     Province?              @relation(fields: [provinceId], references: [id])
-  city         City                   @relation(fields: [cityId], references: [id])
-  application  DealershipApplication? @relation("ApplicationDealership", fields: [applicationId], references: [id])
-  memberships  DealershipMembership[]
-  bikeModels   DealershipBikeModel[]
-  leads        Lead[]                 @relation("LeadDealership")
-  preferredBy  Lead[]                 @relation("LeadPreferredDealership")
-  originLeads  Lead[]                 @relation("LeadOriginDealership")
-  assignFrom   LeadAssignmentHistory[] @relation("AssignmentFromDealership")
-  assignTo     LeadAssignmentHistory[] @relation("AssignmentToDealership")
-  testDrives   TestDriveBooking[]
-  tasks        Task[]
-  activities   Activity[]
-  contactNotes Note[]
-  documents    Document[]
-  payments     Payment[]
-  submissions  FormSubmission[]
+  parent             Dealership?             @relation("DealershipParent", fields: [parentId], references: [id])
+  children           Dealership[]            @relation("DealershipParent")
+  province           Province?               @relation(fields: [provinceId], references: [id])
+  city               City                    @relation(fields: [cityId], references: [id])
+  application        DealershipApplication?  @relation("ApplicationDealership", fields: [applicationId], references: [id])
+  memberships        DealershipMembership[]
+  bikeModels         DealershipBikeModel[]
+  leads              Lead[]                  @relation("LeadDealership")
+  preferredBy        Lead[]                  @relation("LeadPreferredDealership")
+  originLeads        Lead[]                  @relation("LeadOriginDealership")
+  assignFrom         LeadAssignmentHistory[] @relation("AssignmentFromDealership")
+  assignTo           LeadAssignmentHistory[] @relation("AssignmentToDealership")
+  testDrives         TestDriveBooking[]
+  tasks              Task[]
+  activities         Activity[]
+  contactNotes       Note[]
+  documents          Document[]
+  payments           Payment[]
+  submissions        FormSubmission[]
   gamificationEvents GamificationEvent[]
-  goals        Goal[]
+  goals              Goal[]
+  inventory          InventoryItem[]
+  inventoryMovements InventoryMovement[]
+  salesOrders        SalesOrder[]
+  procurementOrders  ProcurementOrder[]
+  ledgerEntries      LedgerEntry[]
+  vouchers           ExpenseVoucher[]
+  dealerDocuments    DealershipDocument[]
+  messages           Message[]
+  auditLogs          AuditLog[]
 
   @@index([cityId, status, acceptsLeads])
   @@index([status])
@@ -264,6 +292,8 @@ model BikeModel {
   imageFileId    String?
   specifications Json              @default("{}")
   price          Decimal?          @db.Decimal(12, 2)
+  // What dealers pay YADEA for this model (administrator-entered)
+  dealerPrice    Decimal?          @db.Decimal(12, 2)
   currency       String            @default("PKR")
   availability   ModelAvailability @default(AVAILABLE)
   displayOrder   Int               @default(0)
@@ -273,12 +303,15 @@ model BikeModel {
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
-  imageFile   StoredFile?           @relation(fields: [imageFileId], references: [id])
-  dealerships DealershipBikeModel[]
-  leads       Lead[]                @relation("LeadInterestedModel")
-  soldLeads   Lead[]                @relation("LeadSoldModel")
-  testDrives  TestDriveBooking[]
-  submissions FormSubmission[]
+  imageFile        StoredFile?            @relation(fields: [imageFileId], references: [id])
+  dealerships      DealershipBikeModel[]
+  leads            Lead[]                 @relation("LeadInterestedModel")
+  soldLeads        Lead[]                 @relation("LeadSoldModel")
+  testDrives       TestDriveBooking[]
+  submissions      FormSubmission[]
+  inventory        InventoryItem[]
+  salesLines       SalesOrderLine[]
+  procurementLines ProcurementOrderLine[]
 
   @@index([isActive, displayOrder])
 }
@@ -296,14 +329,14 @@ model DealershipBikeModel {
 // ───────────────────────────── Pipeline config ─────────────────────────────
 
 model LeadSource {
-  id        String           @id @default(cuid())
-  key       String           @unique
-  name      String
-  isActive  Boolean          @default(true)
-  sortOrder Int              @default(0)
-  contacts  Contact[]
-  leads     Lead[]           @relation("LeadSource")
-  original  Lead[]           @relation("LeadOriginalSource")
+  id          String           @id @default(cuid())
+  key         String           @unique
+  name        String
+  isActive    Boolean          @default(true)
+  sortOrder   Int              @default(0)
+  contacts    Contact[]
+  leads       Lead[]           @relation("LeadSource")
+  original    Lead[]           @relation("LeadOriginalSource")
   submissions FormSubmission[]
 }
 
@@ -412,14 +445,14 @@ model Contact {
   createdAt              DateTime    @default(now())
   updatedAt              DateTime    @updatedAt
 
-  city        City?         @relation(fields: [cityId], references: [id])
-  province    Province?     @relation(fields: [provinceId], references: [id])
-  avatarFile  StoredFile?   @relation("ContactAvatar", fields: [avatarFileId], references: [id])
-  source      LeadSource?   @relation(fields: [sourceId], references: [id])
-  owner       User?         @relation("ContactOwner", fields: [ownerId], references: [id])
-  createdBy   User?         @relation("ContactCreatedBy", fields: [createdById], references: [id])
-  currentLead Lead?         @relation("ContactCurrentLead", fields: [currentLeadId], references: [id])
-  leads       Lead[]        @relation("ContactLeads")
+  city        City?              @relation(fields: [cityId], references: [id])
+  province    Province?          @relation(fields: [provinceId], references: [id])
+  avatarFile  StoredFile?        @relation("ContactAvatar", fields: [avatarFileId], references: [id])
+  source      LeadSource?        @relation(fields: [sourceId], references: [id])
+  owner       User?              @relation("ContactOwner", fields: [ownerId], references: [id])
+  createdBy   User?              @relation("ContactCreatedBy", fields: [createdById], references: [id])
+  currentLead Lead?              @relation("ContactCurrentLead", fields: [currentLeadId], references: [id])
+  leads       Lead[]             @relation("ContactLeads")
   activities  Activity[]
   tasks       Task[]
   notes       Note[]
@@ -427,6 +460,8 @@ model Contact {
   payments    Payment[]
   testDrives  TestDriveBooking[]
   submissions FormSubmission[]
+  messages    Message[]
+  salesOrders SalesOrder[]
 
   @@index([phoneNormalized])
   @@index([emailNormalized])
@@ -450,77 +485,79 @@ enum InquiryType {
 }
 
 model Lead {
-  id                   String      @id @default(cuid())
-  number               Int         @unique @default(autoincrement())
-  contactId            String
-  stageId              String
-  sourceId             String?
-  originalSourceId     String?
-  origin               LeadOrigin  @default(COMPANY)
-  originDealershipId   String?
-  inquiryType          InquiryType @default(MANUAL)
-  inquiryCategory      String?
-  description          String?
-  dealershipId         String?
-  assignedUserId       String?
-  ownerId              String?
-  cityId               String?
-  interestedModelId    String?
+  id                    String      @id @default(cuid())
+  number                Int         @unique @default(autoincrement())
+  contactId             String
+  stageId               String
+  sourceId              String?
+  originalSourceId      String?
+  origin                LeadOrigin  @default(COMPANY)
+  originDealershipId    String?
+  inquiryType           InquiryType @default(MANUAL)
+  inquiryCategory       String?
+  description           String?
+  dealershipId          String?
+  assignedUserId        String?
+  ownerId               String?
+  cityId                String?
+  interestedModelId     String?
   preferredDealershipId String?
-  campaign             String?
-  referralDetails      String?
-  utmSource            String?
-  utmMedium            String?
-  utmCampaign          String?
-  utmTerm              String?
-  utmContent           String?
-  externalId           String?
-  sourceFormId         String?
-  customFields         Json        @default("{}")
-  assignedAt           DateTime?
-  firstContactedAt     DateTime?
-  lastContactedAt      DateTime?
-  nextFollowUpAt       DateTime?
-  stageChangedAt       DateTime    @default(now())
-  convertedAt          DateTime?
-  conversionValue      Decimal?    @db.Decimal(12, 2)
-  soldModelId          String?
-  conversionNotes      String?
-  lostAt               DateTime?
-  lossReasonId         String?
-  lossNotes            String?
-  lastActivityAt       DateTime?
-  isArchived           Boolean     @default(false)
-  createdById          String?
-  createdAt            DateTime    @default(now())
-  updatedAt            DateTime    @updatedAt
+  campaign              String?
+  referralDetails       String?
+  utmSource             String?
+  utmMedium             String?
+  utmCampaign           String?
+  utmTerm               String?
+  utmContent            String?
+  externalId            String?
+  sourceFormId          String?
+  customFields          Json        @default("{}")
+  assignedAt            DateTime?
+  firstContactedAt      DateTime?
+  lastContactedAt       DateTime?
+  nextFollowUpAt        DateTime?
+  stageChangedAt        DateTime    @default(now())
+  convertedAt           DateTime?
+  conversionValue       Decimal?    @db.Decimal(12, 2)
+  soldModelId           String?
+  conversionNotes       String?
+  lostAt                DateTime?
+  lossReasonId          String?
+  lossNotes             String?
+  lastActivityAt        DateTime?
+  isArchived            Boolean     @default(false)
+  createdById           String?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
 
-  contact            Contact                 @relation("ContactLeads", fields: [contactId], references: [id])
-  currentFor         Contact?                @relation("ContactCurrentLead")
-  stage              LeadStage               @relation(fields: [stageId], references: [id])
-  source             LeadSource?             @relation("LeadSource", fields: [sourceId], references: [id])
-  originalSource     LeadSource?             @relation("LeadOriginalSource", fields: [originalSourceId], references: [id])
-  originDealership   Dealership?             @relation("LeadOriginDealership", fields: [originDealershipId], references: [id])
-  dealership         Dealership?             @relation("LeadDealership", fields: [dealershipId], references: [id])
-  assignedUser       User?                   @relation("LeadAssignedUser", fields: [assignedUserId], references: [id])
-  owner              User?                   @relation("LeadOwner", fields: [ownerId], references: [id])
-  createdBy          User?                   @relation("LeadCreatedBy", fields: [createdById], references: [id])
-  city               City?                   @relation(fields: [cityId], references: [id])
-  interestedModel    BikeModel?              @relation("LeadInterestedModel", fields: [interestedModelId], references: [id])
-  soldModel          BikeModel?              @relation("LeadSoldModel", fields: [soldModelId], references: [id])
-  preferredDealership Dealership?            @relation("LeadPreferredDealership", fields: [preferredDealershipId], references: [id])
-  sourceForm         Form?                   @relation(fields: [sourceFormId], references: [id])
-  lossReason         LossReason?             @relation(fields: [lossReasonId], references: [id])
-  stageHistory       LeadStageHistory[]
-  assignmentHistory  LeadAssignmentHistory[]
-  activities         Activity[]
-  tasks              Task[]
-  notes              Note[]
-  documents          Document[]
-  payments           Payment[]
-  testDrives         TestDriveBooking[]
-  submissions        FormSubmission[]
-  gamificationEvents GamificationEvent[]
+  contact             Contact                 @relation("ContactLeads", fields: [contactId], references: [id])
+  currentFor          Contact?                @relation("ContactCurrentLead")
+  stage               LeadStage               @relation(fields: [stageId], references: [id])
+  source              LeadSource?             @relation("LeadSource", fields: [sourceId], references: [id])
+  originalSource      LeadSource?             @relation("LeadOriginalSource", fields: [originalSourceId], references: [id])
+  originDealership    Dealership?             @relation("LeadOriginDealership", fields: [originDealershipId], references: [id])
+  dealership          Dealership?             @relation("LeadDealership", fields: [dealershipId], references: [id])
+  assignedUser        User?                   @relation("LeadAssignedUser", fields: [assignedUserId], references: [id])
+  owner               User?                   @relation("LeadOwner", fields: [ownerId], references: [id])
+  createdBy           User?                   @relation("LeadCreatedBy", fields: [createdById], references: [id])
+  city                City?                   @relation(fields: [cityId], references: [id])
+  interestedModel     BikeModel?              @relation("LeadInterestedModel", fields: [interestedModelId], references: [id])
+  soldModel           BikeModel?              @relation("LeadSoldModel", fields: [soldModelId], references: [id])
+  preferredDealership Dealership?             @relation("LeadPreferredDealership", fields: [preferredDealershipId], references: [id])
+  sourceForm          Form?                   @relation(fields: [sourceFormId], references: [id])
+  lossReason          LossReason?             @relation(fields: [lossReasonId], references: [id])
+  stageHistory        LeadStageHistory[]
+  assignmentHistory   LeadAssignmentHistory[]
+  activities          Activity[]
+  tasks               Task[]
+  notes               Note[]
+  documents           Document[]
+  payments            Payment[]
+  testDrives          TestDriveBooking[]
+  submissions         FormSubmission[]
+  gamificationEvents  GamificationEvent[]
+  messages            Message[]
+  salesOrders         SalesOrder[]
 
   @@index([contactId])
   @@index([stageId])
@@ -609,6 +646,8 @@ enum ActivityType {
   LEAD_LOST
   CONTACT_UPDATED
   SOURCE_CHANGED
+  ORDER_CONFIRMED
+  ORDER_CANCELLED
 }
 
 model Activity {
@@ -734,26 +773,29 @@ model StoredFile {
   uploadedById String?
   createdAt    DateTime @default(now())
 
-  uploadedBy        User?                           @relation(fields: [uploadedById], references: [id])
-  documents         Document[]
-  avatarFor         Contact[]                       @relation("ContactAvatar")
-  bikeModels        BikeModel[]
-  applicationDocs   DealershipApplicationDocument[]
-  submissionFiles   FormSubmissionFile[]
+  uploadedBy      User?                           @relation(fields: [uploadedById], references: [id])
+  documents       Document[]
+  avatarFor       Contact[]                       @relation("ContactAvatar")
+  bikeModels      BikeModel[]
+  applicationDocs DealershipApplicationDocument[]
+  submissionFiles FormSubmissionFile[]
+  products        Product[]
+  voucherFiles    VoucherAttachment[]
+  dealerDocuments DealershipDocument[]
 }
 
 model Document {
-  id           String      @id @default(cuid())
+  id           String    @id @default(cuid())
   contactId    String
   leadId       String?
   dealershipId String?
   fileId       String
   name         String
-  category     String      @default("Other")
+  category     String    @default("Other")
   description  String?
   uploadedById String
   deletedAt    DateTime?
-  createdAt    DateTime    @default(now())
+  createdAt    DateTime  @default(now())
 
   contact    Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
   lead       Lead?       @relation(fields: [leadId], references: [id], onDelete: SetNull)
@@ -929,39 +971,39 @@ enum SubmissionStatus {
 }
 
 model FormSubmission {
-  id              String           @id @default(cuid())
-  number          Int              @unique @default(autoincrement())
-  formId          String
-  formVersionId   String
-  status          SubmissionStatus @default(NEW)
-  data            Json
+  id               String           @id @default(cuid())
+  number           Int              @unique @default(autoincrement())
+  formId           String
+  formVersionId    String
+  status           SubmissionStatus @default(NEW)
+  data             Json
   // Denormalised for listing and filtering
-  firstName       String?
-  lastName        String?
-  phone           String?
-  email           String?
-  cityId          String?
-  dealershipId    String?
-  bikeModelId     String?
-  testDriveAt     DateTime?
-  sourceId        String?
-  consentGiven    Boolean          @default(false)
-  consentText     String?
-  consentAt       DateTime?
+  firstName        String?
+  lastName         String?
+  phone            String?
+  email            String?
+  cityId           String?
+  dealershipId     String?
+  bikeModelId      String?
+  testDriveAt      DateTime?
+  sourceId         String?
+  consentGiven     Boolean          @default(false)
+  consentText      String?
+  consentAt        DateTime?
   privacyPolicyUrl String?
-  utm             Json             @default("{}")
-  referrer        String?
-  ipHash          String?
-  userAgent       String?
-  idempotencyKey  String           @unique
-  contactId       String?
-  leadId          String?
-  isDuplicate     Boolean          @default(false)
-  duplicateOfId   String?
-  processingLog   Json             @default("[]")
-  reviewedById    String?
-  reviewedAt      DateTime?
-  createdAt       DateTime         @default(now())
+  utm              Json             @default("{}")
+  referrer         String?
+  ipHash           String?
+  userAgent        String?
+  idempotencyKey   String           @unique
+  contactId        String?
+  leadId           String?
+  isDuplicate      Boolean          @default(false)
+  duplicateOfId    String?
+  processingLog    Json             @default("[]")
+  reviewedById     String?
+  reviewedAt       DateTime?
+  createdAt        DateTime         @default(now())
 
   form        Form                   @relation(fields: [formId], references: [id])
   formVersion FormVersion            @relation(fields: [formVersionId], references: [id])
@@ -1008,35 +1050,35 @@ enum ApplicationStatus {
 }
 
 model DealershipApplication {
-  id                 String            @id @default(cuid())
-  number             Int               @unique @default(autoincrement())
-  salutation         String?
-  firstName          String
-  lastName           String
-  email              String
-  phone              String
-  businessName       String
-  businessAddress    String
-  yearsInBusiness    Int
-  isOemDealer        Boolean?
-  provinceId         String?
-  cityId             String?
-  propertyOwnership  String?
-  businessStructure  String?
-  status             ApplicationStatus @default(SUBMITTED)
-  reviewerId         String?
-  decisionReason     String?
-  infoRequest        String?
-  consentGiven       Boolean           @default(false)
-  consentText        String?
-  consentAt          DateTime?
-  submissionId       String?           @unique
+  id                String            @id @default(cuid())
+  number            Int               @unique @default(autoincrement())
+  salutation        String?
+  firstName         String
+  lastName          String
+  email             String
+  phone             String
+  businessName      String
+  businessAddress   String
+  yearsInBusiness   Int
+  isOemDealer       Boolean?
+  provinceId        String?
+  cityId            String?
+  propertyOwnership String?
+  businessStructure String?
+  status            ApplicationStatus @default(SUBMITTED)
+  reviewerId        String?
+  decisionReason    String?
+  infoRequest       String?
+  consentGiven      Boolean           @default(false)
+  consentText       String?
+  consentAt         DateTime?
+  submissionId      String?           @unique
   // { verified: bool, dealershipCreated: bool, managerInvited: bool, modelsConfigured: bool, leadsActivated: bool, notified: bool }
-  onboarding         Json              @default("{}")
-  approvedAt         DateTime?
-  rejectedAt         DateTime?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  onboarding        Json              @default("{}")
+  approvedAt        DateTime?
+  rejectedAt        DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
   province   Province?                       @relation(fields: [provinceId], references: [id])
   city       City?                           @relation(fields: [cityId], references: [id])
@@ -1194,16 +1236,20 @@ model Goal {
 // ───────────────────────────── System ─────────────────────────────
 
 model AuditLog {
-  id         String   @id @default(cuid())
-  userId     String?
-  action     String
-  entityType String
-  entityId   String?
-  changes    Json     @default("{}")
-  ipAddress  String?
-  createdAt  DateTime @default(now())
-  user       User?    @relation(fields: [userId], references: [id])
+  id           String      @id @default(cuid())
+  userId       String?
+  action       String
+  entityType   String
+  entityId     String?
+  // The dealership this action belongs to (shown in that dealership's own audit log)
+  dealershipId String?
+  changes      Json        @default("{}")
+  ipAddress    String?
+  createdAt    DateTime    @default(now())
+  user         User?       @relation(fields: [userId], references: [id])
+  dealership   Dealership? @relation(fields: [dealershipId], references: [id])
 
+  @@index([dealershipId, createdAt])
   @@index([entityType, entityId, createdAt])
   @@index([createdAt])
   @@index([userId])
@@ -1219,4 +1265,479 @@ model RateLimitBucket {
   key         String   @id
   count       Int
   windowStart DateTime
+}
+
+// ───────────────────────────── Operations: inventory, orders, ledger, vouchers, documents ─────────────────────────────
+
+/// Spare parts. Bikes are BikeModel records; both can be stocked, sold and ordered.
+model Product {
+  id            String   @id @default(cuid())
+  sku           String   @unique
+  name          String
+  category      String?
+  description   String?
+  unit          String   @default("pcs")
+  // Administrator-entered prices (never invented): suggested retail, and what dealers pay YADEA.
+  price         Decimal? @db.Decimal(12, 2)
+  dealerPrice   Decimal? @db.Decimal(12, 2)
+  currency      String   @default("PKR")
+  imageFileId   String?
+  isActive      Boolean  @default(true)
+  isSeedExample Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  imageFile        StoredFile?            @relation(fields: [imageFileId], references: [id])
+  inventory        InventoryItem[]
+  salesLines       SalesOrderLine[]
+  procurementLines ProcurementOrderLine[]
+
+  @@index([isActive, category])
+}
+
+/// Showroom stock. Exactly one of bikeModelId / productId is set (enforced by a CHECK constraint).
+model InventoryItem {
+  id           String   @id @default(cuid())
+  dealershipId String
+  bikeModelId  String?
+  productId    String?
+  quantity     Int      @default(0)
+  reorderLevel Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  dealership Dealership          @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  bikeModel  BikeModel?          @relation(fields: [bikeModelId], references: [id])
+  product    Product?            @relation(fields: [productId], references: [id])
+  movements  InventoryMovement[]
+
+  @@unique([dealershipId, bikeModelId])
+  @@unique([dealershipId, productId])
+  @@index([dealershipId])
+}
+
+enum InventoryReason {
+  OPENING_STOCK
+  SALE
+  SALE_CANCELLED
+  PROCUREMENT_RECEIPT
+  ADJUSTMENT
+  RETURN
+  DAMAGE
+}
+
+/// Append-only stock ledger — every change to InventoryItem.quantity has exactly one movement.
+model InventoryMovement {
+  id            String          @id @default(cuid())
+  itemId        String
+  dealershipId  String
+  delta         Int
+  quantityAfter Int
+  reason        InventoryReason
+  refType       String?
+  refId         String?
+  note          String?
+  createdById   String?
+  createdAt     DateTime        @default(now())
+
+  item       InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  dealership Dealership    @relation(fields: [dealershipId], references: [id])
+  createdBy  User?         @relation("MovementBy", fields: [createdById], references: [id])
+
+  @@index([itemId, createdAt])
+  @@index([dealershipId, createdAt])
+  @@index([refType, refId])
+}
+
+enum SalesOrderStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+/// A customer's purchase order at a showroom. Confirming it deducts the showroom's stock.
+model SalesOrder {
+  id            String           @id @default(cuid())
+  number        Int              @unique @default(autoincrement())
+  dealershipId  String
+  contactId     String?
+  leadId        String?
+  customerName  String?
+  status        SalesOrderStatus @default(DRAFT)
+  orderDate     DateTime         @default(now())
+  notes         String?
+  subtotal      Decimal          @db.Decimal(14, 2)
+  discount      Decimal          @default(0) @db.Decimal(14, 2)
+  total         Decimal          @db.Decimal(14, 2)
+  currency      String           @default("PKR")
+  createdById   String
+  confirmedById String?
+  confirmedAt   DateTime?
+  cancelledAt   DateTime?
+  cancelReason  String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  dealership  Dealership       @relation(fields: [dealershipId], references: [id])
+  contact     Contact?         @relation(fields: [contactId], references: [id])
+  lead        Lead?            @relation(fields: [leadId], references: [id])
+  createdBy   User             @relation("SalesOrderCreator", fields: [createdById], references: [id])
+  confirmedBy User?            @relation("SalesOrderConfirmer", fields: [confirmedById], references: [id])
+  lines       SalesOrderLine[]
+
+  @@index([dealershipId, status, orderDate])
+  @@index([contactId])
+}
+
+model SalesOrderLine {
+  id          String  @id @default(cuid())
+  orderId     String
+  bikeModelId String?
+  productId   String?
+  name        String
+  code        String?
+  quantity    Int
+  unitPrice   Decimal @db.Decimal(12, 2)
+  lineTotal   Decimal @db.Decimal(14, 2)
+
+  order     SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  bikeModel BikeModel? @relation(fields: [bikeModelId], references: [id])
+  product   Product?   @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+}
+
+enum ProcurementStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  CANCELLED
+  DELIVERED
+}
+
+enum DispatchStatus {
+  NOT_DISPATCHED
+  PACKING
+  DISPATCHED
+  IN_TRANSIT
+  DELIVERED
+}
+
+/// A dealership's stock order to YADEA's procurement department.
+model ProcurementOrder {
+  id                   String            @id @default(cuid())
+  number               Int               @unique @default(autoincrement())
+  dealershipId         String
+  status               ProcurementStatus @default(SUBMITTED)
+  dispatchStatus       DispatchStatus    @default(NOT_DISPATCHED)
+  priority             String            @default("NORMAL")
+  dealerNotes          String?
+  internalNotes        String?
+  expectedDeliveryDate DateTime?         @db.Date
+  dispatchedAt         DateTime?
+  deliveredAt          DateTime?
+  courier              String?
+  trackingNumber       String?
+  subtotal             Decimal           @default(0) @db.Decimal(14, 2)
+  currency             String            @default("PKR")
+  rejectionReason      String?
+  /// The invoice raised when the order is dispatched (at most one per order).
+  invoiceEntryId       String?           @unique
+  requestedById        String
+  handledById          String?
+  receivedById         String?
+  submittedAt          DateTime          @default(now())
+  approvedAt           DateTime?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  dealership    Dealership                 @relation(fields: [dealershipId], references: [id])
+  requestedBy   User                       @relation("ProcRequester", fields: [requestedById], references: [id])
+  handledBy     User?                      @relation("ProcHandler", fields: [handledById], references: [id])
+  receivedBy    User?                      @relation("ProcReceiver", fields: [receivedById], references: [id])
+  invoiceEntry  LedgerEntry?               @relation("OrderInvoice", fields: [invoiceEntryId], references: [id])
+  ledgerEntries LedgerEntry[]              @relation("LedgerOrder")
+  lines         ProcurementOrderLine[]
+  history       ProcurementStatusHistory[]
+
+  @@index([dealershipId, status])
+  @@index([status, submittedAt])
+  @@index([dispatchStatus])
+}
+
+model ProcurementOrderLine {
+  id               String  @id @default(cuid())
+  orderId          String
+  bikeModelId      String?
+  productId        String?
+  name             String
+  code             String?
+  quantity         Int
+  unitPrice        Decimal @default(0) @db.Decimal(12, 2)
+  lineTotal        Decimal @default(0) @db.Decimal(14, 2)
+  quantityReceived Int     @default(0)
+
+  order     ProcurementOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  bikeModel BikeModel?       @relation(fields: [bikeModelId], references: [id])
+  product   Product?         @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+}
+
+model ProcurementStatusHistory {
+  id             String             @id @default(cuid())
+  orderId        String
+  fromStatus     ProcurementStatus?
+  toStatus       ProcurementStatus
+  dispatchStatus DispatchStatus?
+  note           String?
+  changedById    String?
+  createdAt      DateTime           @default(now())
+
+  order     ProcurementOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  changedBy User?            @relation("ProcHistoryBy", fields: [changedById], references: [id])
+
+  @@index([orderId, createdAt])
+}
+
+enum LedgerEntryType {
+  INVOICE
+  PAYMENT
+  CREDIT_NOTE
+  ADJUSTMENT
+}
+
+enum LedgerEntryStatus {
+  POSTED
+  PENDING_VERIFICATION
+  REJECTED
+}
+
+/// The dealer's account with YADEA. Balance owed = Σ debit − Σ credit over POSTED entries only.
+model LedgerEntry {
+  id              String            @id @default(cuid())
+  number          Int               @unique @default(autoincrement())
+  dealershipId    String
+  type            LedgerEntryType
+  status          LedgerEntryStatus @default(POSTED)
+  entryDate       DateTime          @default(now())
+  reference       String?
+  description     String
+  debit           Decimal           @default(0) @db.Decimal(14, 2)
+  credit          Decimal           @default(0) @db.Decimal(14, 2)
+  currency        String            @default("PKR")
+  method          PaymentMethod?
+  orderId         String?
+  voucherId       String?           @unique
+  rejectionReason String?
+  recordedById    String
+  verifiedById    String?
+  verifiedAt      DateTime?
+  createdAt       DateTime          @default(now())
+
+  dealership Dealership        @relation(fields: [dealershipId], references: [id])
+  order      ProcurementOrder? @relation("LedgerOrder", fields: [orderId], references: [id])
+  invoiceFor ProcurementOrder? @relation("OrderInvoice")
+  voucher    ExpenseVoucher?   @relation(fields: [voucherId], references: [id])
+  recordedBy User              @relation("LedgerRecorder", fields: [recordedById], references: [id])
+  verifiedBy User?             @relation("LedgerVerifier", fields: [verifiedById], references: [id])
+
+  @@index([dealershipId, entryDate])
+  @@index([status])
+}
+
+enum VoucherKind {
+  EXPENSE
+  PAYMENT_TO_YADEA
+}
+
+enum VoucherStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum VoucherDocKind {
+  PROOF_OF_PAYMENT
+  PROOF_OF_INVOICE
+  INVOICE
+  RECEIPT
+  OTHER
+}
+
+/// Expense / payment voucher with supporting documents, kept for tax records.
+model ExpenseVoucher {
+  id           String         @id @default(cuid())
+  number       Int            @unique @default(autoincrement())
+  dealershipId String
+  kind         VoucherKind    @default(EXPENSE)
+  voucherDate  DateTime
+  category     String
+  payee        String?
+  description  String?
+  amount       Decimal        @db.Decimal(14, 2)
+  taxAmount    Decimal        @default(0) @db.Decimal(14, 2)
+  currency     String         @default("PKR")
+  method       PaymentMethod?
+  reference    String?
+  status       VoucherStatus  @default(SUBMITTED)
+  reviewNote   String?
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdById  String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  dealership  Dealership          @relation(fields: [dealershipId], references: [id])
+  createdBy   User                @relation("VoucherCreator", fields: [createdById], references: [id])
+  reviewedBy  User?               @relation("VoucherReviewer", fields: [reviewedById], references: [id])
+  attachments VoucherAttachment[]
+  ledgerEntry LedgerEntry?
+
+  @@index([dealershipId, voucherDate])
+  @@index([status])
+}
+
+model VoucherAttachment {
+  id           String         @id @default(cuid())
+  voucherId    String
+  fileId       String
+  kind         VoucherDocKind
+  label        String?
+  uploadedById String
+  createdAt    DateTime       @default(now())
+
+  voucher    ExpenseVoucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  file       StoredFile     @relation(fields: [fileId], references: [id])
+  uploadedBy User           @relation("VoucherAttachmentUploader", fields: [uploadedById], references: [id])
+
+  @@index([voucherId])
+}
+
+enum DealerDocCategory {
+  REGISTRATION_CERTIFICATE
+  BUSINESS_LICENSE
+  TAX_REGISTRATION
+  AGREEMENT
+  ACHIEVEMENT_CERTIFICATE
+  OTHER
+}
+
+enum DocSource {
+  DEALERSHIP
+  YADEA
+}
+
+/// Documents shared between a dealership and YADEA (synced: both sides see the same list).
+model DealershipDocument {
+  id           String            @id @default(cuid())
+  dealershipId String
+  category     DealerDocCategory
+  title        String
+  description  String?
+  fileId       String
+  source       DocSource
+  expiresAt    DateTime?         @db.Date
+  uploadedById String
+  deletedAt    DateTime?
+  createdAt    DateTime          @default(now())
+
+  dealership Dealership @relation(fields: [dealershipId], references: [id])
+  file       StoredFile @relation(fields: [fileId], references: [id])
+  uploadedBy User       @relation("DealerDocUploader", fields: [uploadedById], references: [id])
+
+  @@index([dealershipId, category])
+}
+
+// ───────────────────────────── Messaging & assistant ─────────────────────────────
+
+enum MessageChannel {
+  WHATSAPP
+  EMAIL
+  SMS
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  LOGGED
+  RECEIVED
+}
+
+/// A WhatsApp / email conversation entry. LOGGED = recorded manually (sent or received outside the system).
+model Message {
+  id           String           @id @default(cuid())
+  contactId    String
+  leadId       String?
+  dealershipId String?
+  channel      MessageChannel
+  direction    MessageDirection
+  status       MessageStatus
+  subject      String?
+  body         String
+  address      String?
+  externalId   String?
+  error        String?
+  sentById     String?
+  sentAt       DateTime?
+  deliveredAt  DateTime?
+  readAt       DateTime?
+  createdAt    DateTime         @default(now())
+
+  contact    Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  lead       Lead?       @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  dealership Dealership? @relation(fields: [dealershipId], references: [id])
+  sentBy     User?       @relation("MessageSender", fields: [sentById], references: [id])
+
+  @@unique([channel, externalId])
+  @@index([contactId, createdAt])
+}
+
+enum AssistantActionStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  FAILED
+  EXPIRED
+}
+
+/// A change the assistant proposed. Nothing is written until the signed-in user confirms this exact record.
+model AssistantAction {
+  id         String                @id @default(cuid())
+  userId     String
+  tool       String
+  args       Json
+  summary    String
+  status     AssistantActionStatus @default(PENDING)
+  result     Json?
+  error      String?
+  createdAt  DateTime              @default(now())
+  expiresAt  DateTime
+  resolvedAt DateTime?
+
+  user User @relation("AssistantActionUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}
+
+/// Administrator-authored knowledge the assistant can cite alongside the built-in system guide.
+model KnowledgeEntry {
+  id          String   @id @default(cuid())
+  title       String
+  body        String
+  tags        String[]
+  isActive    Boolean  @default(true)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User? @relation("KnowledgeAuthor", fields: [createdById], references: [id])
 }

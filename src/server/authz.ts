@@ -5,6 +5,7 @@ import type { Prisma } from "@prisma/client";
 import { getCurrentUser, type CurrentUser } from "@/server/auth/session";
 import { AppError, forbidden } from "@/server/errors";
 import type { PermissionKey } from "@/lib/permissions";
+import { homePathFor } from "@/lib/home";
 
 // ───────── Guards ─────────
 
@@ -34,23 +35,49 @@ async function enforcePasswordChange(user: CurrentUser, accountPath: string) {
 export async function requireCentralPage(perm?: PermissionKey): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!isCentral(user)) redirect("/portal/dashboard");
+  if (!isCentral(user)) redirect(homePathFor(user.scope, user.permissions));
   await enforcePasswordChange(user, "/crm/account");
-  if (perm && !can(user, perm)) redirect("/crm/forbidden");
+  if (perm && !can(user, perm)) {
+    // A procurement-only account has no CRM dashboard: send it to its own home instead of a dead end.
+    if (!can(user, "dashboard.view") && can(user, "procurement.view")) redirect("/procurement/dashboard");
+    redirect("/crm/forbidden");
+  }
   return user;
 }
+
+/** For pages in the Procurement portal (central users holding procurement permissions). */
+export async function requireProcurementPage(perm?: PermissionKey): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/procurement/login");
+  if (!isCentral(user)) redirect(homePathFor(user.scope, user.permissions));
+  await enforcePasswordChange(user, "/procurement/account");
+  if (perm && !can(user, perm)) redirect("/procurement/forbidden");
+  return user;
+}
+
+/** Any permission that opens at least one page of the Procurement portal. */
+export const PROCUREMENT_ENTRY_PERMISSIONS: PermissionKey[] = ["procurement.view", "catalog.manage", "inventory.view_all", "ledger.view", "vouchers.view_all", "dealerdocs.admin"];
 
 /** For pages in the dealership portal. */
 export async function requirePortalPage(perm?: PermissionKey): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/portal/login");
-  if (isCentral(user)) redirect("/crm/dashboard");
+  if (isCentral(user)) redirect(homePathFor(user.scope, user.permissions));
   if (!can(user, "portal.access") || user.memberships.length === 0) redirect("/portal/no-access");
   await enforcePasswordChange(user, "/portal/account");
   if (perm && !can(user, perm)) redirect("/portal/dashboard?denied=1");
   return user;
 }
 
+/**
+ * The dealership a portal page or action operates on. Most users belong to one; users with several pick one
+ * (`?dealership=`). The requested id is only honoured if the user is an active member — never trusted blindly.
+ */
+export function activeDealershipId(user: CurrentUser, requested?: string | null): string | null {
+  const ids = user.memberships.map((m) => m.dealershipId);
+  if (requested && ids.includes(requested)) return requested;
+  return ids[0] ?? null;
+}
 // ───────── Data scopes ─────────
 // Every query for protected records composes one of these filters. They are the single
 // source of truth for dealership-level isolation.

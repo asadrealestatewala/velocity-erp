@@ -4,8 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  BarChart3, Bell, Bike, Building2, CheckSquare, ChevronDown, FileCheck2, FileText, Footprints, History, Inbox, KanbanSquare,
-  LayoutDashboard, List, LogOut, Menu as MenuIcon, Plus, Search, Settings, Share2, Shield, Store, Trophy, UserCheck, Users, UsersRound, X, Zap, KeyRound,
+  BarChart3, Bell, BookOpen, Bike, Boxes, Building2, CheckSquare, ChevronDown, ClipboardList, FileCheck2, FileText, Folder, Footprints, History, Inbox, KanbanSquare,
+  LayoutDashboard, List, LogOut, Menu as MenuIcon, Package, Plus, Receipt, Search, Settings, Share2, Shield, Sparkles, Store, Trophy, Truck, UserCheck, Users, UsersRound, Wallet, X, Zap, KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/server/actions/auth";
@@ -13,12 +13,14 @@ import { Avatar } from "@/components/ui/misc";
 import { Menu, MenuItem, MenuLabel, MenuLink, MenuSeparator } from "@/components/ui/menu";
 import { buttonClass } from "@/components/ui/button";
 import type { NavItem } from "./nav";
+import { AssistantWidget, type AssistantConfig } from "@/components/assistant/assistant-widget";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "layout-dashboard": LayoutDashboard, users: Users, kanban: KanbanSquare, inbox: Inbox, "file-text": FileText, bike: Bike,
   store: Store, "file-check": FileCheck2, zap: Zap, "check-square": CheckSquare, "bar-chart": BarChart3, bell: Bell, shield: Shield,
   settings: Settings, history: History, trophy: Trophy, "user-check": UserCheck, list: List, building: Building2, footprints: Footprints,
-  "users-round": UsersRound,
+  "users-round": UsersRound, boxes: Boxes, "clipboard-list": ClipboardList, truck: Truck, wallet: Wallet, receipt: Receipt, folder: Folder, package: Package,
+  "book-open": BookOpen,
 };
 const ACTION_ICONS = { plus: Plus, share: Share2 } as const;
 
@@ -31,17 +33,20 @@ export function AppShell({
   unread,
   subtitle,
   actions = [],
+  assistant = null,
   children,
 }: {
-  variant: "crm" | "portal";
+  variant: "crm" | "portal" | "procurement";
   nav: NavItem[];
   user: { name: string; email: string; roleName: string };
   unread: number;
   subtitle?: string;
   actions?: QuickAction[];
+  assistant?: AssistantConfig | null;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const pathname = usePathname();
   const search = useSearchParams();
   const router = useRouter();
@@ -75,12 +80,14 @@ export function AppShell({
     return pathname.startsWith(p + "/") && !nav.some((n) => n.href !== href && pathname.startsWith(n.href.split("?")[0]!) && n.href.length > href.length);
   };
 
-  const base = variant === "crm" ? "/crm" : "/portal";
+  const base = variant === "crm" ? "/crm" : variant === "portal" ? "/portal" : "/procurement";
+  const searchTarget = variant === "procurement" ? `${base}/orders` : `${base}/contacts`;
+  const searchNoun = variant === "procurement" ? "orders" : "contacts";
   const section = nav.find((n) => isActive(n.href))?.label ?? (pathname.includes("/account") ? "Account" : "");
   const [q, setQ] = useState("");
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    router.push(`${base}/contacts?q=${encodeURIComponent(q.trim())}`);
+    router.push(`${searchTarget}?q=${encodeURIComponent(q.trim())}`);
   };
 
   const accountMenu = (
@@ -102,8 +109,8 @@ export function AppShell({
         <Link href={`${base}/dashboard`} className="flex items-center" aria-label="YADEA home">
           <Image src="/brand/yadea-logo-light.png" alt="YADEA" width={134} height={29} priority className="h-[29px] w-auto max-w-none" />
         </Link>
-        <span className={cn("ml-auto rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase", variant === "crm" ? "bg-white/10 text-slate-200" : "bg-accent-500 text-white")}>
-          {variant === "crm" ? "CRM" : "Dealer"}
+        <span className={cn("ml-auto rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase", variant === "crm" ? "bg-white/10 text-slate-200" : variant === "portal" ? "bg-accent-500 text-white" : "bg-brand-500 text-white")}>
+          {variant === "crm" ? "CRM" : variant === "portal" ? "Dealer" : "Procurement"}
         </span>
       </div>
 
@@ -130,8 +137,8 @@ export function AppShell({
             data-global-search
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search contacts"
-            aria-label="Search contacts by name, phone, email or business"
+            placeholder={`Search ${searchNoun}`}
+            aria-label={variant === "procurement" ? "Search orders by number or dealership" : "Search contacts by name, phone, email or business"}
             className="h-10 w-full rounded-lg border border-white/10 bg-navy-800/70 pr-[3.75rem] pl-10 text-[14.5px] text-white placeholder:text-slate-400 focus:border-brand-400 focus:bg-navy-800 focus:ring-2 focus:ring-brand-400/30 focus:outline-none"
           />
           <kbd className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rounded border border-white/15 bg-white/5 px-1.5 py-0.5 font-sans text-[10.5px] font-medium text-slate-400">Ctrl K</kbd>
@@ -198,6 +205,19 @@ export function AppShell({
               </Link>
             );
           })}
+          {assistant && (
+            <button
+              type="button"
+              onClick={() => setAssistantOpen((o) => !o)}
+              aria-label="Open the YADEA assistant"
+              aria-haspopup="dialog"
+              aria-expanded={assistantOpen}
+              className={buttonClass("outlineBrand", "md", "max-sm:!px-2.5")}
+            >
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden sm:inline">Ask YADEA AI</span>
+            </button>
+          )}
           <Link
             href={`${base}/notifications`}
             className={cn("relative flex h-10 w-10 items-center justify-center rounded-full transition", unread > 0 ? "bg-amber-400 text-white hover:bg-amber-500" : "bg-ink-100 text-ink-500 hover:bg-ink-200")}
@@ -212,6 +232,7 @@ export function AppShell({
         </div>
       </header>
       <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+      {assistant && <AssistantWidget config={assistant} open={assistantOpen} onOpenChange={setAssistantOpen} />}
     </div>
   );
 }

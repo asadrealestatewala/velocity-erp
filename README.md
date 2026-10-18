@@ -1,6 +1,6 @@
 # YADEA CRM & Dealership Management Platform
 
-A full-stack CRM for YADEA's central team and a secure, per-dealership portal. It captures leads from configurable public forms, routes test-drive requests to the outlet the customer selects, tracks every lead through a configurable pipeline, manages dealership applications from submission to onboarding, and measures network performance with dashboards and light gamification.
+A full-stack CRM for YADEA's central team, a secure per-dealership portal and a procurement & accounts portal. It captures leads from configurable public forms, routes test-drive requests to the outlet the customer selects, tracks every lead through a configurable pipeline, manages dealership applications from submission to onboarding, measures network performance with dashboards and light gamification — and runs the dealership operations side: showroom inventory (bikes and spare parts), customer orders that deduct stock, stock orders to YADEA procurement with delivery tracking, a dealer ledger with payment verification and Excel/PDF export, expense vouchers for tax records, shared documents and achievement certificates, per-dealership audit logs, a WhatsApp/email chat on every contact and an AI assistant with a knowledge base of the whole system.
 
 **Stack:** Next.js 15 (App Router, server actions) · TypeScript · Tailwind CSS 4 · PostgreSQL 16 · Prisma 6 · Zod · React Hook Form · Recharts · dnd-kit · Vitest · Playwright
 
@@ -23,7 +23,8 @@ npm run dev                       # http://localhost:3000
 | URL | Who |
 |---|---|
 | `/login` | Central CRM (YADEA staff) |
-| `/portal/login` | Dealership portal |
+| `/portal/login` | Dealership portal (email **or mobile number**) |
+| `/procurement/login` | Procurement & accounts portal (YADEA head office) |
 | `/forms/test-drive` | Public test-drive booking |
 | `/forms/general-inquiry` | Public customer inquiry |
 | `/forms/dealership-application` | Public dealership / franchise application |
@@ -39,11 +40,14 @@ Every seeded account uses the password **`Yadea@Dev2026`** (override with the `S
 | `admin@yadea-demo.local` | Super Administrator | CRM |
 | `management@yadea-demo.local` | YADEA Management (reviews applications) | CRM |
 | `crm1@yadea-demo.local`, `crm2@yadea-demo.local` | Sales & CRM staff | CRM |
-| `manager.gulberg@yadea-demo.local` | Dealership manager — Gulberg (Lahore) | Portal |
+| `procurement@yadea-demo.local` (mobile `0300 0000201`) | Procurement & Accounts | Procurement portal |
+| `manager.gulberg@yadea-demo.local` (mobile `0300 0000111`) | Dealership manager — Gulberg (Lahore) | Portal |
 | `rep1.gulberg@yadea-demo.local`, `rep2.gulberg@…` | Sales reps — Gulberg | Portal |
 | `manager.dha@yadea-demo.local`, `rep1.dha@…` | DHA Ride Hub (Lahore — second outlet in the same city) | Portal |
 | `manager.clifton@yadea-demo.local`, `rep1/rep2.clifton@…` | Clifton EV Center (Karachi) | Portal |
 | `manager.bluearea@yadea-demo.local`, `rep1.bluearea@…` | Blue Area Motors (Islamabad) | Portal |
+
+Every dealership demo user also has a fictional mobile number (e.g. Gulberg manager `0300 0000111`, DHA manager `0300 0000121`, Clifton `0300 0000131`, Blue Area `0300 0000141`; reps follow the same pattern) so you can try signing in with a number.
 
 The seed also creates: 4 provinces, 8 cities, 6 dealerships (active, pending/onboarding and suspended), 5 fictional bike models (one inactive), 64 contacts/leads across all stages (company-assigned and walk-in), test drives, tasks, notes, payments, 5 dealership applications in different review states, goals, achievements, and the three published forms. **All people, dealerships, phone numbers and bike models are fictional.** No official YADEA specifications or prices were invented — bike models are labelled "Seed example" in the UI.
 
@@ -61,7 +65,9 @@ The seed also creates: 4 provinces, 8 cities, 6 dealerships (active, pending/onb
 | `npm run typecheck` | TypeScript check |
 | `npx prisma migrate dev --name <change>` | Create a new migration (development) |
 | `npm run db:deploy` | Apply migrations (production/CI) |
-| `npm run db:seed` | Seed demo data into an **empty** database |
+| `npm run db:seed` | Seed demo data into an **empty** database (includes the operations demo data below) |
+| `npm run db:seed:operations` | Add the operations demo data (procurement user, stock, orders, ledger, vouchers, documents) to an **existing** demo database — idempotent |
+| `npm run db:sync` | Apply the permission catalogue and default roles (e.g. the Procurement role) to an existing database. Also runs automatically when the server boots |
 | `npm run db:reset` | Drop all data, re-migrate and re-seed (**development only — destroys data**) |
 | `npm test` | Unit + integration tests (Vitest, uses `.env.test`) |
 | `npm run test:e2e` | End-to-end workflows (Playwright; starts its own server on :3100 against the test DB) |
@@ -91,7 +97,11 @@ See `.env.example` (fully commented). Key ones:
 | `STORAGE_DRIVER` | — | `local` (default, `./storage`) or `s3` |
 | `S3_*` | if s3 | Bucket, region, credentials; `S3_ENDPOINT` + `S3_FORCE_PATH_STYLE` for MinIO/R2/Wasabi |
 | `MAX_UPLOAD_MB` | — | Per-file upload limit (default 10) |
-| `SMTP_*`, `EMAIL_FROM` | optional | Without `SMTP_HOST`, emails are recorded in the outbox as **SKIPPED** and only in-app notifications are delivered |
+| `SMTP_*`, `EMAIL_FROM`, `EMAIL_REPLY_TO` | optional | Without `SMTP_HOST`, emails are recorded in the outbox as **SKIPPED** and only in-app notifications are delivered; the contact Chat tab says email is not connected |
+| `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN` | optional | Enables sending WhatsApp messages from the Chat tab (Meta WhatsApp Business Cloud API) |
+| `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | optional | Enables the inbound webhook `/api/webhooks/whatsapp` (signature verification + subscribe handshake) |
+| `EMAIL_INBOUND_SECRET` | optional | Enables `/api/webhooks/email` (header `x-webhook-secret`) for inbound email from an inbound-parse / forwarding service |
+| `ANTHROPIC_API_KEY` | optional | Turns the assistant from "help topics only" into the full AI assistant (answers, live data lookups, proposed changes). `ASSISTANT_MODEL` (default `claude-opus-5-5`), `ASSISTANT_EFFORT` (default `medium`) |
 
 ---
 
@@ -149,6 +159,28 @@ prisma/schema.prisma      ~40 models with FKs, uniques and indexes
 - **Gamification:** points come only from business events (first contact, on-time follow-ups, stage advances, completed test drives, conversions) with a unique key per subject, so repeated or reversed actions never re-award. Leaderboards rank by a normalised score; portal users only see individual rankings for their own dealership.
 - **Metric definitions** (shown in the UI): conversion = leads created in period now converted ÷ leads created; recognised sales = conversion values on converted leads; recorded payments = PAID payments (manual, unverified); first response = assignment → first outbound interaction.
 
+### Operations modules (dealership inventory, orders, procurement, accounts)
+
+- **Inventory** — each dealership keeps stock of *bike models* and *spare parts*. Every change goes through one function (`services/inventory.ts → adjustStock`) that locks the row, refuses to go below zero, and appends exactly one **append-only movement** (who, when, why, quantity after). A database `CHECK` constraint backs the "never negative" rule. Reaching the reorder level alerts the dealership managers once a day.
+- **Customer orders** — a draft changes nothing; **confirming** deducts every line in one transaction (all or nothing; two simultaneous confirmations of the last unit cannot oversell); cancelling a confirmed order restores stock with a separate movement. Orders appear on the customer's activity timeline and download as PDF.
+- **Stock orders to YADEA** — Received → Approved (procurement sets prices and an expected delivery date) → Packing → Dispatched → In transit → Delivered. The **invoice is raised once, at dispatch**. Delivery alone does *not* change the dealership's stock: the dealership **confirms receipt** with the quantities that arrived (short deliveries supported), and only then is stock added. Status can only move forward; every step is in the order history and notifies the dealership.
+- **Ledger** — balance owed = Σ posted debits − Σ posted credits. A payment reported by a dealership requires **proof**, sits as *awaiting verification* and does **not** change the balance until procurement/accounts verifies (or rejects) it. A `CHECK` constraint forbids a row that is both a debit and a credit. Statements show a running balance and export to **Excel** and **PDF**; the all-dealer balance sheet exports to Excel for head office.
+- **Expense vouchers** — date, category, payee, amount, tax, method and attachments of any type (**proof of payment, proof of invoice, invoice, receipt**); documents can be added later and are frozen once the voucher is reviewed. Excel export for tax records.
+- **Documents & certificates** — one shared list per dealership: the dealership uploads its certificate of registration etc.; YADEA can upload on its behalf and **issues achievement certificates** (only YADEA can); both sides see the same list. Files are only served to the dealership's authorised users and to YADEA document administrators (`/api/files/[id]`).
+- **Audit log for dealerships** — every operational action is tagged with its dealership, and managers read their own slice in the portal (head-office staff appear as "YADEA team", IP addresses are never shown). The central log gains a dealership filter.
+- **Procurement role** — `PROCUREMENT` is a central role with its own portal and sign-in. Dealership-only permissions (inventory, orders, payments, vouchers) are never granted to head-office roles; head office acts on dealer data through the procurement pages.
+- **Sign-in with mobile number** — dealership users can sign in with email or mobile number (any common format, normalised; one number per account). Failed attempts are audited with only the last four digits, and the error for an unknown number is identical to a wrong password.
+
+### WhatsApp / email chat
+
+The **Chat** tab on a contact shows WhatsApp and email conversations. When the integration is connected, messages are sent through the provider, a row is stored *before* sending and only becomes **Sent** when the provider accepts it (failures show the provider's reason); inbound messages, delivery and read receipts arrive by webhook (idempotent, signature-checked). WhatsApp's 24-hour rule is enforced: free text only within 24 hours of the customer's last message. When a channel is **not connected** the tab says so and offers **Open WhatsApp** (wa.me) plus **Log a conversation** — logged items are labelled "Logged manually" and never shown as sent by the CRM. Conversations are tagged with the dealership like notes are, so a dealership never sees central-only chats.
+
+Setting up WhatsApp: create a Meta WhatsApp Business app, put the phone-number id and a permanent access token in `.env`, register `https://<domain>/api/webhooks/whatsapp` as the webhook with your verify token, subscribe to `messages`, and set `WHATSAPP_APP_SECRET`. Template (outbound-first) messages are not implemented. Inbound email: point an inbound-parse service (Postmark, SendGrid, a mail rule…) at `POST /api/webhooks/email` with header `x-webhook-secret`; body `{ "from", "subject", "text", "messageId" }` (Postmark's native payload also works).
+
+### AI assistant
+
+A floating assistant in all three portals. It has the **whole platform guide** built in (audience-specific), plus administrator-written entries from **CRM → Knowledge base**. With `ANTHROPIC_API_KEY` set it uses Claude (default `claude-opus-5-5`, prompt-cached) with **tools that read live data limited to what the signed-in user may see** (contacts, leads, pipeline, tasks, test drives, stock, stock orders, ledger, catalogue, dashboard numbers) and tools that **propose** changes (create contacts incl. bulk lists, add a note or task, move a lead between open stages, assign a lead, adjust stock, place a stock order, draft a customer order, add a spare part / bike model, set bike prices, add a knowledge entry). **Nothing is written until the user presses Confirm** on a card that shows exactly what will happen; the summary is generated by code, not by the model. Confirmation claims the proposal atomically (once only, expires after 20 minutes), re-checks the user's permissions, runs through the *same server actions the UI uses* (so validation, RBAC and audit apply) and is audited. Tool results are treated as untrusted data. Without an API key it falls back to searching the built-in guide and says so. Writes require `assistant.write` plus the permission of the underlying action.
+
 ### Security
 
 Server-side authorisation on every page, action and route; RBAC with an editable permission matrix (no self-escalation: users can't edit their own role or its permissions, only Super Admins grant Super Admin, nobody grants permissions they don't hold); bcrypt passwords; hashed session tokens with sliding expiry and invalidation on password change/deactivation; forced change of temporary passwords; DB-backed rate limiting on login, public submissions and lookups; honeypot + signed render token against bots; magic-byte upload validation, private storage and sanitised filenames; CSV formula-injection escaping; Zod validation everywhere; React output escaping; security headers; audit log for sign-ins, assignments, exports, permission/settings changes and more. Server actions are protected by Next.js's same-origin checks (CSRF).
@@ -158,6 +190,8 @@ Server-side authorisation on every page, action and route; RBAC with an editable
 ## 6. Implemented features
 
 Central CRM: dashboard (15 KPIs with period comparison, trends, source/stage/city/dealership breakdowns, origin split, loss reasons, test-drive trend, dealership performance, unassigned queue, recent activity, upcoming follow-ups, filters) · contacts (search, 14 combinable filters, sortable, paginated, mobile cards, CSV export, create/edit with duplicate detection, archive/restore) · contact profile (header + quick actions, general/additional info, custom fields, test drives, stage & assignment history, submissions, five-tab panel: activity, tasks, notes, documents, payments; avatar upload) · Kanban + table pipeline with drag-and-drop (pointer & keyboard) · form submissions (review, link, create contact/lead, assign, spam, duplicates, schema version) · form builder (16 field types, conditional visibility, live DB option sources, CRM mapping, validation, theme/header image, routing policy, preview, publish/unpublish/duplicate, version history) · test drives (list & month calendar, status workflow, rep assignment) · dealerships (CRUD, status, lead-assignment activation, team, models, hours, slot capacity, change history, performance) · applications (review, reviewer, notes, documents, onboarding) · bike models · tasks · reports & analytics with CSV export · leaderboard · notifications (read/unread, preferences) · users, roles & permission matrix, departments · settings (stages, loss reasons, sources, cities/provinces, custom fields, privacy & consent, duplicate rules, gamification points, achievements, goals, booking rules, notifications, system status, run jobs) · audit log.
+
+Operations (new): dealership **Inventory**, **Customer orders**, **Stock orders**, **Account ledger** (Excel/PDF), **Expense vouchers**, **Documents**, **Audit log**; **Procurement portal** — dashboard (orders received / awaiting action / approved / delivered / overdue, payments to verify, outstanding balances), dealer orders, dispatch board, product catalogue and dealer prices, dealer stock, dealership hubs (stock, orders, ledger, vouchers, documents), ledgers & payment verification, vouchers review, documents & certificates; contact **Chat** (WhatsApp/email); **AI assistant** and **Knowledge base**.
 
 Dealership portal: dashboard (points, KPIs, company vs walk-in, goals with progress bars, badges, celebrations, new-lead queue, upcoming test drives, recent assignments, team activity) · My / All / Company-assigned / Walk-in leads with inline stage and rep assignment · walk-in creation · pipeline · contacts & profiles · test drives · tasks · team performance & team management (managers) · leaderboard · analytics · notifications · dealership settings · account.
 
@@ -169,7 +203,10 @@ Dealership portal: dashboard (points, KPIs, company vs walk-in, goals with progr
 | Local file storage | ✅ Implemented and tested |
 | S3-compatible storage | ⚙️ Implemented (`@aws-sdk/client-s3`); **not tested against a real bucket** (no credentials supplied) |
 | SMTP email | ⚙️ Implemented via outbox + nodemailer; **not tested against a real SMTP server**. Without SMTP, messages are marked SKIPPED — never reported as sent |
-| SMS / WhatsApp sending | ❌ Not integrated — interactions are logged manually on the timeline |
+| WhatsApp (Meta Cloud API) | ⚙️ Implemented (send, inbound webhook, receipts); **not tested against a live WhatsApp Business account** — tests use a mocked provider. Without credentials the Chat tab is "not connected" and conversations are logged manually |
+| Inbound email webhook | ⚙️ Implemented (generic JSON + Postmark shape); **not tested against a real provider** |
+| AI assistant (Anthropic API) | ⚙️ Implemented with a replaceable model adapter; tested with a scripted model, **not run against the live API** in this environment. Without `ANTHROPIC_API_KEY` it answers from the built-in guide only |
+| SMS sending | ❌ Not integrated |
 | Payment provider | ❌ Not integrated — payments are recorded manually and flagged as unverified |
 
 ## 8. Performance
@@ -185,6 +222,10 @@ Built-in optimisations: route-level loading skeletons (instant feedback on navig
 - Files uploaded with a submission that later fails validation inside the transaction can remain orphaned in storage; a periodic orphan-cleanup job is not yet implemented.
 - One business timezone per deployment (`APP_TIMEZONE`).
 - The rate limiter trusts `X-Forwarded-For`; configure your proxy to set it and strip client-supplied values.
+- Operations amounts are in PKR. The demo orders, invoices and payments use round numbers to make the demo readable — they are **not YADEA prices**; catalogue prices stay empty until an administrator enters them. The Ruibin L / Ruibin S / GT70 / Keeness models are seeded by name only.
+- Invoices are produced as a PDF per stock order and numbered by ledger entry (`INV-n`); there is no tax-invoice numbering scheme or tax computation — adapt to your jurisdiction's rules.
+- WhatsApp template messages (outbound-first) are not implemented; free text works only inside the 24-hour window. Delivery receipts depend on the webhook being reachable from Meta.
+- The assistant keeps its conversation in the browser tab (session storage) — only proposals are stored server-side.
 - ESLint is not configured (TypeScript strict mode and the production build type-check are).
 - Dependencies are pinned to proven majors (Next 15, Prisma 6, Zod 3, Recharts 2) rather than the newest majors.
 - `public/brand/hero-dealership.jpg`, `public/brand/hero-test-drive.jpg` and `tests/support/mock-session.ts` are untracked leftovers (unused) and can be deleted.

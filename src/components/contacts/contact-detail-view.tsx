@@ -13,6 +13,7 @@ import { INQUIRY_CATEGORIES, INQUIRY_TYPES, ORIGIN_LABEL, SUBMISSION_STATUS, TES
 import { ContactSidePanel } from "./side-panel";
 import { AvatarUpload, ContactQuickActions } from "./quick-actions";
 import { TestDriveStatusControl } from "@/components/test-drives/status-control";
+import { channelStatus } from "@/server/messaging/providers";
 
 export async function ContactDetailView({ user, id, base, leadParam }: { user: CurrentUser; id: string; base: string; leadParam?: string }) {
   const data = await getContactDetail(user, id, leadParam);
@@ -284,6 +285,13 @@ export async function ContactDetailView({ user, id, base, leadParam }: { user: C
             can={{
               tasks: can(user, "tasks.manage"), notes: can(user, "notes.manage"), docsView: can(user, "documents.view"),
               docsManage: can(user, "documents.manage"), paymentsView: can(user, "payments.view"), paymentsManage: can(user, "payments.manage"),
+              messages: can(user, "messages.send"),
+            }}
+            chat={{
+              phoneDigits: c.phoneNormalized,
+              email: c.email,
+              channels: { whatsapp: channelStatus().whatsapp, email: channelStatus().email },
+              messages: data.messages.map((m) => ({ id: m.id, channel: m.channel, direction: m.direction, status: m.status, subject: m.subject, body: m.body, error: m.error, at: (m.sentAt ?? m.createdAt).toISOString(), by: m.sentBy?.name ?? null })),
             }}
             activities={data.activities}
             tasks={data.tasks}

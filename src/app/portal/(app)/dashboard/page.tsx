@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { startOfMonth, subDays } from "date-fns";
 import {
-  AlarmClock, Bike, Building2, CheckCircle2, CheckSquare, Flame, Footprints, Phone, Target, Trophy, UserCheck, Users, XCircle, Sparkles,
+  AlarmClock, Bike, Boxes, Building2, CheckCircle2, CheckSquare, Flame, Footprints, PackageX, Phone, Target, Trophy, Truck, UserCheck, Users, Wallet, XCircle, Sparkles,
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { can, dealershipIds, leadScope, requirePortalPage, taskScope, testDriveScope } from "@/server/authz";
 import { getKpis, goalProgress, GOAL_LABELS } from "@/server/services/analytics";
+import { dealerBalance } from "@/server/services/ledger";
+import { stockState } from "@/lib/ops-constants";
 import { Card, CardHeader, EmptyState, PageHeader, ProgressBar, StatCard, Badge } from "@/components/ui/misc";
 import { BadgeGrid } from "@/components/gamification/badges";
 import { Celebrate } from "@/components/gamification/celebrate";
@@ -43,6 +45,15 @@ export default async function PortalDashboard({ searchParams }: { searchParams: 
     db.lead.findMany({ where: { AND: [scope, { isArchived: false, stage: { key: "NEW" } }] }, orderBy: { assignedAt: "asc" }, take: 5, include: { contact: { select: { id: true, firstName: true, lastName: true, phone: true } }, interestedModel: { select: { name: true } } } }),
   ]);
   const goalRows = await Promise.all(goals.map(async (g) => ({ g, p: await goalProgress(g) })));
+  // Showroom & YADEA account snapshot (only for roles that can see inventory / orders / the ledger)
+  const showroom = can(user, "inventory.view")
+    ? await Promise.all([
+        db.inventoryItem.findMany({ where: { dealershipId: { in: ids } }, select: { quantity: true, reorderLevel: true } }),
+        can(user, "procurement.order") ? db.procurementOrder.count({ where: { dealershipId: { in: ids }, status: { in: ["SUBMITTED", "APPROVED"] } } }) : Promise.resolve(null),
+        can(user, "procurement.order") ? db.procurementOrder.count({ where: { dealershipId: { in: ids }, status: "DELIVERED", receivedById: null } }) : Promise.resolve(null),
+        can(user, "ledger.view") ? Promise.all(ids.map((id) => dealerBalance(id))).then((all) => all.reduce((s, b) => s + b.balance, 0)) : Promise.resolve(null),
+      ])
+    : null;
   const company = byOrigin.find((o) => o.origin === "COMPANY")?._count._all ?? 0;
   const walkin = byOrigin.find((o) => o.origin === "DEALERSHIP_WALK_IN")?._count._all ?? 0;
   const earnedMap = new Map(earned.map((e) => [e.achievementId, e.earnedAt]));
@@ -105,6 +116,15 @@ export default async function PortalDashboard({ searchParams }: { searchParams: 
         <StatCard label="Overdue follow-ups" value={overdue} icon={AlarmClock} tone="red" href="/portal/tasks?due=overdue" />
         <StatCard label="Conversion rate" value={`${kpi.conversionRate}%`} icon={Target} tone="brand" hint="leads created in period" />
       </div>
+
+      {showroom && (
+        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <StatCard label="Low stock items" value={showroom[0].filter((i) => stockState(i.quantity, i.reorderLevel) === "LOW").length} icon={Boxes} tone="amber" href="/portal/inventory" hint="At or below reorder level" />
+          <StatCard label="Out of stock" value={showroom[0].filter((i) => stockState(i.quantity, i.reorderLevel) === "OUT").length} icon={PackageX} tone="red" href="/portal/inventory" />
+          {showroom[1] !== null && <StatCard label="Open stock orders" value={showroom[1]} icon={Truck} tone="violet" href="/portal/stock-orders" hint={showroom[2] ? `${showroom[2]} delivery to confirm` : undefined} />}
+          {showroom[3] !== null && <StatCard label="Balance owed to YADEA" value={fmtMoney(showroom[3])} icon={Wallet} tone={showroom[3] > 0 ? "red" : "green"} href="/portal/ledger" />}
+        </div>
+      )}
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <Link href="/portal/leads?origin=COMPANY" className="card flex items-center gap-4 p-5 transition hover:shadow-[var(--shadow-pop)]">

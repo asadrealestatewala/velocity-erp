@@ -23,6 +23,8 @@ export const ACTIVITY_LABELS = {
   LEAD_LOST: "Lead lost",
   CONTACT_UPDATED: "Contact updated",
   SOURCE_CHANGED: "Source changed",
+  ORDER_CONFIRMED: "Order confirmed",
+  ORDER_CANCELLED: "Order cancelled",
 } as const;
 export type ActivityTypeKey = keyof typeof ACTIVITY_LABELS;
 
@@ -33,6 +35,6 @@ export const ACTIVITY_GROUPS: { key: string; label: string; types: ActivityTypeK
   { key: "assignment", label: "Assignments", types: ["LEAD_ASSIGNED", "LEAD_REASSIGNED", "SOURCE_CHANGED"] },
   { key: "testdrives", label: "Test drives", types: ["TEST_DRIVE_SCHEDULED", "TEST_DRIVE_RESCHEDULED", "TEST_DRIVE_COMPLETED", "TEST_DRIVE_UPDATED"] },
   { key: "work", label: "Notes & tasks", types: ["NOTE_ADDED", "TASK_CREATED", "TASK_COMPLETED"] },
-  { key: "records", label: "Documents & payments", types: ["DOCUMENT_UPLOADED", "PAYMENT_RECORDED"] },
+  { key: "records", label: "Documents, payments & orders", types: ["DOCUMENT_UPLOADED", "PAYMENT_RECORDED", "ORDER_CONFIRMED", "ORDER_CANCELLED"] },
   { key: "system", label: "Created, forms & edits", types: ["LEAD_CREATED", "FORM_SUBMITTED", "CONTACT_UPDATED"] },
 ];

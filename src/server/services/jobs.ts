@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { getSettings } from "@/server/settings";
-import { dealershipUserIds, deliverOutbox, notify } from "./notifications";
+import { centralUserIdsWith, dealershipUserIds, deliverOutbox, notify } from "./notifications";
 
 /**
  * Periodic work. Safe to run repeatedly (every 5–15 minutes): each reminder is stamped
@@ -76,12 +76,52 @@ export async function runScheduledJobs() {
     upcomingTestDrives++;
   }
 
-  // 4. Email delivery (SKIPPED without SMTP — never reported as sent)
+  // 4. Stock orders: deliveries past their promised date (once per order and date) and deliveries the dealership has not confirmed
+  let lateDeliveries = 0;
+  let receiptReminders = 0;
+  const today = new Date(now.toDateString());
+  const lateOrders = await db.procurementOrder.findMany({
+    where: { status: "APPROVED", expectedDeliveryDate: { lt: today } },
+    include: { dealership: { select: { name: true } } },
+    take: 200,
+  });
+  for (const o of lateOrders) {
+    await db.$transaction(async (tx) => {
+      const day = o.expectedDeliveryDate!.toISOString().slice(0, 10);
+      await notify(tx, {
+        userIds: await centralUserIdsWith(tx, "procurement.manage"), type: "PROCUREMENT_UPDATE",
+        title: `PO-${o.number} for ${o.dealership.name} is overdue`, body: `Promised for ${day}; still ${o.dispatchStatus.replace("_", " ").toLowerCase()}.`,
+        link: { central: `/procurement/orders/${o.id}` }, entityType: "ProcurementOrder", entityId: o.id, dedupeKey: `po-overdue:${o.id}:${day}`,
+      });
+      await notify(tx, {
+        userIds: await dealershipUserIds(tx, o.dealershipId, true), type: "PROCUREMENT_UPDATE",
+        title: `Stock order PO-${o.number} is running late`, body: "Procurement has been alerted. Contact them if you need an update.",
+        link: { portal: `/portal/stock-orders/${o.id}` }, entityType: "ProcurementOrder", entityId: o.id, dedupeKey: `po-overdue-dealer:${o.id}:${day}`,
+      });
+    });
+    lateDeliveries++;
+  }
+  const unconfirmed = await db.procurementOrder.findMany({
+    where: { status: "DELIVERED", receivedById: null, deliveredAt: { lt: new Date(now.getTime() - 2 * 86400_000) } },
+    take: 200,
+  });
+  for (const o of unconfirmed) {
+    await db.$transaction(async (tx) => {
+      await notify(tx, {
+        userIds: await dealershipUserIds(tx, o.dealershipId, true), type: "PROCUREMENT_UPDATE",
+        title: `Please confirm receipt of PO-${o.number}`, body: "It was delivered but your stock has not been updated yet.",
+        link: { portal: `/portal/stock-orders/${o.id}` }, entityType: "ProcurementOrder", entityId: o.id, dedupeKey: `po-confirm-receipt:${o.id}`,
+      });
+    });
+    receiptReminders++;
+  }
+
+  // 5. Email delivery (SKIPPED without SMTP — never reported as sent)
   const email = await deliverOutbox(200);
 
-  // 5. Housekeeping
+  // 6. Housekeeping
   await db.session.deleteMany({ where: { expiresAt: { lt: now } } });
   await db.rateLimitBucket.deleteMany({ where: { windowStart: { lt: new Date(now.getTime() - 24 * 3600_000) } } });
 
-  return { reminders, overdue, upcomingTestDrives, email };
+  return { reminders, overdue, upcomingTestDrives, lateDeliveries, receiptReminders, email };
 }

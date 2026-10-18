@@ -16,6 +16,7 @@ import { assignLead } from "../src/server/services/assignment";
 import { normalizeEmail, normalizePhone } from "../src/lib/utils";
 import { award } from "../src/server/services/gamification";
 import { DEMO_PASSWORD } from "../src/lib/demo";
+import { seedOperations } from "./seed-operations";
 
 const db = new PrismaClient();
 
@@ -372,6 +373,8 @@ async function main() {
     if (["INFO_REQUIRED", "REJECTED", "APPROVED"].includes(a.status)) await db.applicationStatusHistory.create({ data: { applicationId: app.id, fromStatus: "UNDER_REVIEW", toStatus: a.status, changedById: mgmt.id } });
     if (a.status === "APPROVED") await db.dealership.update({ where: { id: d.fsd1.id }, data: { applicationId: app.id } });
   }
+
+  await seedOperations();
 
   console.log("Seed complete.");
   console.log(`Demo accounts (local only): admin@yadea-demo.local, management@yadea-demo.local, crm1@yadea-demo.local,`);

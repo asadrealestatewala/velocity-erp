@@ -4,17 +4,19 @@ import { Copy, FlaskConical, LogIn } from "lucide-react";
 import { toast } from "sonner";
 import { loginAction } from "@/server/actions/auth";
 import { Field, FormError, Input, SubmitButton } from "@/components/ui/form";
-import type { DemoInfo } from "@/server/demo";
+import type { DemoGroup, DemoInfo } from "@/server/demo";
 
-export function LoginForm({ portal, next, demo }: { portal: "crm" | "portal"; next?: string; demo?: DemoInfo }) {
+type Portal = "crm" | "portal" | "procurement";
+
+export function LoginForm({ portal, next, demo }: { portal: Portal; next?: string; demo?: DemoInfo }) {
   const [state, action] = useActionState(loginAction, undefined);
   const formRef = useRef<HTMLFormElement>(null);
-  const emailRef = useRef<HTMLInputElement>(null);
+  const idRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
-  const useAccount = (email: string) => {
+  const useAccount = (identifier: string) => {
     if (!demo) return;
-    emailRef.current!.value = email;
+    idRef.current!.value = identifier;
     passwordRef.current!.value = demo.password;
     formRef.current?.requestSubmit();
   };
@@ -25,7 +27,9 @@ export function LoginForm({ portal, next, demo }: { portal: "crm" | "portal"; ne
         <input type="hidden" name="portal" value={portal} />
         {next && <input type="hidden" name="next" value={next} />}
         <FormError error={state?.error} />
-        <Field label="Email">{(p) => <Input {...p} ref={emailRef} name="email" type="email" autoComplete="username" required placeholder="you@company.com" />}</Field>
+        <Field label="Email or mobile number">
+          {(p) => <Input {...p} ref={idRef} name="identifier" type="text" inputMode="email" autoComplete="username" required placeholder="name@company.com or 03xx xxxxxxx" />}
+        </Field>
         <Field label="Password">{(p) => <Input {...p} ref={passwordRef} name="password" type="password" autoComplete="current-password" required />}</Field>
         <SubmitButton className="w-full" size="lg">
           Sign in
@@ -36,9 +40,12 @@ export function LoginForm({ portal, next, demo }: { portal: "crm" | "portal"; ne
   );
 }
 
-function DemoAccounts({ demo, portal, onUse }: { demo: NonNullable<DemoInfo>; portal: "crm" | "portal"; onUse: (email: string) => void }) {
+const GROUP_LABEL: Record<DemoGroup, string> = { PROCUREMENT: "Procurement portal", CENTRAL: "Central CRM", DEALERSHIP: "Dealer portal" };
+
+function DemoAccounts({ demo, portal, onUse }: { demo: NonNullable<DemoInfo>; portal: Portal; onUse: (identifier: string) => void }) {
   // Show the accounts that belong to this sign-in page first.
-  const groups = (portal === "crm" ? ["CENTRAL", "DEALERSHIP"] : ["DEALERSHIP", "CENTRAL"]) as ("CENTRAL" | "DEALERSHIP")[];
+  const groups: DemoGroup[] =
+    portal === "crm" ? ["CENTRAL", "PROCUREMENT", "DEALERSHIP"] : portal === "procurement" ? ["PROCUREMENT", "CENTRAL", "DEALERSHIP"] : ["DEALERSHIP", "CENTRAL", "PROCUREMENT"];
   const copy = (text: string, what: string) => {
     navigator.clipboard?.writeText(text).then(() => toast.success(`${what} copied`), () => toast.error("Couldn't copy — select the text instead"));
   };
@@ -48,7 +55,7 @@ function DemoAccounts({ demo, portal, onUse }: { demo: NonNullable<DemoInfo>; po
         <FlaskConical className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
         <div className="min-w-0 flex-1">
           <h2 id="demo-accounts" className="text-sm font-semibold text-amber-900">Demo accounts — local use only</h2>
-          <p className="mt-0.5 text-xs text-amber-800">Click an account to sign in. This panel only appears when the app runs on localhost.</p>
+          <p className="mt-0.5 text-xs text-amber-800">Click an account to sign in. Dealership accounts can also sign in with their mobile number. This panel only appears when the app runs on localhost.</p>
         </div>
       </div>
       <div className="mt-3 flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-amber-200">
@@ -59,12 +66,12 @@ function DemoAccounts({ demo, portal, onUse }: { demo: NonNullable<DemoInfo>; po
         </button>
       </div>
       <div className="scrollbar-thin mt-3 max-h-[min(20rem,32dvh)] space-y-3 overflow-y-auto pr-1">
-        {groups.map((scope) => {
-          const list = demo.accounts.filter((a) => a.scope === scope);
+        {groups.map((group) => {
+          const list = demo.accounts.filter((a) => a.group === group);
           if (!list.length) return null;
           return (
-            <div key={scope}>
-              <p className="mb-1 text-[11px] font-semibold tracking-wider text-amber-900/70 uppercase">{scope === "CENTRAL" ? "Central CRM" : "Dealer portal"}</p>
+            <div key={group}>
+              <p className="mb-1 text-[11px] font-semibold tracking-wider text-amber-900/70 uppercase">{GROUP_LABEL[group]}</p>
               <ul className="space-y-1">
                 {list.map((a) => (
                   <li key={a.email}>
@@ -76,7 +83,9 @@ function DemoAccounts({ demo, portal, onUse }: { demo: NonNullable<DemoInfo>; po
                     >
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] font-medium text-ink-900">{a.email}</p>
-                        <p className="truncate text-[11px] text-ink-500">{a.role}{a.dealership ? ` · ${a.dealership}` : ""}</p>
+                        <p className="truncate text-[11px] text-ink-500">
+                          {a.role}{a.dealership ? ` · ${a.dealership}` : ""}{a.phone ? ` · ${a.phone}` : ""}
+                        </p>
                       </div>
                       <LogIn className="h-4 w-4 shrink-0 text-ink-300 group-hover:text-brand-600" />
                     </button>

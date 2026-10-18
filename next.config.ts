@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   // Separate build dir lets the E2E server run alongside `npm run dev`.
   distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
-  serverExternalPackages: ["@prisma/client", "bcryptjs", "nodemailer"],
+  serverExternalPackages: ["@prisma/client", "bcryptjs", "nodemailer", "pdfkit", "exceljs"],
   experimental: {
     serverActions: {
       // Uploads go through server actions; the per-file limit is enforced in the storage layer.

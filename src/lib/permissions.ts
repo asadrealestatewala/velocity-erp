@@ -33,9 +33,35 @@ export const PERMISSIONS = {
   "users.manage": { group: "Administration", description: "Manage users, roles and permissions" },
   "team.manage": { group: "Administration", description: "Manage own dealership team members" },
   "settings.manage": { group: "Administration", description: "Manage system settings" },
-  "audit.view": { group: "Administration", description: "View audit logs" },
+  "audit.view": { group: "Administration", description: "View audit logs (central: all; dealership: its own)" },
   "gamification.manage": { group: "Administration", description: "Configure points, achievements and goals" },
   "portal.access": { group: "Portal", description: "Access the dealership portal" },
+
+  // ── Showroom inventory & sales orders
+  "inventory.view": { group: "Inventory", description: "View the showroom's stock (bikes and spare parts)" },
+  "inventory.manage": { group: "Inventory", description: "Add opening stock and adjust the showroom's inventory" },
+  "inventory.view_all": { group: "Inventory", description: "View every dealership's inventory (central)" },
+  "salesorders.manage": { group: "Inventory", description: "Create, confirm and cancel customer sales orders (deducts stock)" },
+
+  // ── Procurement (stock orders to YADEA)
+  "procurement.order": { group: "Procurement", description: "Place and track stock orders with YADEA procurement; confirm receipt" },
+  "procurement.view": { group: "Procurement", description: "View all dealership stock orders (central)" },
+  "procurement.manage": { group: "Procurement", description: "Approve, price, dispatch and deliver stock orders (central)" },
+  "catalog.manage": { group: "Procurement", description: "Manage spare parts and dealer pricing" },
+
+  // ── Accounts: ledger, vouchers, documents
+  "ledger.view": { group: "Accounts", description: "View the dealer account ledger and export it" },
+  "ledger.pay": { group: "Accounts", description: "Record payments to YADEA with proof of payment (dealership)" },
+  "ledger.manage": { group: "Accounts", description: "Post invoices, verify payments and adjust dealer ledgers (central)" },
+  "vouchers.manage": { group: "Accounts", description: "Create expense vouchers and attach receipts / invoices (dealership)" },
+  "vouchers.view_all": { group: "Accounts", description: "View and review every dealership's vouchers (central)" },
+  "dealerdocs.upload": { group: "Accounts", description: "Upload the dealership's own documents (e.g. registration certificate)" },
+  "dealerdocs.admin": { group: "Accounts", description: "Manage dealership documents and issue achievement certificates (central)" },
+
+  // ── Messaging & assistant
+  "messages.send": { group: "Messaging", description: "Send and log WhatsApp / email messages to contacts" },
+  "assistant.use": { group: "Assistant", description: "Use the AI assistant" },
+  "assistant.write": { group: "Assistant", description: "Let the assistant propose data changes (always confirmed before saving)" },
 } as const;
 
 export type PermissionKey = keyof typeof PERMISSIONS;
@@ -45,9 +71,32 @@ export const ROLE_KEYS = {
   SUPER_ADMIN: "SUPER_ADMIN",
   MANAGEMENT: "MANAGEMENT",
   CRM_STAFF: "CRM_STAFF",
+  PROCUREMENT: "PROCUREMENT",
   DEALER_MANAGER: "DEALER_MANAGER",
   DEALER_REP: "DEALER_REP",
 } as const;
+
+/** Permissions that only make sense inside a dealership membership — never granted to central roles. */
+export const DEALER_ONLY_PERMISSIONS: PermissionKey[] = [
+  "portal.access", "leads.assign_team", "team.manage", "inventory.view", "inventory.manage", "salesorders.manage",
+  "procurement.order", "ledger.pay", "vouchers.manage", "dealerdocs.upload",
+];
+
+/**
+ * Changes to the default role grants that must reach databases created before this release. Each upgrade is applied
+ * once per database (recorded in settings) — an administrator who later removes a grant is never overridden again.
+ */
+export const DEFAULT_GRANT_UPGRADES: { id: string; grants: Record<string, PermissionKey[]> }[] = [
+  {
+    id: "2026-10-operations",
+    grants: {
+      DEALER_MANAGER: ["audit.view", "assistant.write"],
+      DEALER_REP: ["assistant.write"],
+      CRM_STAFF: ["assistant.write"],
+      PROCUREMENT: ["assistant.write"],
+    },
+  },
+];
 
 export const DEFAULT_ROLES: {
   key: string;
@@ -61,7 +110,7 @@ export const DEFAULT_ROLES: {
     name: "Super Administrator",
     description: "Complete access to every module and setting",
     scope: "CENTRAL",
-    permissions: ALL_PERMISSIONS.filter((p) => p !== "portal.access" && p !== "leads.assign_team" && p !== "team.manage"),
+    permissions: ALL_PERMISSIONS.filter((p) => !DEALER_ONLY_PERMISSIONS.includes(p)),
   },
   {
     key: ROLE_KEYS.MANAGEMENT,
@@ -72,6 +121,7 @@ export const DEFAULT_ROLES: {
       "dashboard.view", "contacts.view", "contacts.export", "leads.view_all", "submissions.view",
       "testdrives.view", "dealerships.view", "applications.view", "applications.review",
       "documents.view", "payments.view", "reports.view", "audit.view",
+      "inventory.view_all", "procurement.view", "ledger.view", "vouchers.view_all", "assistant.use",
     ],
   },
   {
@@ -84,6 +134,17 @@ export const DEFAULT_ROLES: {
       "leads.view_all", "leads.assign", "leads.change_stage", "submissions.view", "submissions.manage",
       "testdrives.view", "testdrives.manage", "dealerships.view", "applications.view", "tasks.manage",
       "notes.manage", "documents.view", "documents.manage", "payments.view", "payments.manage", "reports.view",
+      "messages.send", "assistant.use", "assistant.write",
+    ],
+  },
+  {
+    key: ROLE_KEYS.PROCUREMENT,
+    name: "Procurement & Accounts",
+    description: "Receives dealership stock orders, dispatches goods, keeps dealer ledgers and reviews vouchers",
+    scope: "CENTRAL",
+    permissions: [
+      "procurement.view", "procurement.manage", "catalog.manage", "inventory.view_all", "ledger.view", "ledger.manage",
+      "vouchers.view_all", "dealerships.view", "dealerdocs.admin", "assistant.use", "assistant.write",
     ],
   },
   {
@@ -95,7 +156,9 @@ export const DEFAULT_ROLES: {
       "portal.access", "contacts.view", "contacts.create", "contacts.edit", "contacts.export",
       "leads.assign_team", "leads.change_stage", "testdrives.view", "testdrives.manage", "tasks.manage",
       "notes.manage", "documents.view", "documents.manage", "payments.view", "payments.manage",
-      "reports.view", "team.manage",
+      "reports.view", "team.manage", "audit.view",
+      "inventory.view", "inventory.manage", "salesorders.manage", "procurement.order", "ledger.view", "ledger.pay",
+      "vouchers.manage", "dealerdocs.upload", "messages.send", "assistant.use", "assistant.write",
     ],
   },
   {
@@ -106,6 +169,7 @@ export const DEFAULT_ROLES: {
     permissions: [
       "portal.access", "contacts.view", "contacts.create", "contacts.edit", "leads.change_stage",
       "testdrives.view", "testdrives.manage", "tasks.manage", "notes.manage", "documents.view", "documents.manage",
+      "inventory.view", "salesorders.manage", "messages.send", "assistant.use", "assistant.write",
     ],
   },
 ];

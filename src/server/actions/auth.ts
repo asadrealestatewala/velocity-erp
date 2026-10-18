@@ -2,54 +2,72 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { createSession, destroySession, getCurrentUser, hashPassword, verifyPassword } from "@/server/auth/session";
+import { createSession, destroySession, getCurrentUser, hashPassword, loadUser, verifyPassword } from "@/server/auth/session";
 import { audit } from "@/server/audit";
 import { clientIp } from "@/server/request";
 import { hashIdentifier, rateLimit } from "@/server/rate-limit";
 import { runAction } from "@/server/errors";
+import { getSettings } from "@/server/settings";
+import { normalizePhone } from "@/lib/utils";
+import { homePathFor } from "@/lib/home";
 
 export type LoginState = { error?: string } | undefined;
 
 const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().email(),
+  // An email address OR a mobile number (dealership staff may use either).
+  identifier: z.string().trim().min(3, "Enter your email or mobile number").max(160),
   password: z.string().min(1).max(200),
-  portal: z.enum(["crm", "portal"]),
+  portal: z.enum(["crm", "portal", "procurement"]),
   next: z.string().optional(),
 });
 
+/** Dummy hash so a missing account costs the same time as a wrong password (no account enumeration). */
+const DUMMY_HASH = "$2a$12$CwTycUXWue0Thq9StjUM0uJ8.ZpQb6Y5fmmS0cVnS3SrcX1Jb7dZ2";
+
 export async function loginAction(_: LoginState, formData: FormData): Promise<LoginState> {
   const parsed = loginSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: "Enter a valid email and password." };
-  const { email, password, portal, next } = parsed.data;
+  if (!parsed.success) return { error: "Enter your email or mobile number and your password." };
+  const { identifier, password, next } = parsed.data;
+
+  const isEmail = identifier.includes("@");
+  const sys = await getSettings();
+  const email = isEmail ? identifier.toLowerCase() : null;
+  const phoneNormalized = isEmail ? null : normalizePhone(identifier, sys.defaultCountryCode);
+  if (isEmail ? !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email!) : !phoneNormalized) {
+    return { error: "Enter a valid email address or mobile number." };
+  }
+  const key = email ?? phoneNormalized!;
 
   const ip = await clientIp();
   const okIp = await rateLimit(`login:ip:${hashIdentifier(ip)}`, 20, 15 * 60);
-  const okUser = await rateLimit(`login:user:${hashIdentifier(email)}`, 8, 15 * 60);
+  const okUser = await rateLimit(`login:user:${hashIdentifier(key)}`, 8, 15 * 60);
   if (!okIp || !okUser) return { error: "Too many sign-in attempts. Please wait 15 minutes and try again." };
 
-  const user = await db.user.findUnique({ where: { email }, include: { role: true } });
-  // Constant-ish work even when the user doesn't exist, to avoid account enumeration via timing.
-  const valid = user ? await verifyPassword(password, user.passwordHash) : await verifyPassword(password, "$2a$12$CwTycUXWue0Thq9StjUM0uJ8.ZpQb6Y5fmmS0cVnS3SrcX1Jb7dZ2");
+  const user = await db.user.findUnique({ where: email ? { email } : { phoneNormalized: phoneNormalized! }, include: { role: true } });
+  const valid = user ? await verifyPassword(password, user.passwordHash) : await verifyPassword(password, DUMMY_HASH);
   if (!user || !valid || !user.isActive) {
-    await audit({ userId: user?.id, action: "auth.login_failed", entityType: "User", entityId: user?.id, changes: { email }, ipAddress: hashIdentifier(ip) });
-    return { error: "Invalid email or password." };
+    // Never store a full phone number in the audit trail — keep the last 4 digits only.
+    const shown = email ?? `phone …${phoneNormalized!.slice(-4)}`;
+    await audit({ userId: user?.id, action: "auth.login_failed", entityType: "User", entityId: user?.id, changes: { identifier: shown, via: email ? "email" : "mobile" }, ipAddress: hashIdentifier(ip) });
+    return { error: "Invalid email / mobile number or password." };
   }
 
   await createSession(user.id);
   await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-  await audit({ userId: user.id, action: "auth.login", entityType: "User", entityId: user.id, ipAddress: hashIdentifier(ip) });
+  await audit({ userId: user.id, action: "auth.login", entityType: "User", entityId: user.id, changes: { via: email ? "email" : "mobile" }, ipAddress: hashIdentifier(ip) });
 
-  const central = user.role.scope === "CENTRAL";
+  const full = await loadUser(user.id);
+  const home = homePathFor(user.role.scope, full?.permissions ?? new Set());
   const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : null;
-  if (central) redirect(safeNext?.startsWith("/crm") ? safeNext : "/crm/dashboard");
-  redirect(safeNext?.startsWith("/portal") ? safeNext : portal === "portal" ? "/portal/dashboard" : "/portal/dashboard");
+  const area = user.role.scope === "CENTRAL" ? ["/crm", "/procurement"] : ["/portal"];
+  redirect(safeNext && area.some((a) => safeNext.startsWith(a)) ? safeNext : home);
 }
-
 export async function logoutAction() {
   const user = await getCurrentUser();
   await destroySession();
   if (user) await audit({ userId: user.id, action: "auth.logout", entityType: "User", entityId: user.id });
-  redirect(user?.scope === "DEALERSHIP" ? "/portal/login" : "/login");
+  const procurementOnly = !!user && user.scope === "CENTRAL" && !user.permissions.has("dashboard.view") && user.permissions.has("procurement.view");
+  redirect(user?.scope === "DEALERSHIP" ? "/portal/login" : procurementOnly ? "/procurement/login" : "/login");
 }
 
 const pwSchema = z

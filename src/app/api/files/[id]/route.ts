@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser, type CurrentUser } from "@/server/auth/session";
-import { can, childScope, contactScope, isCentral } from "@/server/authz";
+import { can, childScope, contactScope, dealershipIds, isCentral } from "@/server/authz";
 import { storage } from "@/server/storage";
 
 /** A file is served only if the requester can access a record that references it. */
@@ -25,6 +25,18 @@ async function canAccess(user: CurrentUser | null, fileId: string) {
     const appDoc = can(user, "applications.view") ? await db.dealershipApplicationDocument.findFirst({ where: { fileId }, select: { id: true } }) : null;
     const subDoc = can(user, "submissions.view") ? await db.formSubmissionFile.findFirst({ where: { fileId }, select: { id: true } }) : null;
     if (appDoc || subDoc) return file;
+  }
+
+  // Dealership documents (registration papers, certificates): the dealership's own users and YADEA document admins.
+  const dealerDoc = await db.dealershipDocument.findFirst({ where: { fileId, deletedAt: null }, select: { dealershipId: true } });
+  if (dealerDoc) {
+    if (isCentral(user) ? can(user, "dealerdocs.admin") || can(user, "dealerships.view") : dealershipIds(user).includes(dealerDoc.dealershipId) && can(user, "dealerdocs.upload")) return file;
+  }
+  // Voucher evidence (receipts, invoices, proof of payment): the dealership's finance users and YADEA accounts.
+  const voucherDoc = await db.voucherAttachment.findFirst({ where: { fileId }, select: { voucher: { select: { dealershipId: true } } } });
+  if (voucherDoc) {
+    const dealershipId = voucherDoc.voucher.dealershipId;
+    if (isCentral(user) ? can(user, "vouchers.view_all") || can(user, "ledger.manage") : dealershipIds(user).includes(dealershipId) && (can(user, "vouchers.manage") || can(user, "ledger.pay"))) return file;
   }
   return null;
 }

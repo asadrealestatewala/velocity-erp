@@ -115,7 +115,7 @@ export function TeamPanel({ dealershipId, members, canAppointManagers, meId }: {
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Full name" required error={add.fieldErrors.name}>{(p) => <Input {...p} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />}</Field>
             <Field label="Email" required error={add.fieldErrors.email}>{(p) => <Input {...p} type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />}</Field>
-            <Field label="Phone">{(p) => <Input {...p} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />}</Field>
+            <Field label="Mobile number" help="Can also be used to sign in. Each number belongs to one account." error={add.fieldErrors.phone}>{(p) => <Input {...p} inputMode="tel" placeholder="03xx xxxxxxx" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />}</Field>
             <Field label="Role">
               {(p) => (
                 <Select {...p} value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} disabled={!canAppointManagers}>

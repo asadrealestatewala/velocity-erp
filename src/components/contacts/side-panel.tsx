@@ -4,7 +4,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { format } from "date-fns";
 import {
   Activity as ActivityIcon, ArrowRightLeft, Bike, CheckCircle2, CheckSquare, ChevronDown, ChevronsDownUp, ChevronsUpDown, CircleDollarSign, Download,
-  FileText, FileUp, Flag, Mail, MessageCircle, MessageSquare, Phone, Pin, PinOff, Plus, RefreshCw, StickyNote, Trash2, UserPlus, Users, X, XCircle, Inbox, Pencil,
+  FileText, FileUp, Flag, Mail, MessageCircle, MessageSquare, Phone, Pin, PinOff, Plus, RefreshCw, ShoppingCart, StickyNote, Trash2, UserPlus, Users, X, XCircle, Inbox, Pencil,
 } from "lucide-react";
 import { cn, fmtDate, fmtDateTime, fmtMoney, fmtRelative, fmtTime, isoDay } from "@/lib/utils";
 import { ACTIVITY_GROUPS, ACTIVITY_LABELS, type ActivityTypeKey } from "@/lib/activity-labels";
@@ -17,6 +17,8 @@ import { DOC_CATEGORIES, PAYMENT_METHODS, PAYMENT_STATUS, PAYMENT_TYPES, TASK_PR
 import {
   addNoteAction, createTaskAction, deleteDocumentAction, recordPaymentAction, setTaskStatusAction, updateNoteAction, updatePaymentStatusAction, uploadDocumentAction,
 } from "@/server/actions/work";
+import type { ChatMessage } from "@/server/actions/messages";
+import { ChatTab, type ChannelFlags } from "./chat-tab";
 
 type Activity = { id: string; type: string; title: string; body: string | null; outcome: string | null; direction: string | null; occurredAt: Date; user: { name: string } | null };
 type Task = { id: string; title: string; description: string | null; type: string; dueAt: Date; priority: string; status: string; assignedTo: { id: string; name: string }; completedAt: Date | null };
@@ -29,18 +31,19 @@ const ACT_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   WHATSAPP_LOGGED: MessageCircle, SMS_LOGGED: MessageSquare, MEETING_LOGGED: Users, NOTE_ADDED: StickyNote, TASK_CREATED: CheckSquare,
   TASK_COMPLETED: CheckCircle2, TEST_DRIVE_SCHEDULED: Bike, TEST_DRIVE_RESCHEDULED: Bike, TEST_DRIVE_COMPLETED: Bike, TEST_DRIVE_UPDATED: Bike,
   STAGE_CHANGED: Flag, DOCUMENT_UPLOADED: FileUp, PAYMENT_RECORDED: CircleDollarSign, LEAD_CONVERTED: CheckCircle2, LEAD_LOST: XCircle,
-  CONTACT_UPDATED: Pencil, SOURCE_CHANGED: ArrowRightLeft,
+  CONTACT_UPDATED: Pencil, SOURCE_CHANGED: ArrowRightLeft, ORDER_CONFIRMED: ShoppingCart, ORDER_CANCELLED: XCircle,
 };
 const ACT_TONE: Record<string, string> = {
   LEAD_CONVERTED: "bg-emerald-100 text-emerald-700", LEAD_LOST: "bg-red-100 text-red-700", FORM_SUBMITTED: "bg-blue-100 text-blue-700",
   PAYMENT_RECORDED: "bg-emerald-50 text-emerald-700", STAGE_CHANGED: "bg-violet-100 text-violet-700", CALL_LOGGED: "bg-sky-100 text-sky-700",
   WHATSAPP_LOGGED: "bg-green-100 text-green-700", EMAIL_LOGGED: "bg-sky-100 text-sky-700", SMS_LOGGED: "bg-sky-100 text-sky-700",
   TEST_DRIVE_SCHEDULED: "bg-amber-100 text-amber-700", TEST_DRIVE_RESCHEDULED: "bg-amber-100 text-amber-700", TEST_DRIVE_COMPLETED: "bg-emerald-100 text-emerald-700",
-  TASK_COMPLETED: "bg-emerald-100 text-emerald-700",
+  TASK_COMPLETED: "bg-emerald-100 text-emerald-700", ORDER_CONFIRMED: "bg-emerald-100 text-emerald-700", ORDER_CANCELLED: "bg-red-100 text-red-700",
 };
 
 const TABS = [
   { key: "activity", label: "Activity", icon: ActivityIcon },
+  { key: "chat", label: "Chat", icon: MessageCircle },
   { key: "tasks", label: "Tasks", icon: CheckSquare },
   { key: "notes", label: "Notes", icon: StickyNote },
   { key: "documents", label: "Documents", icon: FileText },
@@ -58,7 +61,8 @@ export function ContactSidePanel(props: {
   meId: string;
   central: boolean;
   members: { id: string; name: string }[];
-  can: { tasks: boolean; notes: boolean; docsView: boolean; docsManage: boolean; paymentsView: boolean; paymentsManage: boolean };
+  can: { tasks: boolean; notes: boolean; docsView: boolean; docsManage: boolean; paymentsView: boolean; paymentsManage: boolean; messages: boolean };
+  chat: { phoneDigits: string | null; email: string | null; channels: ChannelFlags; messages: ChatMessage[] };
   activities: Activity[];
   tasks: Task[];
   notes: Note[];
@@ -68,7 +72,7 @@ export function ContactSidePanel(props: {
   const search = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const tabs = TABS.filter((t) => (t.key === "tasks" ? props.can.tasks : t.key === "documents" ? props.can.docsView : t.key === "payments" ? props.can.paymentsView : true));
+  const tabs = TABS.filter((t) => (t.key === "tasks" ? props.can.tasks : t.key === "documents" ? props.can.docsView : t.key === "payments" ? props.can.paymentsView : t.key === "chat" ? props.can.messages : true));
   const initial = (search.get("tab") as TabKey) || "activity";
   const [tab, setTab] = useState<TabKey>(tabs.some((t) => t.key === initial) ? initial : "activity");
   const [open, setOpen] = useState(true);
@@ -77,12 +81,14 @@ export function ContactSidePanel(props: {
 
   const totals: Record<TabKey, number> = {
     activity: props.activities.length,
+    chat: props.chat.messages.length,
     tasks: props.tasks.length,
     notes: props.notes.length,
     documents: props.documents.length,
     payments: props.payments.length,
   };
   const badge: Partial<Record<TabKey, number>> = {
+    chat: props.chat.messages.filter((m) => m.direction === "INBOUND" && Date.now() - new Date(m.at).getTime() < 24 * 3600_000).length,
     tasks: props.tasks.filter((t) => t.status === "OPEN" || t.status === "IN_PROGRESS").length,
     notes: props.notes.length,
     documents: props.documents.length,
@@ -131,6 +137,7 @@ export function ContactSidePanel(props: {
           </header>
           <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="scrollbar-thin flex-1 overflow-y-auto p-4">
             {tab === "activity" && <ActivityTab items={props.activities} />}
+            {tab === "chat" && <ChatTab contactId={props.contactId} leadId={props.leadId} phoneDigits={props.chat.phoneDigits} email={props.chat.email} channels={props.chat.channels} initial={props.chat.messages} />}
             {tab === "tasks" && <TasksTab {...props} />}
             {tab === "notes" && <NotesTab {...props} />}
             {tab === "documents" && <DocumentsTab {...props} />}

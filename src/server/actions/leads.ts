@@ -23,7 +23,7 @@ export async function changeStageAction(input: z.input<typeof stageChangeSchema>
         conversionValue: v.conversionValue ?? null, soldModelId: v.soldModelId, conversionNotes: v.conversionNotes, note: v.note,
       }),
     );
-    await audit({ userId: user.id, action: "lead.stage_changed", entityType: "Lead", entityId: lead.id, changes: { stageId: { from: lead.stageId, to: v.stageId } } });
+    await audit({ userId: user.id, action: "lead.stage_changed", entityType: "Lead", entityId: lead.id, dealershipId: lead.dealershipId, changes: { stageId: { from: lead.stageId, to: v.stageId } } });
     return { ok: true as const, message: "Stage updated." };
   });
 }
@@ -62,7 +62,10 @@ export async function assignLeadAction(input: z.input<typeof assignSchema>) {
         assignedById: user.id,
       }),
     );
-    await audit({ userId: user.id, action: "lead.assigned", entityType: "Lead", entityId: lead.id, changes: { dealershipId: { from: lead.dealershipId, to: v.dealershipId }, userId: { from: lead.assignedUserId, to: v.userId ?? null } } });
+    const assignChanges = { dealershipId: { from: lead.dealershipId, to: v.dealershipId }, userId: { from: lead.assignedUserId, to: v.userId ?? null } };
+    await audit({ userId: user.id, action: "lead.assigned", entityType: "Lead", entityId: lead.id, dealershipId: v.dealershipId ?? lead.dealershipId, changes: assignChanges });
+    // The dealership a lead moves away from keeps its own record of that.
+    if (lead.dealershipId && lead.dealershipId !== v.dealershipId) await audit({ userId: user.id, action: "lead.reassigned_away", entityType: "Lead", entityId: lead.id, dealershipId: lead.dealershipId, changes: assignChanges });
     return { ok: true as const, message: v.dealershipId ? "Lead assigned." : "Lead returned to the unassigned queue." };
   });
 }
@@ -79,7 +82,7 @@ export async function bulkAssignAction(input: { leadIds: string[]; dealershipId:
       await db.$transaction((tx) => assignLead(tx, { leadId: id, dealershipId: input.dealershipId, type: "MANUAL", reason: input.reason || "Bulk assignment", assignedById: user.id }));
       n++;
     }
-    await audit({ userId: user.id, action: "lead.bulk_assigned", entityType: "Lead", changes: { count: n, dealershipId: input.dealershipId } });
+    await audit({ userId: user.id, action: "lead.bulk_assigned", entityType: "Lead", dealershipId: input.dealershipId, changes: { count: n, dealershipId: input.dealershipId } });
     return { ok: true as const, message: `${n} lead(s) assigned.` };
   });
 }

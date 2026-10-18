@@ -11,8 +11,9 @@ const PORT = 3100;
 
 export default defineConfig({
   testDir: "tests/e2e",
-  timeout: 120_000,
-  expect: { timeout: 20_000 },
+  timeout: 240_000,
+  // Dev mode compiles each route on first visit (slow on small machines), so allow generous assertion time.
+  expect: { timeout: 120_000 },
   fullyParallel: false,
   workers: 1,
   retries: 0,
@@ -23,7 +24,7 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     timezoneId: "Asia/Karachi",
-    actionTimeout: 20_000,
+    actionTimeout: 120_000,
     navigationTimeout: 90_000,
   },
   projects: [

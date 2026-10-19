@@ -24,13 +24,14 @@ const LINK = /^\[(.+)\]\((\/(?!\/)[^)\s]*)\)$/;
 
 /** Tiny, safe Markdown subset (bold, italics, code, in-app links, bullets, numbered lists) — built from React nodes, never raw HTML. */
 function inline(text: string, onNavigate?: () => void) {
-  const parts = text.split(/(\[[^\]]+\]\(\/[^)\s]*\)|\*\*[^*]+\*\*|`[^`]+`|_[^_]+_)/g);
+  const parts = text.split(/(\[[^\]]+\]\(\/[^)\s]*\)|\*\*[^*]+\*\*|\*[^*\s][^*]*\*|`[^`]+`|_[^_]+_)/g);
   return parts.map((p, i) => {
     const link = LINK.exec(p);
     if (link) return <Link key={i} href={link[2]!} onClick={onNavigate} className="font-medium text-brand-600 underline underline-offset-2 hover:text-brand-700">{inline(link[1]!)}</Link>;
     if (p.startsWith("**") && p.endsWith("**") && p.length > 4) return <strong key={i}>{p.slice(2, -2)}</strong>;
     if (p.startsWith("`") && p.endsWith("`") && p.length > 2) return <code key={i} className="rounded bg-ink-100 px-1 py-px font-mono text-[12.5px]">{p.slice(1, -1)}</code>;
     if (p.startsWith("_") && p.endsWith("_") && p.length > 2) return <em key={i}>{p.slice(1, -1)}</em>;
+    if (p.startsWith("*") && p.endsWith("*") && !p.startsWith("**") && p.length > 2) return <em key={i}>{p.slice(1, -1)}</em>;
     return <Fragment key={i}>{p}</Fragment>;
   });
 }

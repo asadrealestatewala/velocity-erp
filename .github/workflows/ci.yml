@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# One run per branch; a newer push cancels the older run (prevents queue pile-ups).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Type-check, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          # Throw-away database that exists only for this job — not a real credential.
+          POSTGRES_PASSWORD: ci_only_password
+          POSTGRES_DB: yadea_crm_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:ci_only_password@localhost:5432/yadea_crm_test?schema=public
+      APP_URL: http://localhost:3000
+      APP_TIMEZONE: Asia/Karachi
+      NEXT_PUBLIC_APP_TIMEZONE: Asia/Karachi
+      STORAGE_DRIVER: local
+      LOCAL_STORAGE_DIR: ./storage/test
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The tests read .env.test. Values here are generated per run; no repository secrets are used.
+      - name: Create test environment file
+        run: |
+          {
+            echo "DATABASE_URL=$DATABASE_URL"
+            echo "APP_URL=$APP_URL"
+            echo "APP_SECRET=$(openssl rand -hex 32)"
+            echo "CRON_SECRET=$(openssl rand -hex 16)"
+            echo "APP_TIMEZONE=$APP_TIMEZONE"
+            echo "NEXT_PUBLIC_APP_TIMEZONE=$NEXT_PUBLIC_APP_TIMEZONE"
+            echo "STORAGE_DRIVER=local"
+            echo "LOCAL_STORAGE_DIR=./storage/test"
+            echo "MAX_UPLOAD_MB=10"
+          } > .env.test
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Unit and integration tests
+        run: npm test
+
+      - name: Production build
+        env:
+          APP_SECRET: build-only-placeholder-not-a-secret-0000000000
+        run: npm run build

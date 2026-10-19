@@ -154,6 +154,42 @@ A dealership only ever sees its own data. Anything outside a user's scope behave
     body: `In-app notifications (bell icon) and optional emails are sent for lead assignments, test-drive bookings and reminders, follow-ups, stock-order updates, low stock, payment verification, new documents/certificates and new customer messages. Each user can switch in-app/email per type under Account. Without SMTP configured, emails are recorded as skipped — only in-app notifications are delivered.`,
   },
   {
+    id: "navigation",
+    title: "Finding your way around (sidebar, top bar, search)",
+    audience: ALL,
+    body: `The **sidebar** on the left lists every screen your role can open (on a phone tap the ☰ button to open it). At its top is your name card (click it for **Account & password** and **Sign out**) and a **search box** — press **Ctrl K** to jump to it — which finds contacts by name, phone, email or business in the CRM and dealer portal, and orders by number or dealership in procurement. The **top bar** has quick actions (the **+** button for a new contact or walk-in lead, and **Assign leads** with an unassigned count for head office), the **sparkle button** that opens this assistant, the **bell** for notifications and your **avatar** (the same Account & password / Sign out menu). If a sidebar item is missing, your role doesn't include that permission — ask a Super Administrator. List pages have a **filter bar** above the table; filters are kept in the address so you can bookmark or share a filtered view.`,
+  },
+  {
+    id: "statuses",
+    title: "Status words explained (orders, deliveries, payments, stock)",
+    audience: ["portal", "procurement"],
+    body: `**Stock order:** Received (placed by the dealer, waiting for procurement) → Approved (prices and expected delivery date confirmed) → Delivered; or Rejected (with a reason) / Cancelled (by the dealer before procurement acted). **Dispatch status:** Not dispatched → Packing → Dispatched → In transit → Delivered. An order is **overdue** when it is approved, not delivered and past its expected delivery date. **Customer order:** Draft (no stock change) → Confirmed (stock deducted) or Cancelled (stock returned). **Ledger entry type:** Invoice, Payment, Credit note, Adjustment; **status:** Posted, Awaiting verification (a dealer's payment not yet checked against its proof — it does not reduce the balance) or Rejected. **Voucher:** Submitted → Approved or Rejected. **Stock level:** In stock; Low stock = quantity at or below the reorder level; Out of stock = zero.`,
+  },
+  {
+    id: "lead-terms",
+    title: "Lead words explained (contact, lead, origin, source, stage)",
+    audience: ["crm", "portal"],
+    body: `A **contact** is a person (type Lead until they buy, then Customer). A **lead** is one inquiry; a returning customer can have several (use **New inquiry** on their page). **Origin** says who created it: *Company-assigned* (head office, website forms, social) or *Walk-in* (created by a dealership for someone who visited or called). **Source** is the channel it came from (website form, social, walk-in…) and is configured in Settings. **Stage** is where the lead is in the pipeline; **Converted** and **Lost** close it. **Assigned** means it has a dealership (and optionally a sales rep); **unassigned** leads wait in the central queue. **Follow-up due** means the next follow-up date is today or earlier.`,
+  },
+  {
+    id: "exports",
+    title: "Exports and downloads",
+    audience: ALL,
+    body: `**Contacts** → Export CSV (CRM, needs export permission; the current filters apply). **Account ledger** → Excel or PDF for any period (dealer portal and procurement). **Expense vouchers** → Excel with tax amounts and the documents on file (dealer portal and procurement). **Customer order** → PDF from the order page. **Stock order** → invoice from the order page. **Documents and certificates** → View or Download on the Documents page. Exports are recorded in the audit log.`,
+  },
+  {
+    id: "uploads",
+    title: "Uploading files (types and size)",
+    audience: ALL,
+    body: `Files are checked by their real content (not just their name or what the browser claims). Accepted: **PDF, JPG, PNG, WEBP, DOCX and XLSX** — anything else is refused, and a renamed file whose content doesn't match is refused too. The default limit is **10 MB per file**, and up to 8 files can be attached in one go to a payment or voucher (about 12 MB in total per submission — attach the rest afterwards). Uploaded files are only shown to the dealership's authorised users and to the YADEA staff whose role allows it.`,
+  },
+  {
+    id: "demo-data",
+    title: "Demo data and prices",
+    audience: ALL,
+    body: `This installation may contain **demo data** (the Gulberg E-Mobility demo dealership, sample customers, orders and ledger entries) so every screen has something to show. Demo amounts and prices are **not YADEA's real prices**. Prices in the catalogue are only ever what an administrator entered; the assistant never invents a price, specification or policy.`,
+  },
+  {
     id: "assistant",
     title: "About this assistant",
     audience: ALL,
@@ -161,14 +197,16 @@ A dealership only ever sees its own data. Anything outside a user's scope behave
   },
 ];
 
-export function guideFor(audience: Audience) {
-  return GUIDE.filter((s) => s.audience.includes(audience));
+/** Topics for the audience (plus those of other workspaces the user can also reach, e.g. Procurement for head office). */
+export function guideFor(audience: Audience, also: Audience[] = []) {
+  const spaces = [audience, ...also];
+  return GUIDE.filter((s) => s.audience.some((a) => spaces.includes(a)));
 }
 
 export const SUGGESTIONS: Record<Audience, string[]> = {
-  crm: ["How do I assign a lead to a dealership?", "Show me this week's unassigned leads", "What happens when a test drive is completed?", "Which dealerships are accepting leads?"],
-  portal: ["Which items are low on stock?", "How do I order spare parts from YADEA?", "Show my open stock orders", "How do I record a payment with proof?"],
-  procurement: ["Which orders are waiting for a decision?", "Which deliveries are overdue?", "How do I verify a dealer's payment?", "Show dealers with the highest balance"],
+  crm: ["How do I assign a lead to a dealership?", "Show me this week's unassigned leads", "Which dealerships are accepting leads?", "What is on the Settings page?", "Show me everything in the app"],
+  portal: ["Which items are low on stock?", "How do I order spare parts from YADEA?", "Show my open stock orders", "How do I record a payment with proof?", "Show me everything in the app"],
+  procurement: ["Which orders are waiting for a decision?", "Which deliveries are overdue?", "How do I verify a dealer's payment?", "Show dealers with the highest balance", "Show me everything in the app"],
 };
 
 /** Plain keyword search over the guide plus administrator-written entries (used when no AI model is connected). */

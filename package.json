@@ -21,6 +21,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "jobs:run": "tsx --conditions=react-server scripts/run-jobs.ts",
+    "assistant:check": "tsx scripts/check-assistant.ts",
     "forms:refresh-templates": "tsx --conditions=react-server scripts/refresh-form-templates.ts"
   },
   "prisma": {

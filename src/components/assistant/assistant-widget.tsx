@@ -1,12 +1,13 @@
 "use client";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Bot, Check, Loader2, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { confirmAssistantAction, cancelAssistantAction } from "@/server/actions/assistant";
 
 type Proposal = { id: string; tool: string; summary: string; expiresAt: string; state?: "pending" | "confirming" | "done" | "failed" | "cancelled"; note?: string };
-type Msg = { id: string; role: "user" | "assistant"; text: string; proposals?: Proposal[]; mode?: "ai" | "knowledge"; error?: boolean };
+type Msg = { id: string; role: "user" | "assistant"; text: string; proposals?: Proposal[]; mode?: "ai" | "knowledge"; suggestions?: string[]; error?: boolean };
 
 export type AssistantConfig = {
   userKey: string;
@@ -18,24 +19,29 @@ export type AssistantConfig = {
 let seq = 0;
 const nid = () => `m${Date.now().toString(36)}${++seq}`;
 
-/** Tiny, safe Markdown subset (bold, italics, code, bullets, numbered lists) — built from React nodes, never raw HTML. */
-function inline(text: string) {
-  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|_[^_]+_)/g);
+/** Only links to screens inside this app are ever rendered as links (a path starting with a single "/"). */
+const LINK = /^\[(.+)\]\((\/(?!\/)[^)\s]*)\)$/;
+
+/** Tiny, safe Markdown subset (bold, italics, code, in-app links, bullets, numbered lists) — built from React nodes, never raw HTML. */
+function inline(text: string, onNavigate?: () => void) {
+  const parts = text.split(/(\[[^\]]+\]\(\/[^)\s]*\)|\*\*[^*]+\*\*|`[^`]+`|_[^_]+_)/g);
   return parts.map((p, i) => {
+    const link = LINK.exec(p);
+    if (link) return <Link key={i} href={link[2]!} onClick={onNavigate} className="font-medium text-brand-600 underline underline-offset-2 hover:text-brand-700">{inline(link[1]!)}</Link>;
     if (p.startsWith("**") && p.endsWith("**") && p.length > 4) return <strong key={i}>{p.slice(2, -2)}</strong>;
     if (p.startsWith("`") && p.endsWith("`") && p.length > 2) return <code key={i} className="rounded bg-ink-100 px-1 py-px font-mono text-[12.5px]">{p.slice(1, -1)}</code>;
     if (p.startsWith("_") && p.endsWith("_") && p.length > 2) return <em key={i}>{p.slice(1, -1)}</em>;
     return <Fragment key={i}>{p}</Fragment>;
   });
 }
-function Markdown({ text }: { text: string }) {
+function Markdown({ text, onNavigate }: { text: string; onNavigate?: () => void }) {
   const blocks: React.ReactNode[] = [];
   const lines = text.split("\n");
   let list: { ordered: boolean; items: string[] } | null = null;
   const flush = () => {
     if (!list) return;
     const Tag = list.ordered ? "ol" : "ul";
-    blocks.push(<Tag key={blocks.length} className={cn("my-1.5 space-y-0.5 pl-5", list.ordered ? "list-decimal" : "list-disc")}>{list.items.map((it, i) => <li key={i}>{inline(it)}</li>)}</Tag>);
+    blocks.push(<Tag key={blocks.length} className={cn("my-1.5 space-y-0.5 pl-5", list.ordered ? "list-decimal" : "list-disc")}>{list.items.map((it, i) => <li key={i}>{inline(it, onNavigate)}</li>)}</Tag>);
     list = null;
   };
   for (const raw of lines) {
@@ -50,7 +56,7 @@ function Markdown({ text }: { text: string }) {
     }
     flush();
     if (raw.trim() === "") continue;
-    blocks.push(<p key={blocks.length} className="my-1.5">{inline(raw)}</p>);
+    blocks.push(<p key={blocks.length} className="my-1.5">{inline(raw, onNavigate)}</p>);
   }
   flush();
   return <>{blocks}</>;
@@ -102,9 +108,9 @@ export function AssistantWidget({ config, open, onOpenChange }: { config: Assist
     abortRef.current = ctl;
     try {
       const res = await fetch("/api/assistant", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message, history }), signal: ctl.signal });
-      const data = (await res.json().catch(() => ({}))) as { text?: string; proposals?: Proposal[]; mode?: "ai" | "knowledge"; error?: string };
+      const data = (await res.json().catch(() => ({}))) as { text?: string; proposals?: Proposal[]; mode?: "ai" | "knowledge"; suggestions?: string[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? "The assistant ran into a problem.");
-      setMsgs((ms) => [...ms, { id: nid(), role: "assistant", text: data.text ?? "", mode: data.mode, proposals: (data.proposals ?? []).map((p) => ({ ...p, state: "pending" as const })) }]);
+      setMsgs((ms) => [...ms, { id: nid(), role: "assistant", text: data.text ?? "", mode: data.mode, suggestions: data.suggestions, proposals: (data.proposals ?? []).map((p) => ({ ...p, state: "pending" as const })) }]);
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
       setMsgs((ms) => [...ms, { id: nid(), role: "assistant", text: (e as Error).message || "Something went wrong.", error: true }]);
@@ -133,6 +139,8 @@ export function AssistantWidget({ config, open, onOpenChange }: { config: Assist
   };
 
   const clear = () => { abortRef.current?.abort(); setMsgs([]); setBusy(false); };
+  // On a phone the panel covers the page, so follow a link by getting out of its way.
+  const onNavigate = () => { if (typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches) setOpen(false); };
 
   return (
     <>
@@ -142,7 +150,7 @@ export function AssistantWidget({ config, open, onOpenChange }: { config: Assist
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500"><Bot className="h-5 w-5" /></span>
             <div className="min-w-0 flex-1">
               <h2 className="text-[15px] leading-tight font-semibold">YADEA assistant</h2>
-              <p className="flex items-center gap-1.5 text-xs text-slate-300"><span className={cn("h-1.5 w-1.5 rounded-full", config.aiConnected ? "bg-emerald-400" : "bg-amber-400")} />{config.aiConnected ? "AI connected" : "Help topics only — AI not connected"}</p>
+              <p className="flex items-center gap-1.5 text-xs text-slate-300"><span className={cn("h-1.5 w-1.5 rounded-full", config.aiConnected ? "bg-emerald-400" : "bg-amber-400")} />{config.aiConnected ? "AI connected" : "Built-in guide — AI not connected"}</p>
             </div>
             <button onClick={clear} className="rounded-md p-1.5 text-slate-300 hover:bg-white/10 hover:text-white" aria-label="Clear conversation" title="Clear conversation"><Trash2 className="h-4 w-4" /></button>
             <button onClick={() => setOpen(false)} className="rounded-md p-1.5 text-slate-300 hover:bg-white/10 hover:text-white" aria-label="Close assistant"><X className="h-5 w-5" /></button>
@@ -152,8 +160,8 @@ export function AssistantWidget({ config, open, onOpenChange }: { config: Assist
             {msgs.length === 0 && (
               <div className="space-y-3">
                 <p className="rounded-xl bg-white p-3.5 text-sm text-ink-700 ring-1 ring-ink-200">
-                  Hi! Ask me how anything in YADEA CRM works{config.aiConnected ? ", look up live data you can see" : ""}{config.aiConnected && config.canWrite ? ", or have me prepare a change for you to confirm" : ""}.
-                  {!config.aiConnected && <span className="mt-1.5 block text-xs text-amber-800">The AI model isn&apos;t connected on this system, so I can only show matching help topics.</span>}
+                  Hi! Ask me anything about YADEA CRM — what a screen contains, where to find something, how to do a task step by step, or for live numbers you&apos;re allowed to see{config.aiConnected && config.canWrite ? ". I can also prepare a change for you to confirm" : ""}.
+                  {!config.aiConnected && <span className="mt-1.5 block text-xs text-amber-800">I&apos;m running in built-in guide mode: I know the whole platform and can look up live numbers, but I can&apos;t make changes or answer free-form questions until an administrator connects the AI key.</span>}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {config.suggestions.map((s) => (
@@ -162,10 +170,10 @@ export function AssistantWidget({ config, open, onOpenChange }: { config: Assist
                 </div>
               </div>
             )}
-            {msgs.map((m) => (
-              <div key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
+            {msgs.map((m, idx) => (
+              <div key={m.id} className={cn("flex flex-col", m.role === "user" ? "items-end" : "items-start")}>
                 <div className={cn("max-w-[92%] rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed", m.role === "user" ? "rounded-br-md bg-brand-500 text-white" : m.error ? "rounded-bl-md bg-red-50 text-red-800 ring-1 ring-red-200" : "rounded-bl-md bg-white text-ink-800 ring-1 ring-ink-200")}>
-                  {m.role === "user" ? <p className="whitespace-pre-wrap">{m.text}</p> : <Markdown text={m.text} />}
+                  {m.role === "user" ? <p className="whitespace-pre-wrap">{m.text}</p> : <Markdown text={m.text} onNavigate={onNavigate} />}
                   {m.proposals?.map((p) => (
                     <div key={p.id} className="mt-2.5 rounded-xl border border-brand-200 bg-brand-50/60 p-3 text-ink-800">
                       <p className="text-[11px] font-semibold tracking-wide text-brand-700 uppercase">Proposed change — not saved yet</p>
@@ -184,6 +192,14 @@ export function AssistantWidget({ config, open, onOpenChange }: { config: Assist
                     </div>
                   ))}
                 </div>
+                {m.role === "assistant" && m.mode === "knowledge" && <p className="mt-1 px-1 text-[11px] text-ink-400">Built-in guide answer</p>}
+                {m.role === "assistant" && !busy && idx === msgs.length - 1 && !!m.suggestions?.length && (
+                  <div className="mt-2 flex max-w-[92%] flex-wrap gap-1.5" aria-label="Suggested follow-up questions">
+                    {m.suggestions.map((s) => (
+                      <button key={s} onClick={() => send(s)} className="rounded-full border border-ink-200 bg-white px-3 py-1 text-left text-[12.5px] text-ink-700 transition hover:border-brand-300 hover:bg-brand-50">{s}</button>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             {busy && (

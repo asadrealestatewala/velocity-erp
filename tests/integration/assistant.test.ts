@@ -16,6 +16,7 @@ import { searchKnowledge } from "@/server/assistant/guide";
 import { cancelAssistantAction, confirmAssistantAction } from "@/server/actions/assistant";
 import { POST as assistantRoute } from "@/app/api/assistant/route";
 import { createLead } from "@/server/services/leads";
+import { submitStockOrder } from "@/server/services/procurement";
 import { assignLead } from "@/server/services/assignment";
 import { APP_TZ, fmtDate, normalizePhone } from "@/lib/utils";
 import { asUser, buildWorld, type World } from "../support/fixtures";
@@ -71,7 +72,6 @@ describe("assistant without an AI model connected", () => {
     const r = await runAssistant(user, [], "How do I record a payment with proof of payment?", null);
     expect(r.mode).toBe("knowledge");
     expect(r.text.toLowerCase()).toContain("proof of payment");
-    expect(r.text).toMatch(/AI assistant isn't connected/);
     expect(r.proposals).toEqual([]);
     expect(await db.assistantAction.count()).toBe(0);
   });
@@ -320,6 +320,184 @@ describe("assistant changes need explicit confirmation", () => {
     const r2 = await runAssistant(user, [], "mark lost", lost.llm);
     expect(r2.proposals).toEqual([]);
     expect(toolResultsOf(lost.requests[1]!)[0]).toMatchObject({ is_error: true });
+  });
+});
+
+describe("built-in guide mode (no AI key) answers properly", () => {
+  const ask = async (userId: string, q: string) => runAssistant(await asUser(userId), [], q, null);
+
+  it("explains a task step by step and links to the right screen", async () => {
+    const r = await ask(w.aManager.id, "How do I record a payment to YADEA with proof?");
+    expect(r.text).toMatch(/1\. Open \*\*Account Ledger\*\*/);
+    expect(r.text).toContain("[Account Ledger](/portal/ledger)");
+    expect(r.suggestions).toBeDefined();
+  });
+
+  it("answers 'where is…' and 'what is on…' questions for the screens the user can open", async () => {
+    const where = await ask(w.aManager.id, "Where can I see the account ledger?");
+    expect(where.text).toContain("(/portal/ledger)");
+    const inside = await ask(w.aManager.id, "What is on the Inventory page?");
+    expect(inside.text).toMatch(/Bike models/);
+    expect(inside.text).toMatch(/Low stock/);
+    const crm = await ask(w.staff.id, "What is on the Settings page?");
+    // staff don't hold settings.manage — the settings screen is not described or linked to them
+    expect(crm.text).not.toContain("/crm/settings");
+  });
+
+  it("never points a user at a screen their role can't open", async () => {
+    const rep = await ask(w.aRep.id, "Where is the audit log?");
+    expect(rep.text).not.toContain("/portal/audit");
+    const tourRep = await ask(w.aRep.id, "Show me everything in the app");
+    expect(tourRep.text).toContain("/portal/inventory");
+    expect(tourRep.text).not.toContain("/portal/audit");
+    expect(tourRep.text).not.toContain("/portal/team"); // managers only
+    const tourManager = await ask(w.aManager.id, "Show me everything in the app");
+    expect(tourManager.text).toContain("/portal/audit");
+    expect(tourManager.text).toContain("/portal/team");
+    expect(tourManager.text).toContain("Account Ledger");
+  });
+
+  it("shows live low-stock items for the user's own showroom", async () => {
+    await db.inventoryItem.create({ data: { dealershipId: w.A.id, bikeModelId: bike.id, quantity: 1, reorderLevel: 3 } });
+    const r = await ask(w.aManager.id, "Which items are low on stock?");
+    expect(r.mode).toBe("knowledge");
+    expect(r.text).toContain("GT70");
+    expect(r.text).toMatch(/1 in stock/);
+    expect(r.text).toContain("(/portal/inventory)");
+    // a different dealership's stock is never shown
+    const other = await ask(w.bManager.id, "Which items are low on stock?");
+    expect(other.text).not.toContain("GT70");
+    expect(other.text).toMatch(/Nothing is low/);
+  });
+
+  it("shows the dealer's balance owed and refuses when the role has no ledger access", async () => {
+    await db.ledgerEntry.create({ data: { dealershipId: w.A.id, type: "INVOICE", description: "Invoice PO-1", debit: 45000, recordedById: proc.id } });
+    const mgr = await ask(w.aManager.id, "How much do I owe YADEA?");
+    expect(mgr.text).toMatch(/45,000/);
+    expect(mgr.text).toContain("Dealer A");
+    const rep = await ask(w.aRep.id, "How much do I owe YADEA?");
+    expect(rep.text).not.toMatch(/45,000/);
+    expect(rep.text).toMatch(/role doesn't include live access/);
+  });
+
+  it("procurement sees orders waiting for a decision and balances across dealers", async () => {
+    await db.inventoryItem.create({ data: { dealershipId: w.A.id, bikeModelId: bike.id, quantity: 5 } });
+    await as(w.aManager.id);
+    await db.$transaction((tx) => submitStockOrder(tx, { dealershipId: w.A.id, userId: w.aManager.id, priority: "URGENT", lines: [{ itemKey: `B:${bike.id}`, quantity: 3 }] }));
+    await db.ledgerEntry.create({ data: { dealershipId: w.A.id, type: "INVOICE", description: "x", debit: 70000, recordedById: proc.id } });
+    const orders = await ask(proc.id, "Which orders are waiting for a decision?");
+    expect(orders.text).toMatch(/PO-\d+/);
+    expect(orders.text).toContain("Dealer A");
+    expect(orders.text).toContain("(/procurement/orders)");
+    const balances = await ask(proc.id, "Show dealers with the highest balance");
+    expect(balances.text).toMatch(/Dealer A.*70,000/);
+  });
+
+  it("finds a contact by name and only within the user's scope", async () => {
+    await contactFor(w.A.id, w.aRep.id, "Zainab");
+    await contactFor(w.B.id, w.bRep.id, "Zarar");
+    const hit = await ask(w.aManager.id, "find Zainab");
+    expect(hit.text).toContain("Zainab");
+    expect(hit.text).toMatch(/\(\/portal\/contacts\/[a-z0-9]+\)/);
+    const miss = await ask(w.aManager.id, "find Zarar");
+    expect(miss.text).not.toContain("Zarar —");
+    expect(miss.text).toMatch(/couldn't find a contact/);
+  });
+
+  it("defines the platform's words and compares two of them", async () => {
+    const a = await ask(w.aManager.id, "what is awaiting verification");
+    expect(a.text).toMatch(/^\*\*Awaiting verification\*\*/);
+    expect(a.text).toMatch(/does \*\*not\*\* reduce the balance/);
+    const diff = await ask(w.aManager.id, "what is the difference between company assigned and walk-in leads");
+    expect(diff.text).toContain("**Walk-in lead**");
+    expect(diff.text).toContain("**Company-assigned lead**");
+    expect((await ask(w.aManager.id, "what does low stock mean")).text).toMatch(/at or below its reorder level/);
+  });
+
+  it("forgives typos", async () => {
+    expect((await ask(w.aManager.id, "how do i download ledgr")).text).toContain("Excel or PDF");
+    expect((await ask(w.aManager.id, "how do i recieve a delivery")).text).toContain("Confirm receipt");
+    expect((await ask(w.aManager.id, "inventroy")).text).toContain("**Inventory**");
+  });
+
+  it("tells 'can I…' questions apart from requests for data, and answers delivery questions with live orders", async () => {
+    const can = await ask(w.aManager.id, "can I cancel a stock order");
+    expect(can.text).toContain("Cancel order");
+    expect(can.text).not.toMatch(/\d+ placed/);
+    const when = await ask(w.aManager.id, "when is my delivery coming");
+    expect(when.text).toMatch(/Stock orders\*\* — \d+ placed/);
+    await db.$transaction((tx) => submitStockOrder(tx, { dealershipId: w.A.id, userId: w.aManager.id, priority: "NORMAL", lines: [{ itemKey: `B:${bike.id}`, quantity: 2 }] }));
+    expect((await ask(w.aManager.id, "when is my delivery coming")).text).toMatch(/PO-\d+/);
+  });
+
+  it("offers a short menu for an ambiguous one-word question but goes straight to a named screen", async () => {
+    const menu = await ask(w.aManager.id, "orders");
+    expect(menu.text).toMatch(/could mean a few things/);
+    expect(menu.suggestions!.length).toBeGreaterThanOrEqual(3);
+    const direct = await ask(w.aManager.id, "inventory");
+    expect(direct.text).toContain("**Inventory**");
+    expect(direct.text).not.toMatch(/could mean/);
+  });
+
+  it("gives head office a tour split by workspace", async () => {
+    const tour = await ask(w.admin.id, "Show me everything in the app");
+    expect(tour.text).toContain("Central CRM workspace");
+    expect(tour.text).toContain("Procurement Portal workspace");
+    expect(tour.text).toContain("(/crm/settings)");
+    expect(tour.text).toContain("(/procurement/ledger)");
+  });
+
+  it("answers 'how many contacts' with real counts for the user's scope — never with a definition", async () => {
+    await contactFor(w.A.id, w.aRep.id, "Alpha");
+    await contactFor(w.A.id, w.aRep.id, "Beta");
+    await contactFor(w.B.id, w.bRep.id, "Bravo");
+    const mgr = await ask(w.aManager.id, "how many total contacts are?");
+    expect(mgr.text).toMatch(/^\*\*2 contacts\*\*/);
+    expect(mgr.text).toContain("(/portal/contacts)");
+    const staff = await ask(w.staff.id, "how many contacts do we have");
+    expect(staff.text).toMatch(/^\*\*3 contacts\*\*/);
+    expect(staff.text).toMatch(/Leads \(not yet bought\): 3/);
+    // a number nothing can look up is admitted, not answered with the definition of a word in the question
+    const unknown = await ask(w.aManager.id, "how many bikes were sold in 2020");
+    expect(unknown.text).toMatch(/can't look up that particular number/);
+    // rules and limits are still answered from the guide
+    expect((await ask(w.aManager.id, "how many files can I upload")).text).toMatch(/8 files/);
+  });
+
+  it("handles greetings, 'what can you do', unknown questions and admin-written entries", async () => {
+    expect((await ask(w.aManager.id, "hello")).text).toMatch(/^Hello /);
+    const caps = await ask(w.aManager.id, "what can you do?");
+    expect(caps.text).toMatch(/built-in guide mode/);
+    expect(caps.suggestions!.length).toBeGreaterThan(0);
+    const unknown = await ask(w.aManager.id, "qwxz plmk vrtb");
+    expect(unknown.text).toMatch(/couldn't find that/);
+    expect(unknown.suggestions!.length).toBeGreaterThan(0);
+    await db.knowledgeEntry.create({ data: { title: "Showroom opening hours", body: "Showrooms open 10:00 to 19:00, Monday to Saturday.", tags: ["hours", "timing"] } });
+    expect((await ask(w.aManager.id, "what are the showroom timings?")).text).toContain("10:00 to 19:00");
+  });
+
+  it("head office gets procurement answers too, but staff without procurement access do not", async () => {
+    const r = await ask(w.admin.id, "How do I verify a dealer's payment?");
+    expect(r.text).toContain("/procurement/ledger");
+    const staff = await ask(w.staff.id, "How do I verify a dealer's payment?");
+    expect(staff.text).not.toContain("/procurement/ledger");
+  });
+
+  it("gives the AI the full screen map and recipes — limited to what the user can open", async () => {
+    const mgr = await asUser(w.aManager.id);
+    const a = fakeLlm([say("ok")]);
+    await runAssistant(mgr, [], "hi", a.llm);
+    const prompt = a.requests[0]!.system[0]!.text;
+    expect(prompt).toMatch(/Screen map/);
+    expect(prompt).toContain("`/portal/inventory`");
+    expect(prompt).toContain("`/portal/team`");
+    expect(prompt).toContain("How do I record a payment to YADEA with proof?");
+    expect(prompt).not.toContain("`/crm/dashboard`");
+    const rep = await asUser(w.aRep.id);
+    const b = fakeLlm([say("ok")]);
+    await runAssistant(rep, [], "hi", b.llm);
+    expect(b.requests[0]!.system[0]!.text).not.toContain("`/portal/audit`");
+    expect(b.requests[0]!.system[0]!.text).not.toContain("`/portal/team`");
   });
 });
 

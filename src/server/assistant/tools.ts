@@ -294,6 +294,27 @@ const dashboardStats: ToolDef = {
   },
 };
 
+const countContacts: ToolDef = {
+  name: "count_contacts",
+  description: "How many contacts the user can see — split into leads and customers — optionally for one city, one dealership (head office only) or only those created in the last N days. Use it for any “how many contacts / customers / leads are there” question.",
+  schema: obj({ city: str("City name"), dealership: str("Dealership name (head office only)"), created_in_last_days: num("Only contacts created in the last N days") }),
+  input: z.object({ city: z.string().max(60).optional(), dealership: z.string().max(80).optional(), created_in_last_days: z.number().int().min(1).max(3650).optional() }),
+  kind: "read",
+  access: (u) => canRead(u, "contacts.view"),
+  run: async (user, i: { city?: string; dealership?: string; created_in_last_days?: number }) => {
+    const where: Prisma.ContactWhereInput[] = [contactScope(user), { isArchived: false }];
+    const filters: string[] = [];
+    if (i.city) { const c = await findCity(i.city); where.push({ cityId: c.id }); filters.push(`city ${c.name}`); }
+    if (i.dealership && isCentral(user)) { const d = await findDealership(i.dealership); where.push({ currentLead: { dealershipId: d.id } }); filters.push(`dealership ${d.name}`); }
+    if (i.created_in_last_days) { where.push({ createdAt: { gte: new Date(Date.now() - i.created_in_last_days * 86400_000) } }); filters.push(`created in the last ${i.created_in_last_days} day${i.created_in_last_days === 1 ? "" : "s"}`); }
+    const [leads, customers] = await Promise.all([
+      db.contact.count({ where: { AND: [...where, { type: "LEAD" }] } }),
+      db.contact.count({ where: { AND: [...where, { type: "CUSTOMER" }] } }),
+    ]);
+    return { total_contacts: leads + customers, leads, customers, filters: filters.length ? filters.join(", ") : "none (all active contacts you can see)" };
+  },
+};
+
 const listDealerships: ToolDef = {
   name: "list_dealerships",
   description: "Dealerships in the YADEA network (head office only), optionally filtered by name or city.",
@@ -719,7 +740,7 @@ const addKnowledge: ToolDef = {
 };
 
 export const ALL_TOOLS: ToolDef[] = [
-  dashboardStats, searchContacts, getContact, listLeads, pipelineSummary, myTasks, listTestDrives, listDealerships, searchCatalog, inventoryStatus, listStockOrders, ledgerSummary,
+  dashboardStats, countContacts, searchContacts, getContact, listLeads, pipelineSummary, myTasks, listTestDrives, listDealerships, searchCatalog, inventoryStatus, listStockOrders, ledgerSummary,
   createContact, bulkCreateContacts, addNote, createTask, changeLeadStage, assignLeadToDealership, assignLeadToRep, adjustStock, createStockOrder, createDraftSalesOrder,
   createSparePart, setBikePrices, createBikeModel, addKnowledge,
 ];

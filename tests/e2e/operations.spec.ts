@@ -210,6 +210,10 @@ test("12. the assistant answers from the built-in guide when no AI key is config
   await expect(page.getByText("AI not connected")).toBeVisible();
   await page.getByLabel("Message the assistant").fill("How do customer orders deduct stock?");
   await page.getByRole("button", { name: "Send" }).click();
-  await expect(page.getByText(/deducts every line from the showroom inventory/i)).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByText(/AI assistant isn't connected/i)).toBeVisible();
+  const panel = page.getByRole("dialog", { name: "YADEA assistant" });
+  await expect(panel.getByText(/deducts every line in one step/i)).toBeVisible({ timeout: 60_000 });
+  await expect(panel.getByText("Built-in guide answer")).toBeVisible();
+  // the answer links to the screen, and the link works
+  await panel.getByRole("link", { name: "Customer Orders" }).click();
+  await expect(page).toHaveURL(/\/portal\/sales-orders$/);
 });

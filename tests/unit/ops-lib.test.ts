@@ -87,7 +87,7 @@ describe("permission catalogue", () => {
 describe("built-in knowledge search", () => {
   it("finds the right topic for a plain-language question", () => {
     expect(searchKnowledge("how do I download my ledger as excel", "portal")[0]?.id).toBe("ledger");
-    expect(searchKnowledge("which orders are overdue for delivery dispatch", "procurement")[0]?.id).toMatch(/procurement-desk|stock-orders/);
+    expect(searchKnowledge("which orders are overdue for delivery dispatch", "procurement")[0]?.id).toMatch(/procurement-desk|stock-orders|statuses/); // all three explain overdue deliveries
     expect(searchKnowledge("???", "portal")).toEqual([]);
   });
 });

@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { requireCentralPage } from "@/server/authz";
 import { aiConfigured } from "@/server/assistant/engine";
 import { GUIDE } from "@/server/assistant/guide";
+import { HOWTOS } from "@/server/assistant/howtos";
+import { PAGES } from "@/server/assistant/sitemap";
 import { Badge, Card, CardHeader, EmptyState, PageHeader } from "@/components/ui/misc";
 import { DeleteKnowledgeButton, KnowledgeDialog } from "@/components/assistant/knowledge-controls";
 import { fmtDate } from "@/lib/utils";
@@ -28,12 +30,16 @@ export default async function KnowledgePage() {
         <Card className="p-5">
           <p className="eyebrow">Assistant status</p>
           <p className="mt-2 flex items-center gap-2 text-lg font-semibold text-ink-900"><Sparkles className={ai ? "h-5 w-5 text-emerald-500" : "h-5 w-5 text-amber-500"} />{ai ? "AI connected" : "AI not connected"}</p>
-          <p className="mt-1 text-sm text-ink-500">{ai ? `Model: ${process.env.ASSISTANT_MODEL || "claude-opus-5-5"}. Answers, live data lookups and proposed changes are available.` : "Set ANTHROPIC_API_KEY on the server to enable full answers, live data lookups and proposed changes. Until then users get matching help topics only."}</p>
+          <p className="mt-1 text-sm text-ink-500">
+            {ai
+              ? `Model: ${process.env.ASSISTANT_MODEL || "claude-opus-5-5"}. Free-form answers, live data lookups and proposed changes are available.`
+              : <>Running in built-in guide mode: it answers from the guide below and can show live numbers, but can&apos;t chat freely or propose changes. To connect the AI, add <code className="rounded bg-ink-100 px-1 text-xs">ANTHROPIC_API_KEY</code> to the server&apos;s <code className="rounded bg-ink-100 px-1 text-xs">.env</code> file, restart the app and run <code className="rounded bg-ink-100 px-1 text-xs">npm run assistant:check</code>.</>}
+          </p>
         </Card>
         <Card className="p-5">
           <p className="eyebrow">Built-in guide</p>
-          <p className="mt-2 text-lg font-semibold text-ink-900">{GUIDE.length} topics</p>
-          <p className="mt-1 text-sm text-ink-500">Covers every module: contacts, pipeline, forms, inventory, orders, procurement, ledger, vouchers, documents, chat and more. Maintained with the platform.</p>
+          <p className="mt-2 text-lg font-semibold text-ink-900">{PAGES.length} screens · {HOWTOS.length} how-tos · {GUIDE.length} topics</p>
+          <p className="mt-1 text-sm text-ink-500">Every screen, tab and button of all three workspaces, step-by-step recipes and the concepts behind them — shared with the AI and used by the built-in guide. Maintained with the platform; use your own entries for company policies.</p>
         </Card>
         <Card className="p-5">
           <p className="eyebrow">Proposals awaiting confirmation</p>

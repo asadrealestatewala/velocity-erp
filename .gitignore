@@ -2,7 +2,8 @@ node_modules/
 .next/
 out/
 coverage/
-storage/
+# Local uploads at the project root only (src/server/storage is source code)
+/storage/
 playwright-report/
 test-results/
 *.tsbuildinfo

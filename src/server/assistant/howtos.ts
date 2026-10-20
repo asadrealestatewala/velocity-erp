@@ -127,6 +127,16 @@ export const HOWTOS: HowTo[] = [
     go: ["/crm/test-drives", "/portal/test-drives"],
   },
   {
+    id: "crm-test-drive-rules", audience: CRM_PORTAL, q: "How far ahead can a test drive be booked, and what rules apply?", also: ["booking horizon", "minimum notice", "booking rules", "how many days is a booking valid", "how long in advance", "slot capacity", "opening hours test drive", "why can't i book a slot"],
+    steps: [
+      "Every booking is checked against four things: the outlet's **opening hours**, a **minimum notice** period, a **booking horizon** (how many days ahead bookings are allowed) and the outlet's **slot capacity** (how many test drives can overlap).",
+      "Head office sets the minimum notice and the booking horizon under **Settings → Notifications & system**; each dealership has its own hours and slot capacity (on its page under Dealerships).",
+      "If a slot is refused, the message says which rule failed — pick another time or ask head office to adjust the rule.",
+      "A request from the public form is never treated as confirmed until staff confirm it.",
+    ],
+    go: ["/crm/settings?tab=operations", "/crm/dealerships", "/portal/test-drives"],
+  },
+  {
     id: "crm-test-drive-status", audience: CRM_PORTAL, q: "How do I confirm, reschedule, complete or cancel a test drive?", also: ["test drive status", "no-show", "calendar"],
     steps: ["Open **Test Drives** and use the list or calendar view (month arrows to move around).", "Filter by status (upcoming, awaiting confirmation, confirmed, completed, rescheduled, cancelled, no-show), outlet, model or date.", "Open a booking and choose the new status. **Completed** advances the lead and awards points."],
     go: ["/crm/test-drives", "/portal/test-drives"],

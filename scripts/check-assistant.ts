@@ -1,19 +1,59 @@
 /**
- * Checks the AI key the assistant will use: reads .env, sends one tiny request to the model and says whether it worked.
- * It never prints the key. Run it after adding ANTHROPIC_API_KEY:   npm run assistant:check
+ * Checks the AI connection the assistant will use: reads .env, sends one tiny request to the model and says whether it
+ * worked. It never prints the key. Run it after adding the settings:   npm run assistant:check
+ *
+ * Works for both ways of connecting: ANTHROPIC_API_KEY (Claude), or ASSISTANT_PROVIDER=openai-compatible with
+ * ASSISTANT_BASE_URL / ASSISTANT_MODEL / ASSISTANT_API_KEY (Google Gemini, Groq, OpenRouter, OpenAI, a local Ollama…).
  */
 import Anthropic from "@anthropic-ai/sdk";
 
 try {
   process.loadEnvFile(".env");
 } catch {
-  // no .env file — the variable may still be set in the environment
+  // no .env file — the variables may still be set in the environment
 }
 
-async function main() {
+async function checkOpenAiCompatible() {
+  const base = (process.env.ASSISTANT_BASE_URL ?? "").replace(/\/+$/, "");
+  const model = process.env.ASSISTANT_MODEL ?? "";
+  if (!base || !model) {
+    console.error("✗ ASSISTANT_PROVIDER=openai-compatible also needs ASSISTANT_BASE_URL and ASSISTANT_MODEL (see .env.example).");
+    process.exit(1);
+  }
+  console.log(`Checking the assistant's AI connection (${model} at ${base}) …`);
+  const key = process.env.ASSISTANT_API_KEY;
+  try {
+    const res = await fetch(`${base}/chat/completions`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...(key ? { authorization: `Bearer ${key}` } : {}) },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "user", content: "Reply with the single word OK." }],
+        tools: [{ type: "function", function: { name: "ping", description: "Does nothing.", parameters: { type: "object", properties: {} } } }],
+        max_tokens: 200,
+      }),
+      signal: AbortSignal.timeout(60_000),
+    });
+    const raw = await res.text();
+    if (!res.ok) {
+      const hint = res.status === 401 || res.status === 403 ? "the key was rejected — check ASSISTANT_API_KEY" : res.status === 404 ? "the model or address wasn't found — check ASSISTANT_MODEL and ASSISTANT_BASE_URL" : res.status === 429 ? "rate limit or quota reached — try again shortly" : res.status === 400 || res.status === 422 ? "the service rejected the request — the model may not support tool calling" : "unexpected error";
+      console.error(`✗ HTTP ${res.status}: ${hint}.\n  ${raw.slice(0, 300)}`);
+      process.exit(1);
+    }
+    const json = JSON.parse(raw) as { choices?: { message?: { content?: string | null } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+    const reply = (json.choices?.[0]?.message?.content ?? "").trim();
+    console.log(`✓ Connected. The model answered: “${reply.slice(0, 40)}” (${json.usage?.prompt_tokens ?? "?"} in / ${json.usage?.completion_tokens ?? "?"} out tokens), and accepted a tool definition.`);
+    console.log("  Restart the app if it was already running so it picks up the settings; the assistant header will then read “AI connected”.");
+  } catch (e) {
+    console.error(`✗ Couldn't reach ${base}: ${(e as Error).message}. Check the address and this machine's internet connection.`);
+    process.exit(1);
+  }
+}
+
+async function checkAnthropic() {
   const key = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN;
   if (!key) {
-    console.error("✗ ANTHROPIC_API_KEY is not set.\n  Add it to the .env file on the server (see .env.example), restart the app, then run this check again.");
+    console.error("✗ No AI is configured. Set ANTHROPIC_API_KEY, or ASSISTANT_PROVIDER=openai-compatible with ASSISTANT_BASE_URL, ASSISTANT_MODEL and ASSISTANT_API_KEY, in the .env file on the server (see .env.example), restart the app, then run this check again.");
     process.exit(1);
   }
   const model = process.env.ASSISTANT_MODEL || "claude-opus-5-5";
@@ -40,4 +80,4 @@ async function main() {
   }
 }
 
-void main();
+void (process.env.ASSISTANT_PROVIDER === "openai-compatible" ? checkOpenAiCompatible() : checkAnthropic());

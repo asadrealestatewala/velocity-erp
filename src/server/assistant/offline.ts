@@ -3,9 +3,11 @@ import { db } from "@/lib/db";
 import type { CurrentUser } from "@/server/auth/session";
 import { can } from "@/server/authz";
 import { AppError } from "@/server/errors";
+import { DISPATCH_STATUS, PROCUREMENT_STATUS } from "@/lib/ops-constants";
 import { glossaryFor, type Term } from "./glossary";
 import { SUGGESTIONS, guideFor, type Audience } from "./guide";
 import { howtosFor, type HowTo } from "./howtos";
+import { answerDataQuestion, answerPersonQuestion } from "./nl-query";
 import { linkFor, pagesFor, sidebarGroups, type PageDoc, type Viewer } from "./sitemap";
 import { toolsFor, type ToolDef } from "./tools";
 
@@ -283,7 +285,7 @@ const LIVE: Live[] = [
       const list = d.orders;
       const head = `**Stock orders** — ${text(t.placed, "0")} placed · ${text(t.awaiting_approval, "0")} awaiting approval · ${text(t.approved_in_progress, "0")} in progress · ${text(t.delivered, "0")} delivered · ${text(t.rejected, "0")} rejected · ${text(t.overdue_deliveries, "0")} overdue`;
       if (!list.length) return `${head}\nNo orders match that.\n${open(orderSpace(c.central), c)}`;
-      const lines = list.map((o) => bullet([`**${text(o.order)}**`, c.central ? text(o.dealership) : null, `${text(o.status)}${o.dispatch && o.dispatch !== "NOT_DISPATCHED" ? ` (${String(o.dispatch).toLowerCase().replace(/_/g, " ")})` : ""}`, `expected ${text(o.expected_delivery, "not set")}`, text(o.value), text(o.items)]));
+      const lines = list.map((o) => bullet([`**${text(o.order)}**`, c.central ? text(o.dealership) : null, `${PROCUREMENT_STATUS[String(o.status)]?.label ?? text(o.status)}${o.dispatch && o.dispatch !== "NOT_DISPATCHED" ? ` (${(DISPATCH_STATUS[String(o.dispatch)]?.label ?? String(o.dispatch)).toLowerCase()})` : ""}`, `expected ${text(o.expected_delivery, "not set")}`, text(o.value), text(o.items)]));
       return `${head}\n${lines.join("\n")}\n${open(orderSpace(c.central), c)}`;
     },
   },
@@ -342,25 +344,6 @@ const LIVE: Live[] = [
     format: (data, c) => {
       const list = rows(data);
       return `**Leads in each pipeline stage**\n${list.map((s) => bullet([`**${text(s.stage)}**`, `${text(s.leads)} lead${Number(s.leads) === 1 ? "" : "s"}`, String(s.kind).toLowerCase() === "open" ? null : String(s.kind).toLowerCase()])).join("\n")}\n${open(c.user.scope === "DEALERSHIP" ? "/portal/pipeline" : "/crm/pipeline", c)}`;
-    },
-  },
-  {
-    name: "contact count", tool: "count_contacts",
-    test: (q) => /how many (total |all |registered |active )?(contacts?|customers?|people|persons?|clients?)\b|(total|number of|count of) (number of )?(contacts?|customers?|people|clients?)|contacts? (count|total)|how big is (the )?(contact|customer)/.test(q),
-    input: (q, c) => {
-      const city = c.cities.find((n) => q.includes(norm(n)));
-      const dealership = named(q, c.dealerships);
-      const days = q.match(/last (\d{1,3}) days?/)?.[1];
-      return {
-        ...(city ? { city } : {}),
-        ...(dealership ? { dealership } : {}),
-        ...(days ? { created_in_last_days: Number(days) } : /\btoday\b/.test(q) ? { created_in_last_days: 1 } : /this week|last week|past week/.test(q) ? { created_in_last_days: 7 } : /this month|last month|past month/.test(q) ? { created_in_last_days: 30 } : {}),
-      };
-    },
-    format: (data, c) => {
-      const d = data as { total_contacts: number; leads: number; customers: number; filters: string };
-      const filtered = !d.filters.startsWith("none");
-      return `**${d.total_contacts.toLocaleString("en-US")} contact${d.total_contacts === 1 ? "" : "s"}**${filtered ? ` (${d.filters})` : " in total"}\n- Leads (not yet bought): ${d.leads.toLocaleString("en-US")}\n- Customers: ${d.customers.toLocaleString("en-US")}\n_Counts active contacts you're allowed to see; archived contacts aren't included._\n${open(c.user.scope === "DEALERSHIP" ? "/portal/contacts" : "/crm/contacts", c)}`;
     },
   },
   {
@@ -451,7 +434,7 @@ const GREETING = /^(hi+|hello+|hey+|hiya|salam|salaam|assalam[ -]?o[ -]?alaikum|
 const THANKS = /\b(thanks|thank you|thx|shukriya|jazak)/;
 /** A question about how many records exist (as opposed to a limit or rule like “how many files can I attach”). */
 const DATA_COUNT = /^(how many|total number of|number of|count of|total)\b/;
-const COUNT_LIMITS = /\b(can|could|may|must|should|allowed|limit|maximum|max|at most|attach|upload|characters|files|attempts)\b/;
+const COUNT_LIMITS = /\b(can|could|may|must|should|allowed|limit|maximum|max|at most|attach|upload|characters|files|attempts|valid|expire|expires|long)\b|\bhow many (days|hours|minutes|times|failed|points|steps|digits|letters)\b/;
 const CAPABILITIES =/^(help( me)?|menu|commands|capabilities|what can you do|what do you do|who are you|what are you|how can you help( me)?|what can i ask( you)?)$|what can you (do|help)/;
 const TOUR = /\b(all|every|complete|full|whole|entire|list)\b.{0,25}\b(tabs?|pages?|menus?|sections?|screens?|features?|modules?|options)\b|\b(app|system|platform|crm|portal) (overview|tour|walkthrough|guide)\b|\bwhat('?s| is| does)\b.{0,15}\b(in|inside|on|available in) (the )?(app|system|platform|crm|portal|sidebar|menu)\b|\b(a to z|a z)\b|\beverything( (in|inside|about|on))?( (the|this))?( (app|system|platform|crm|portal|sidebar|menu|application))?$|\bsite ?map\b|\bsidebar\b.{0,15}\b(items?|options|links?)\b|\bwalk me through\b/;
 
@@ -506,9 +489,25 @@ export async function offlineAnswer(user: CurrentUser, audience: Audience, quest
 
   if (TOUR.test(q)) return { text: tour(pages), suggestions: SUGGESTIONS[audience].slice(0, 3) };
 
+  // Counts, totals and “by …” questions about the data: answered with real filters, or refused if part can't be applied.
+  const links = (p: string) => linkLine([p], pages);
+  const followUps = SUGGESTIONS[audience].filter((s) => norm(s) !== q).slice(0, 3);
+  const counted = await answerDataQuestion(user, question, links, "aggregate");
+  if (counted) return { text: counted.text.trim(), suggestions: followUps };
+
+  // “Phone number of Ali Khan”, “Ali Khan's email” — details of a contact the user may see.
+  const person = await answerPersonQuestion(user, question, links);
+  if (person) return { text: person.text.trim(), suggestions: [] };
+
+  // “List the urgent stock orders from Dealer A…” — answered only when every part of the question was understood. When it
+  // carries filters it goes first, because the fixed lookups below ignore qualifiers.
+  const listed = await answerDataQuestion(user, question, links, "list");
+  if (listed?.kind === "answer" && listed.qualified) return { text: listed.text.trim(), suggestions: followUps };
+
   const tools = toolsFor(user);
   const live = await liveAnswer(user, q, pages, tools);
-  if (live && !("denied" in live)) return { text: live.text.trim(), suggestions: SUGGESTIONS[audience].filter((s) => norm(s) !== q).slice(0, 3) };
+  if (live && !("denied" in live)) return { text: live.text.trim(), suggestions: followUps };
+  if (listed?.kind === "answer") return { text: listed.text.trim(), suggestions: followUps };
 
   // “How many X are there?” asks for a number from the data. If no lookup covers it, say so — never answer with a definition of X.
   if (DATA_COUNT.test(q) && !COUNT_LIMITS.test(q) && !(live && !("denied" in live))) {

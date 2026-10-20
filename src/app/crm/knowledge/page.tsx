@@ -1,7 +1,7 @@
 import { BookOpen, Sparkles } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireCentralPage } from "@/server/authz";
-import { aiConfigured } from "@/server/assistant/engine";
+import { aiConfigured, aiModelLabel } from "@/server/assistant/engine";
 import { GUIDE } from "@/server/assistant/guide";
 import { HOWTOS } from "@/server/assistant/howtos";
 import { PAGES } from "@/server/assistant/sitemap";
@@ -32,8 +32,8 @@ export default async function KnowledgePage() {
           <p className="mt-2 flex items-center gap-2 text-lg font-semibold text-ink-900"><Sparkles className={ai ? "h-5 w-5 text-emerald-500" : "h-5 w-5 text-amber-500"} />{ai ? "AI connected" : "AI not connected"}</p>
           <p className="mt-1 text-sm text-ink-500">
             {ai
-              ? `Model: ${process.env.ASSISTANT_MODEL || "claude-opus-5-5"}. Free-form answers, live data lookups and proposed changes are available.`
-              : <>Running in built-in guide mode: it answers from the guide below and can show live numbers, but can&apos;t chat freely or propose changes. To connect the AI, add <code className="rounded bg-ink-100 px-1 text-xs">ANTHROPIC_API_KEY</code> to the server&apos;s <code className="rounded bg-ink-100 px-1 text-xs">.env</code> file, restart the app and run <code className="rounded bg-ink-100 px-1 text-xs">npm run assistant:check</code>.</>}
+              ? `Model: ${aiModelLabel()}. Free-form answers, live data lookups and proposed changes are available.`
+              : <>Running in built-in guide mode: it answers from the guide and the data with strict rules, but can&apos;t chat freely, answer open-ended questions or propose changes. To connect an AI model, add either <code className="rounded bg-ink-100 px-1 text-xs">ANTHROPIC_API_KEY</code>, or <code className="rounded bg-ink-100 px-1 text-xs">ASSISTANT_PROVIDER=openai-compatible</code> with <code className="rounded bg-ink-100 px-1 text-xs">ASSISTANT_BASE_URL</code>, <code className="rounded bg-ink-100 px-1 text-xs">ASSISTANT_MODEL</code> and <code className="rounded bg-ink-100 px-1 text-xs">ASSISTANT_API_KEY</code> (for example Google Gemini&apos;s free tier), to the server&apos;s <code className="rounded bg-ink-100 px-1 text-xs">.env</code> file, restart the app and run <code className="rounded bg-ink-100 px-1 text-xs">npm run assistant:check</code>.</>}
           </p>
         </Card>
         <Card className="p-5">

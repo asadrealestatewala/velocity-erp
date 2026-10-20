@@ -59,6 +59,17 @@ async function contactFor(dealershipId: string | null, userId: string | null, na
   });
 }
 
+/** A contact of a given type (and optionally email) with one lead assigned to a dealership. */
+async function contact(dealershipId: string | null, userId: string | null, c: { name: string; email?: string | null; type?: "LEAD" | "CUSTOMER" }) {
+  return db.$transaction(async (tx) => {
+    const phone = `0300${Math.floor(1000000 + Math.random() * 8999999)}`;
+    const row = await tx.contact.create({ data: { firstName: c.name, phone, phoneNormalized: normalizePhone(phone), email: c.email ?? undefined, emailNormalized: c.email ? c.email.toLowerCase() : undefined, type: c.type ?? "LEAD" } });
+    const lead = await createLead(tx, { contactId: row.id, origin: "COMPANY", inquiryType: "MANUAL" });
+    if (dealershipId) await assignLead(tx, { leadId: lead.id, dealershipId, userId, type: "MANUAL", assignedById: w.staff.id });
+    return { contact: row.id, lead: lead.id };
+  });
+}
+
 beforeEach(async () => {
   w = await buildWorld();
   proc = await db.user.create({ data: { email: "proc@test.local", name: "Procurement", passwordHash: "x", roleId: w.roles.PROCUREMENT! } });
@@ -142,6 +153,31 @@ describe("assistant tools only see what the user may see", () => {
     expect(toolResultsOf(requests[1]!)[0]!.content).not.toContain("999");
     // a tool outside the user's list is refused even if the model asks for it
     expect(toolResultsOf(requests[2]!)[0]).toMatchObject({ is_error: true });
+  });
+
+  it("the AI answers data questions through query_data — inside the user's scope, with the tool and instructions offered", async () => {
+    await contact(w.A.id, w.aRep.id, { name: "Mine", type: "CUSTOMER", email: "mine@example.com" });
+    await contact(w.B.id, w.bRep.id, { name: "Theirs", type: "CUSTOMER", email: "theirs@example.com" });
+    const user = await asUser(w.aManager.id);
+    const { llm, requests } = fakeLlm([
+      use("query_data", { entity: "contacts", filters: [{ field: "type", op: "eq", value: "customer" }, { field: "email", op: "not_null" }] }, "t1"),
+      use("query_data", { entity: "ledger", metric: "sum", metric_field: "debit" }, "t2"),
+      say("You have 1 customer with an email."),
+    ]);
+    const r = await runAssistant(user, [], "how many customers have an email?", llm);
+    expect(r.text).toBe("You have 1 customer with an email.");
+    // the request offered the tool and told the model to use it for data questions
+    expect(requests[0]!.tools.map((t) => t.name)).toContain("query_data");
+    expect(requests[0]!.system[0]!.text).toMatch(/answered by calling query_data/);
+    // only this dealership's customer was counted, and the filters applied are reported back
+    const first = JSON.parse(toolResultsOf(requests[1]!)[0]!.content) as { matching: number; filters: string[] };
+    expect(first.matching).toBe(1);
+    expect(first.filters).toEqual(["type = customer", "email is set"]);
+    // a role without ledger access gets a plain refusal the model can relay
+    const rep = await asUser(w.aRep.id);
+    const denied = fakeLlm([use("query_data", { entity: "ledger" }, "t1"), say("I can't see that.")]);
+    await runAssistant(rep, [], "what is the ledger total", denied.llm);
+    expect(toolResultsOf(denied.requests[1]!)[0]).toMatchObject({ is_error: true, content: expect.stringMatching(/doesn't have access to ledger/) });
   });
 
   it("sends tool results as data and keeps the stable prompt cacheable", async () => {
@@ -459,9 +495,77 @@ describe("built-in guide mode (no AI key) answers properly", () => {
     expect(staff.text).toMatch(/Leads \(not yet bought\): 3/);
     // a number nothing can look up is admitted, not answered with the definition of a word in the question
     const unknown = await ask(w.aManager.id, "how many bikes were sold in 2020");
-    expect(unknown.text).toMatch(/can't look up that particular number/);
+    expect(unknown.text).toMatch(/can't look up that particular number|couldn't work out how to apply “sold/);
+    expect(unknown.text).not.toMatch(/\*\*Contact\*\*/);
     // rules and limits are still answered from the guide
     expect((await ask(w.aManager.id, "how many files can I upload")).text).toMatch(/8 files/);
+  });
+
+  it("applies every filter in a data question — never a number that quietly ignores part of it", async () => {
+    await contact(w.A.id, w.aRep.id, { name: "Cust1", type: "CUSTOMER", email: "c1@example.com" });
+    await contact(w.A.id, w.aRep.id, { name: "Cust2", type: "CUSTOMER" });
+    await contact(w.A.id, w.aRep.id, { name: "Cust3", type: "CUSTOMER", email: "" });
+    await contact(w.A.id, w.aRep.id, { name: "Zed", type: "LEAD", email: "zed@example.com" });
+    const mgr = w.aManager.id;
+    const withEmail = await ask(mgr, "how many customers have email?");
+    expect(withEmail.text).toMatch(/^\*\*1 contact\*\*/);
+    expect(withEmail.text).toContain("type = CUSTOMER · email is set");
+    expect((await ask(mgr, "how many customers do not have email")).text).toMatch(/^\*\*2 contacts\*\*/);
+    expect((await ask(mgr, "how many contacts have an email")).text).toMatch(/^\*\*2 contacts\*\*/);
+    expect((await ask(mgr, "how many contacts named zed")).text).toMatch(/^\*\*1 contact\*\*/);
+    expect((await ask(mgr, "how many contacts without email named zed")).text).toMatch(/^\*\*0 contacts\*\*/);
+    // the plain total says how many are leads and customers
+    expect((await ask(mgr, "how many total contacts are?")).text).toMatch(/Leads \(not yet bought\): 1\n- Customers: 3/);
+    // a condition it can't apply is named and refused, with no number
+    const refused = await ask(mgr, "how many customers have a favourite colour");
+    expect(refused.text).toMatch(/couldn't work out how to apply “favourite colour”/);
+    expect(refused.text).not.toMatch(/\*\*\d+ contacts?\*\*/);
+    expect((await ask(mgr, "how many contacts with phone or email")).text).toMatch(/means either one/);
+    // rules and ordinary knowledge questions are not hijacked by the data parser
+    expect((await ask(mgr, "what are the lead stages")).text).toMatch(/Pipeline stage/);
+    expect((await ask(mgr, "how many days is a booking valid")).text).toMatch(/booking horizon/);
+  });
+
+  it("totals, averages and breaks down — and fixed lookups no longer ignore qualifiers", async () => {
+    await db.inventoryItem.create({ data: { dealershipId: w.A.id, bikeModelId: bike.id, quantity: 9 } });
+    await db.$transaction((tx) => submitStockOrder(tx, { dealershipId: w.A.id, userId: w.aManager.id, priority: "URGENT", lines: [{ itemKey: `B:${bike.id}`, quantity: 2 }] }));
+    await db.$transaction((tx) => submitStockOrder(tx, { dealershipId: w.A.id, userId: w.aManager.id, priority: "NORMAL", lines: [{ itemKey: `B:${bike.id}`, quantity: 1 }] }));
+    const mgr = w.aManager.id;
+    expect((await ask(mgr, "what is the total value of stock orders")).text).toMatch(/Total order value \(subtotal\): Rs.{1,2}600,000\*\* across 2 stock orders/);
+    expect((await ask(mgr, "average value of stock orders")).text).toMatch(/Average order value \(subtotal\): Rs.{1,2}300,000/);
+    const urgent = await ask(mgr, "how many stock orders are urgent");
+    expect(urgent.text).toMatch(/^\*\*1 stock order\*\*/);
+    // “list … that are urgent” shows only the urgent one (the unfiltered orders lookup would show both)
+    const listed = await ask(mgr, "list my stock orders that are urgent");
+    expect(listed.text).toMatch(/PO-1\b/);
+    expect(listed.text).not.toMatch(/PO-2\b/);
+    expect(listed.text).toContain("priority = URGENT");
+    // without a qualifier the richer orders overview is still used
+    expect((await ask(mgr, "show stock orders")).text).toMatch(/2 placed/);
+    const head = await ask(w.admin.id, "total value of stock orders per dealership");
+    expect(head.text).toMatch(/by dealership/);
+    expect(head.text).toMatch(/Dealer A: \*\*Rs.{1,2}600,000\*\*/);
+    // a number that no lookup covers is admitted, never answered with a definition
+    expect((await ask(mgr, "how many bikes were sold in 2020")).text).toMatch(/can't look up that particular number|couldn't work out how to apply “sold/);
+  });
+
+  it("looks up a contact's details by name — only among the contacts the user may see", async () => {
+    const mine = await contact(w.A.id, w.aRep.id, { name: "Adeel", email: "adeel@example.com", type: "CUSTOMER" });
+    await db.contact.update({ where: { id: mine.contact }, data: { lastName: "Qureshi", phone: "0300 1112223" } });
+    const theirs = await contact(w.B.id, w.bRep.id, { name: "Adeel", email: "other@example.com" });
+    await db.contact.update({ where: { id: theirs.contact }, data: { lastName: "Qureshi", phone: "0300 9998887" } });
+    const r = await ask(w.aManager.id, "give me adeel qureshi contact number");
+    expect(r.text).toMatch(/^\[\*\*Adeel Qureshi\*\*\]\(\/portal\/contacts\/[a-z0-9]+\) — customer\n- Phone: 0300 1112223\n- Email: adeel@example\.com/);
+    expect(r.text).not.toContain("9998887"); // another dealership's contact is never shown
+    expect(r.text).not.toContain("other@example.com");
+    expect((await ask(w.aManager.id, "Adeel Qureshi's email")).text).toMatch(/\n- Email: adeel@example\.com\n- Phone:/);
+    expect((await ask(w.aManager.id, "phone number of adeel")).text).toContain("Adeel Qureshi");
+    // head office sees both and is told how many there are
+    expect((await ask(w.staff.id, "adeel qureshi phone")).text).toContain("9998887");
+    expect((await ask(w.aManager.id, "phone number of nobody special")).text).toMatch(/couldn't find a contact named “nobody special”/);
+    // ordinary questions that merely end in “phone number” or “email” are not treated as people
+    expect((await ask(w.aManager.id, "how do i change my phone number")).text).not.toMatch(/couldn't find a contact named/);
+    expect((await ask(w.aManager.id, "what is my email")).text).not.toMatch(/couldn't find a contact named/);
   });
 
   it("handles greetings, 'what can you do', unknown questions and admin-written entries", async () => {

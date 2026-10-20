@@ -6,6 +6,8 @@ import type { CurrentUser } from "@/server/auth/session";
 import { can, contactScope, dealershipIds, isCentral, leadScope, taskScope, testDriveScope } from "@/server/authz";
 import { accessibleContact, accessibleLead } from "@/server/access";
 import { AppError } from "@/server/errors";
+import { zonedTimeToDate } from "./dates";
+import { catalogText, dataQuerySchema, runDataQuery, type DataQuery } from "./data-query";
 import { findDuplicates } from "@/server/services/contacts";
 import { assertDealershipEligible } from "@/server/services/assignment";
 import { listShowroomStock } from "@/server/services/inventory";
@@ -117,21 +119,7 @@ function ownDealershipId(user: CurrentUser) {
 }
 const ownDealershipName = (user: CurrentUser) => user.memberships[0]?.dealershipName ?? "your dealership";
 
-/** Business-timezone wall-clock time → instant. Date-only input means 09:00 in the business timezone. */
-export function zonedTimeToDate(input: string): Date {
-  const m = input.trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?$/);
-  if (!m) {
-    const d = new Date(input);
-    if (Number.isNaN(d.getTime())) throw new AppError(`“${input}” is not a valid date. Use YYYY-MM-DD or YYYY-MM-DD HH:mm.`);
-    return d;
-  }
-  const [y, mo, d, h, mi] = [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4] ?? 9), Number(m[5] ?? 0)];
-  const guess = Date.UTC(y, mo - 1, d, h, mi);
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone: APP_TZ, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(new Date(guess));
-  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
-  const asLocal = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"));
-  return new Date(guess - (asLocal - guess));
-}
+export { zonedTimeToDate };
 
 const limitSchema = z.number().int().min(1).max(25).optional();
 const clip = <T>(rows: T[], n = 12) => rows.slice(0, n);
@@ -292,6 +280,47 @@ const dashboardStats: ToolDef = {
     if (awaiting !== null) out.stock_orders_awaiting_decision = awaiting;
     return out;
   },
+};
+
+const queryData: ToolDef = {
+  name: "query_data",
+  description: `Answer questions about the platform's records by counting, listing, grouping or summing them — "how many customers have an email", "leads per city this month", "total value of delivered stock orders", "which dealers have the most open orders". Everything is limited to what the signed-in user's role may see; an entity or field you can't use returns an error that says so.
+
+How to use it:
+- entity: one of the keys below. filters: a list of {field, op, value}. Ops — text: eq, neq, contains, in, not_in, is_null, not_null; number: eq, neq, gt, gte, lt, lte; date: eq, gt, gte, lt, lte (value YYYY-MM-DD, or today, yesterday, tomorrow, now, start_of_week, start_of_month, start_of_last_month, start_of_year, or "N_days_ago"); yes/no: is_true, is_false; enum: eq, neq, in, not_in (use the listed values; natural words like "no show" work). is_null / not_null mean "has no value" / "has a value" (an empty email counts as no value).
+- The number of matching records is always returned exactly (matching). For "how many …" just add filters.
+- group_by (one field) with metric count/sum/avg/min/max (+ metric_field for number fields) gives a breakdown; for a date field set bucket day/week/month/year.
+- show_rows: true lists up to 25 records (columns, order_by, order, limit).
+- Names: match people with contains on first_name / last_name. Money is PKR.
+- Always tell the user which filters you applied, and never estimate a number — if the question can't be expressed with these fields, say what you can answer instead.
+
+Entities and their fields:
+${catalogText()}`,
+  schema: obj({
+    entity: str("Entity key, e.g. contacts, leads, test_drives, tasks, stock_orders, inventory, ledger"),
+    filters: {
+      type: "array",
+      description: "Conditions that must all hold",
+      items: obj({
+        field: str("A field name of the entity"),
+        op: { type: "string", enum: ["eq", "neq", "contains", "in", "not_in", "gt", "gte", "lt", "lte", "is_null", "not_null", "is_true", "is_false"] },
+        value: { description: "Text, number, boolean or (for in / not_in) a list. Omit for is_null / not_null / is_true / is_false.", type: ["string", "number", "boolean", "array"], items: { type: ["string", "number"] } },
+      }, ["field", "op"]),
+    },
+    metric: { type: "string", enum: ["count", "sum", "avg", "min", "max"], description: "Default count" },
+    metric_field: str("Number field (or date for min/max) for sum / avg / min / max"),
+    group_by: str("Field to break the result down by"),
+    bucket: { type: "string", enum: ["day", "week", "month", "year"], description: "Bucket size when group_by is a date field (default month)" },
+    show_rows: { type: "boolean", description: "List matching records instead of only counting" },
+    columns: { type: "array", items: { type: "string" }, description: "Fields to show for the listed records" },
+    order_by: str("Field to sort the listed records by"),
+    order: { type: "string", enum: ["asc", "desc"] },
+    limit: num("How many records to list (max 25, default 10)"),
+  }, ["entity"]),
+  input: dataQuerySchema,
+  kind: "read",
+  access: (u) => can(u, "assistant.use"),
+  run: async (user, i: DataQuery) => runDataQuery(user, i),
 };
 
 const countContacts: ToolDef = {
@@ -740,7 +769,7 @@ const addKnowledge: ToolDef = {
 };
 
 export const ALL_TOOLS: ToolDef[] = [
-  dashboardStats, countContacts, searchContacts, getContact, listLeads, pipelineSummary, myTasks, listTestDrives, listDealerships, searchCatalog, inventoryStatus, listStockOrders, ledgerSummary,
+  dashboardStats, queryData, countContacts, searchContacts, getContact, listLeads, pipelineSummary, myTasks, listTestDrives, listDealerships, searchCatalog, inventoryStatus, listStockOrders, ledgerSummary,
   createContact, bulkCreateContacts, addNote, createTask, changeLeadStage, assignLeadToDealership, assignLeadToRep, adjustStock, createStockOrder, createDraftSalesOrder,
   createSparePart, setBikePrices, createBikeModel, addKnowledge,
 ];

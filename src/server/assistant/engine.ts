@@ -8,6 +8,7 @@ import { fmtDate } from "@/lib/utils";
 import { guideFor, type Audience } from "./guide";
 import { glossaryFor, glossaryText } from "./glossary";
 import { howtosFor, howtosText } from "./howtos";
+import { LlmProviderError, openAiCompatConfigured, openAiCompatibleLlm } from "./openai-compat";
 import { extraSpaces, offlineAnswer, viewerOf } from "./offline";
 import { pagesFor, sitemapText } from "./sitemap";
 import { toolsFor, type ToolDef } from "./tools";
@@ -28,8 +29,25 @@ export type AssistantReply = {
 export const audienceFor = (user: CurrentUser): Audience =>
   user.scope === "DEALERSHIP" ? "portal" : !can(user, "dashboard.view") && can(user, "procurement.view") ? "procurement" : "crm";
 
+/** Which service answers: Anthropic (ANTHROPIC_API_KEY) or any OpenAI-compatible service (ASSISTANT_PROVIDER=openai-compatible). */
+export type AiProvider = "anthropic" | "openai-compatible" | null;
+export function aiProvider(): AiProvider {
+  if (openAiCompatConfigured()) return "openai-compatible";
+  return process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN ? "anthropic" : null;
+}
 export function aiConfigured() {
-  return !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
+  return aiProvider() !== null;
+}
+/** A short description of the connected model, for status screens. */
+export function aiModelLabel() {
+  const p = aiProvider();
+  if (p === "openai-compatible") {
+    const base = process.env.ASSISTANT_BASE_URL ?? "";
+    let host = base;
+    try { host = new URL(base).host; } catch { /* show it as typed */ }
+    return `${process.env.ASSISTANT_MODEL} via ${host}`;
+  }
+  return p === "anthropic" ? (process.env.ASSISTANT_MODEL || "claude-opus-5-5") : "";
 }
 
 // ───────── Model adapter (replaceable in tests) ─────────
@@ -85,6 +103,7 @@ export function systemPrompt(user: CurrentUser, audience: Audience, canWrite: bo
 # How to behave
 - Be concise and practical. Use short paragraphs or bullet lists. Currency is PKR. Never invent data, prices, specifications, people or numbers: if you need facts, call a tool; if a tool can't tell you, say so.
 - Answer ANY question about the application — what a screen contains, where something is, how to do a task, what a status or word means, who can do what, why something looks the way it does. Start from the screen map and recipes below, name the exact sidebar item, tab, filter or button, and give numbered steps for tasks. Link screens with a Markdown link to their path, for example [Inventory](/portal/inventory) — use only paths that appear in the screen map, never invent one.
+- Questions about the data — how many, which, list, total value, average, a breakdown by city/month/status/dealership, anything with a filter like “with an email”, “this month” or “in Lahore” — are answered by calling query_data (and the other lookup tools). Never estimate or guess a number and never answer a counting question with a definition. Build the query, read the result, state the number plainly and say which filters you applied. If the question needs a field that isn't listed for that entity, say what you can answer instead.
 - The screen map lists only the screens this user's role can open. If they ask about something that isn't in it, explain that their role doesn't include it and who can help (usually a Super Administrator), rather than describing a screen they can't see.
 - If the reference material doesn't cover a question about the application, say you don't have that documented rather than guessing, and suggest an administrator adds it under Knowledge Base. You may answer short general questions (e-bike basics, CRM practice) but never invent YADEA-specific facts, specifications, prices or policies.
 - Live data comes only from your tools and only covers what this user is allowed to see. If a tool is unavailable to you, the user's role doesn't allow it — say so plainly and point them to someone who can help.
@@ -155,7 +174,7 @@ export async function runAssistant(
   user: CurrentUser,
   history: ChatTurn[],
   message: string,
-  llm: Llm | null = aiConfigured() ? anthropicLlm() : null,
+  llm: Llm | null = aiConfigured() ? (aiProvider() === "openai-compatible" ? openAiCompatibleLlm() : anthropicLlm()) : null,
 ): Promise<AssistantReply> {
   if (!can(user, "assistant.use")) throw new AppError("The assistant isn't enabled for your role.", "FORBIDDEN");
   const text = message.trim().slice(0, MAX_TURN_CHARS);
@@ -216,6 +235,7 @@ export async function runAssistant(
 
 /** Friendly message for failures of the model call itself. */
 export function describeLlmError(e: unknown) {
+  if (e instanceof LlmProviderError) return e.userMessage;
   if (e instanceof Anthropic.AuthenticationError) return "The AI key configured for this system was rejected. Ask your administrator to check ANTHROPIC_API_KEY.";
   if (e instanceof Anthropic.RateLimitError) return "The AI service is busy right now. Please try again in a moment.";
   if (e instanceof Anthropic.APIConnectionError) return "Couldn't reach the AI service. Please try again.";

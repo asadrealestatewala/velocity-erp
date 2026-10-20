@@ -3,16 +3,30 @@ import { timingSafeEqual } from "node:crypto";
 import { env } from "@/lib/env";
 import { runScheduledJobs } from "@/server/services/jobs";
 
-/** Scheduler entry point: POST with header `x-cron-secret: $CRON_SECRET` every 5–15 minutes. */
-export async function POST(req: NextRequest) {
+/** Constant-time comparison; the secret must be at least 16 characters. */
+function authorised(given: string) {
   const secret = env.cronSecret;
-  const given = req.headers.get("x-cron-secret") ?? "";
-  const ok = secret.length >= 16 && given.length === secret.length && timingSafeEqual(Buffer.from(given), Buffer.from(secret));
-  if (!ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  return secret.length >= 16 && given.length === secret.length && timingSafeEqual(Buffer.from(given), Buffer.from(secret));
+}
+
+async function run() {
   try {
     return NextResponse.json({ ok: true, ...(await runScheduledJobs()) });
   } catch (e) {
     console.error("[jobs] failed", e);
     return NextResponse.json({ ok: false, error: "Job run failed" }, { status: 500 });
   }
+}
+
+/** Scheduler entry point: POST with header `x-cron-secret: $CRON_SECRET` every 5–15 minutes. */
+export async function POST(req: NextRequest) {
+  if (!authorised(req.headers.get("x-cron-secret") ?? "")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  return run();
+}
+
+/** Vercel Cron calls with GET and `Authorization: Bearer $CRON_SECRET` (set CRON_SECRET in the project's environment). */
+export async function GET(req: NextRequest) {
+  const bearer = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!authorised(bearer)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  return run();
 }

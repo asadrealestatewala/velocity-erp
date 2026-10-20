@@ -501,6 +501,19 @@ describe("built-in guide mode (no AI key) answers properly", () => {
     expect((await ask(w.aManager.id, "how many files can I upload")).text).toMatch(/8 files/);
   });
 
+  it("treats 'have email' as having an email address even when a lead source is literally called Email", async () => {
+    await db.leadSource.upsert({ where: { key: "email" }, update: {}, create: { key: "email", name: "Email" } });
+    await contact(w.A.id, w.aRep.id, { name: "WithMail", type: "CUSTOMER", email: "m@example.com" });
+    await contact(w.A.id, w.aRep.id, { name: "NoMail", type: "CUSTOMER" });
+    const r = await ask(w.aManager.id, "how many customers have email?");
+    expect(r.text).toMatch(/^\*\*1 contact\*\*/);
+    expect(r.text).toContain("email is set");
+    expect(r.text).not.toMatch(/source/i);
+    expect((await ask(w.aManager.id, "how many contacts without email")).text).toContain("email is empty");
+    // …while naming the source still works when that is what is meant
+    expect((await ask(w.aManager.id, "how many leads from email")).text).toContain("source = Email");
+  });
+
   it("applies every filter in a data question — never a number that quietly ignores part of it", async () => {
     await contact(w.A.id, w.aRep.id, { name: "Cust1", type: "CUSTOMER", email: "c1@example.com" });
     await contact(w.A.id, w.aRep.id, { name: "Cust2", type: "CUSTOMER" });

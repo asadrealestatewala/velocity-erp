@@ -250,21 +250,7 @@ function parse(user: CurrentUser, question: string, ctx: Ctx, now: Date): Parsed
       break;
   }
 
-  // 3. mentions of known places, stages, sources, models
-  const names = (list: string[]) => [...list].sort((a, b) => b.length - a.length).filter((n) => n.length > 1);
-  const mention = (list: string[], field: string, op: "eq" = "eq") => {
-    if (!has(field)) return;
-    for (const n of names(list)) {
-      if (take(w, new RegExp(`\\b${esc(norm(n))}\\b`))) { filters.push({ field, op, value: n }); understood.push(n); return; }
-    }
-  };
-  mention(ctx.dealerships, "dealership");
-  mention(ctx.cities, "city");
-  mention(ctx.stages, "stage");
-  mention(ctx.sources, "source");
-  mention(ctx.models, has("interested_model") ? "interested_model" : "bike_model");
-
-  // 4. “with / without …”
+  // 3. “with / without …” (before names: “customers with email” is not the lead source called Email)
   const fieldWords = Object.keys(FIELD_WORDS).sort((a, b) => b.length - a.length).map(esc).join("|");
   // a list of fields may follow: “with a phone and an email”, “without a phone or email”
   const more = `(?:(?:\\s*,\\s*|\\s+(?:and|or|plus|as well as|&)\\s+)(?:an?\\s+|any\\s+)?(?:${fieldWords}))*`;
@@ -281,6 +267,20 @@ function parse(user: CurrentUser, question: string, ctx: Ctx, now: Date): Parsed
       }
     }
   }
+
+  // 4. mentions of known places, stages, sources, models
+  const names = (list: string[]) => [...list].sort((a, b) => b.length - a.length).filter((n) => n.length > 1);
+  const mention = (list: string[], field: string, op: "eq" = "eq") => {
+    if (!has(field)) return;
+    for (const n of names(list)) {
+      if (take(w, new RegExp(`\\b${esc(norm(n))}\\b`))) { filters.push({ field, op, value: n }); understood.push(n); return; }
+    }
+  };
+  mention(ctx.dealerships, "dealership");
+  mention(ctx.cities, "city");
+  mention(ctx.stages, "stage");
+  mention(ctx.sources, "source");
+  mention(ctx.models, has("interested_model") ? "interested_model" : "bike_model");
 
   // 5. status-like words from the data itself (“completed”, “in transit”, “no show”)
   for (const fname of enumFieldNames) {

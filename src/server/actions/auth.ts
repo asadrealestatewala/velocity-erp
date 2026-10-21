@@ -12,6 +12,8 @@ import { normalizePhone } from "@/lib/utils";
 import { homePathFor } from "@/lib/home";
 
 export type LoginState = { error?: string } | undefined;
+/** Outcome for the animated sign-in screen: it plays the success scene only on a genuine `ok`. */
+export type LoginResult = { ok: true; redirectTo: string } | { ok: false; error: string };
 
 const loginSchema = z.object({
   // An email address OR a mobile number (dealership staff may use either).
@@ -24,9 +26,10 @@ const loginSchema = z.object({
 /** Dummy hash so a missing account costs the same time as a wrong password (no account enumeration). */
 const DUMMY_HASH = "$2a$12$CwTycUXWue0Thq9StjUM0uJ8.ZpQb6Y5fmmS0cVnS3SrcX1Jb7dZ2";
 
-export async function loginAction(_: LoginState, formData: FormData): Promise<LoginState> {
+/** The single authentication path. Returns the outcome instead of redirecting so callers choose how to navigate. */
+async function authenticate(formData: FormData): Promise<LoginResult> {
   const parsed = loginSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { error: "Enter your email or mobile number and your password." };
+  if (!parsed.success) return { ok: false, error: "Enter your email or mobile number and your password." };
   const { identifier, password, next } = parsed.data;
 
   const isEmail = identifier.includes("@");
@@ -34,14 +37,14 @@ export async function loginAction(_: LoginState, formData: FormData): Promise<Lo
   const email = isEmail ? identifier.toLowerCase() : null;
   const phoneNormalized = isEmail ? null : normalizePhone(identifier, sys.defaultCountryCode);
   if (isEmail ? !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email!) : !phoneNormalized) {
-    return { error: "Enter a valid email address or mobile number." };
+    return { ok: false, error: "Enter a valid email address or mobile number." };
   }
   const key = email ?? phoneNormalized!;
 
   const ip = await clientIp();
   const okIp = await rateLimit(`login:ip:${hashIdentifier(ip)}`, 20, 15 * 60);
   const okUser = await rateLimit(`login:user:${hashIdentifier(key)}`, 8, 15 * 60);
-  if (!okIp || !okUser) return { error: "Too many sign-in attempts. Please wait 15 minutes and try again." };
+  if (!okIp || !okUser) return { ok: false, error: "Too many sign-in attempts. Please wait 15 minutes and try again." };
 
   const user = await db.user.findUnique({ where: email ? { email } : { phoneNormalized: phoneNormalized! }, include: { role: true } });
   const valid = user ? await verifyPassword(password, user.passwordHash) : await verifyPassword(password, DUMMY_HASH);
@@ -49,7 +52,7 @@ export async function loginAction(_: LoginState, formData: FormData): Promise<Lo
     // Never store a full phone number in the audit trail — keep the last 4 digits only.
     const shown = email ?? `phone …${phoneNormalized!.slice(-4)}`;
     await audit({ userId: user?.id, action: "auth.login_failed", entityType: "User", entityId: user?.id, changes: { identifier: shown, via: email ? "email" : "mobile" }, ipAddress: hashIdentifier(ip) });
-    return { error: "Invalid email / mobile number or password." };
+    return { ok: false, error: "Invalid email / mobile number or password." };
   }
 
   await createSession(user.id);
@@ -60,7 +63,19 @@ export async function loginAction(_: LoginState, formData: FormData): Promise<Lo
   const home = homePathFor(user.role.scope, full?.permissions ?? new Set());
   const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : null;
   const area = user.role.scope === "CENTRAL" ? ["/crm", "/procurement"] : ["/portal"];
-  redirect(safeNext && area.some((a) => safeNext.startsWith(a)) ? safeNext : home);
+  return { ok: true, redirectTo: safeNext && area.some((a) => safeNext.startsWith(a)) ? safeNext : home };
+}
+
+/** Classic form action: redirects straight away on success. */
+export async function loginAction(_: LoginState, formData: FormData): Promise<LoginState> {
+  const r = await authenticate(formData);
+  if (!r.ok) return { error: r.error };
+  redirect(r.redirectTo);
+}
+
+/** Same authentication, but hands the result back so the client can play the sign-in animation, then navigate. */
+export async function loginWithResultAction(_: LoginResult | undefined, formData: FormData): Promise<LoginResult> {
+  return authenticate(formData);
 }
 export async function logoutAction() {
   const user = await getCurrentUser();

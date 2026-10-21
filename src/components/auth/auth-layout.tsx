@@ -1,46 +1,42 @@
 import Image from "next/image";
 import Link from "next/link";
+import { AuthSceneProvider } from "./auth-scene";
+import { LoginStage } from "./login-stage";
+
+const EYEBROW = { crm: "Central CRM", portal: "Dealer Portal", procurement: "Procurement" } as const;
+const HEADLINE = {
+  crm: "Every lead, every dealership, one view.",
+  procurement: "Every order, every showroom, delivered on time.",
+  portal: "Follow up faster. Convert more riders.",
+} as const;
+const COPY = {
+  crm: "Capture inquiries from every channel, route test drives to the right outlet and track the whole network's performance.",
+  procurement: "Receive dealership stock orders, dispatch goods, track deliveries and keep every dealer ledger and voucher in order.",
+  portal: "Your assigned and walk-in leads, test drives, stock and orders, ledger and team goals — all in one place.",
+} as const;
 
 export function AuthLayout({ title, subtitle, children, footer, variant }: { title: string; subtitle: string; children: React.ReactNode; footer: React.ReactNode; variant: "crm" | "portal" | "procurement" }) {
   return (
-    <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-2">
-      {/* Pinned to the window height: the right column can be taller (credentials panel, long forms), and the
-          headline must stay on screen instead of drifting to the bottom of a stretched panel. */}
-      <div className="relative hidden overflow-hidden bg-ink-950 lg:sticky lg:top-0 lg:block lg:h-dvh lg:self-start">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_20%,rgba(240,116,0,0.35),transparent_55%),radial-gradient(ellipse_at_80%_90%,rgba(240,116,0,0.18),transparent_50%)]" />
-        <div className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(rgba(255,255,255,.6)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.6)_1px,transparent_1px)] [background-size:48px_48px]" />
-        <div className="relative flex h-full flex-col justify-between p-12 text-white">
-          {/* self-start: in a flex column an auto-width image would otherwise stretch to the full panel width. */}
-          <Image src="/brand/yadea-logo-light.png" alt="YADEA" width={167} height={36} className="h-9 w-auto max-w-none shrink-0 self-start object-contain" priority />
-          <div>
-            <p className="mb-3 inline-block rounded-full bg-white/10 px-3 py-1 text-xs font-semibold tracking-wider uppercase ring-1 ring-white/15">
-              {variant === "crm" ? "Central CRM" : variant === "procurement" ? "Procurement" : "Dealer Portal"}
-            </p>
-            <h2 className="max-w-md text-4xl leading-tight font-bold">
-              {variant === "crm" ? "Every lead, every dealership, one view." : variant === "procurement" ? "Every order, every showroom, delivered on time." : "Follow up faster. Convert more riders."}
-            </h2>
-            <p className="mt-4 max-w-md text-ink-300">
-              {variant === "crm"
-                ? "Capture inquiries from every channel, route test drives to the right outlet and track the whole network's performance."
-                : variant === "procurement"
-                  ? "Receive dealership stock orders, dispatch goods, track deliveries and keep every dealer ledger and voucher in order."
-                  : "Your assigned and walk-in leads, test drives, stock and orders, ledger and team goals — all in one place."}
-            </p>
+    <AuthSceneProvider>
+      <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)]">
+        {/* The stage is pinned to the window height on desktop; on phones it is a compact banner above the form so the bike never covers it. */}
+        <LoginStage eyebrow={EYEBROW[variant]}>
+          <h2 className="scene-rise max-w-md text-[2.5rem] leading-[1.1] font-bold tracking-tight [animation-delay:240ms] xl:text-5xl">{HEADLINE[variant]}</h2>
+          <p className="scene-rise mt-4 max-w-md text-[15px] leading-relaxed text-white/65 [animation-delay:320ms]">{COPY[variant]}</p>
+        </LoginStage>
+
+        <div className="relative flex min-w-0 items-center justify-center overflow-hidden bg-[radial-gradient(90%_60%_at_100%_0%,rgb(238_108_0/0.07),transparent),radial-gradient(70%_50%_at_0%_100%,rgb(14_174_207/0.06),transparent)] px-4 py-10 sm:px-8 lg:py-12">
+          <div className="scene-rise w-full max-w-[26rem] [animation-delay:200ms]">
+            <Link href="/" className="mb-6 hidden lg:inline-block" aria-label="YADEA home">
+              <Image src="/brand/yadea-logo-dark.png" alt="YADEA" width={149} height={32} className="h-7 w-auto max-w-none object-contain" priority />
+            </Link>
+            <h1 className="text-[28px] leading-tight font-bold tracking-tight text-ink-900">{title}</h1>
+            <p className="mt-1.5 mb-8 text-[15px] text-ink-500">{subtitle}</p>
+            {children}
+            <div className="mt-8 border-t border-ink-100 pt-6 text-sm text-ink-500">{footer}</div>
           </div>
-          <p className="text-xs text-ink-500">© {new Date().getFullYear()} YADEA · Electric two-wheelers</p>
         </div>
       </div>
-      <div className="flex min-w-0 items-center justify-center px-4 py-12 sm:px-8">
-        <div className="w-full max-w-sm">
-          <Link href="/" className="mb-8 inline-block lg:hidden">
-            <Image src="/brand/yadea-logo-dark.png" alt="YADEA" width={149} height={32} className="h-8 w-auto max-w-none object-contain" priority />
-          </Link>
-          <h1 className="text-2xl font-bold tracking-tight text-ink-900">{title}</h1>
-          <p className="mt-1 mb-8 text-sm text-ink-500">{subtitle}</p>
-          {children}
-          <div className="mt-8 border-t border-ink-100 pt-6 text-sm text-ink-500">{footer}</div>
-        </div>
-      </div>
-    </div>
+    </AuthSceneProvider>
   );
 }

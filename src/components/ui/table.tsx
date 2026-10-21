@@ -6,7 +6,7 @@ export function TableWrap({ children, className, footer }: { children: React.Rea
   return (
     <div className={cn("card overflow-hidden", className)}>
       <div className="scrollbar-thin relative overflow-x-auto">
-        <table className="w-full min-w-[720px] divide-y divide-ink-100">{children}</table>
+        <table className="w-full min-w-[720px] divide-y divide-ink-100 [&_thead]:bg-ink-50/70 [&_tbody>tr]:transition-colors [&_tbody>tr:hover]:bg-brand-50/40">{children}</table>
       </div>
       {footer}
     </div>

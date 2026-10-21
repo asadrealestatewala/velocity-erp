@@ -4,17 +4,24 @@
    Brand orange sampled from the supplied logo; charcoal from the wordmark.
    Change these to re-theme the whole platform. */
 @theme {
-  /* Primary (actions, links, active states) — blue, matching the reference CRM. */
-  --color-brand-50: #eef3ff;
-  --color-brand-100: #dce6ff;
-  --color-brand-200: #bdd0ff;
-  --color-brand-300: #93b2ff;
-  --color-brand-400: #6189f6;
-  --color-brand-500: #3a66e6;
-  --color-brand-600: #2f54c8;
-  --color-brand-700: #2744a2;
-  --color-brand-800: #223b81;
-  --color-brand-900: #1f3366;
+  /* Primary (actions, links, focus, progress) — YADEA orange, sampled from the logo.
+     600+ carries white text / sits on white (AA contrast); 400-500 are for fills, rings and glows. */
+  --color-brand-50: #fff5ec;
+  --color-brand-100: #ffe7d2;
+  --color-brand-200: #ffcda3;
+  --color-brand-300: #ffab69;
+  --color-brand-400: #fb8a3c;
+  --color-brand-500: #ee6c00;
+  --color-brand-600: #c25100;
+  --color-brand-700: #a04200;
+  --color-brand-800: #7f3708;
+  --color-brand-900: #672f0b;
+
+  /* Electric accent — used sparingly for energy: charts, light sweeps, live indicators. */
+  --color-volt-300: #7ee7ff;
+  --color-volt-400: #35cfee;
+  --color-volt-500: #0eaecf;
+  --color-volt-600: #0a8aa6;
 
   /* YADEA orange — brand marks, notification badges, public forms. */
   --color-accent-50: #fff6ed;
@@ -24,12 +31,12 @@
   --color-accent-500: #f07400;
   --color-accent-600: #d95f00;
 
-  /* Sidebar navy */
-  --color-navy-950: #08111f;
-  --color-navy-900: #0d1b2e;
-  --color-navy-800: #15283f;
-  --color-navy-700: #1e3552;
-  --color-navy-600: #2c4a6e;
+  /* Graphite — sidebar, hero surfaces and the login stage (kept under the old "navy" names so every consumer re-themes at once). */
+  --color-navy-950: #0a0c10;
+  --color-navy-900: #11141a;
+  --color-navy-800: #1a1f28;
+  --color-navy-700: #262c38;
+  --color-navy-600: #384051;
   --color-ink-50: #f5f7fb;
   --color-ink-100: #eceef2;
   --color-ink-200: #d6dae1;
@@ -45,11 +52,16 @@
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
   --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
+  --shadow-lift: 0 14px 30px -14px rgb(16 24 40 / 0.22), 0 4px 10px -6px rgb(16 24 40 / 0.1);
+  --shadow-glow: 0 0 0 1px rgb(238 108 0 / 0.25), 0 10px 30px -8px rgb(238 108 0 / 0.45);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-soft: cubic-bezier(0.22, 0.8, 0.3, 1);
   --shadow-pop: 0 12px 32px -8px rgb(16 24 40 / 0.18), 0 4px 8px -4px rgb(16 24 40 / 0.08);
 
   --animate-pop-in: pop-in 0.18s ease-out;
   --animate-fade-in: fade-in 0.2s ease-out;
   --animate-celebrate: celebrate 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+  --animate-rise: rise 0.5s var(--ease-out-expo) both;
 }
 
 @keyframes pop-in {
@@ -79,7 +91,9 @@
 }
 
 @layer components {
-  .card { @apply rounded-xl border border-ink-200 bg-white shadow-[0_1px_2px_rgb(15_23_42/0.04)]; }
+  .card { @apply rounded-2xl border border-ink-200/80 bg-white shadow-[var(--shadow-card)]; }
+  /* Interactive cards lift a few pixels — used for links and KPI tiles, never for tables. */
+  .card-hover { @apply transition duration-200 hover:-translate-y-0.5 hover:border-ink-300 hover:shadow-[var(--shadow-lift)]; }
   .input {
     @apply block w-full rounded-md border border-ink-200 bg-white px-3 py-2 text-[15px] text-ink-900 placeholder:text-ink-400
       transition focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none
@@ -87,10 +101,182 @@
   }
   .label { @apply mb-1.5 block text-[13.5px] font-medium text-ink-700; }
   /* Table header: bold, sentence-case on a light band — as in the reference dashboard. */
-  .th { @apply px-4 py-3 text-left text-[13px] font-semibold text-ink-700 whitespace-nowrap; }
+  .th { @apply px-4 py-3 text-left text-[12.5px] font-semibold tracking-wide text-ink-500 uppercase whitespace-nowrap; }
   .td { @apply px-4 py-3 text-[14.5px] text-ink-700 align-middle; }
-  .link { @apply font-medium text-ink-900 hover:text-brand-600 hover:underline underline-offset-2; }
+  .link { @apply font-medium text-ink-900 transition-colors hover:text-brand-600 hover:underline underline-offset-2; }
   .scrollbar-thin { scrollbar-width: thin; }
   /* Small uppercase section label used for card titles and KPI captions. */
   .eyebrow { @apply text-[12.5px] font-semibold tracking-[0.06em] text-ink-500 uppercase; }
+}
+
+/* ── Motion language ─────────────────────────────────────────────
+   One easing family, short durations (<= 500ms for UI; longer only in the login scene).
+   Motion explains state: things rise in, progress fills, success confirms. Nothing loops except
+   the skeleton shimmer and the login scene idle glow. */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+@keyframes grow-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes slide-in-left {
+  from { transform: translateX(-24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@layer utilities {
+  /* Staggered entrance: set style={{ "--i": n }} on the element, or use .stagger on the parent. */
+  .reveal { animation: var(--animate-rise); animation-delay: calc(var(--i, 0) * 55ms); }
+  .stagger > * { animation: var(--animate-rise); }
+  .stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger > *:nth-child(2) { animation-delay: 45ms; }
+  .stagger > *:nth-child(3) { animation-delay: 90ms; }
+  .stagger > *:nth-child(4) { animation-delay: 135ms; }
+  .stagger > *:nth-child(5) { animation-delay: 180ms; }
+  .stagger > *:nth-child(6) { animation-delay: 225ms; }
+  .stagger > *:nth-child(7) { animation-delay: 270ms; }
+  .stagger > *:nth-child(8) { animation-delay: 315ms; }
+  .stagger > *:nth-child(n+9) { animation-delay: 360ms; }
+  .page-enter { animation: rise 0.32s var(--ease-out-expo) both; }
+  .skeleton {
+    background: linear-gradient(100deg, var(--color-ink-100) 30%, var(--color-ink-50) 50%, var(--color-ink-100) 70%) 0 0 / 300% 100%;
+    animation: shimmer 1.6s linear infinite;
+    border-radius: 0.5rem;
+  }
+  .surface-graphite {
+    background:
+      radial-gradient(120% 140% at 0% 0%, rgb(238 108 0 / 0.22), transparent 55%),
+      radial-gradient(90% 120% at 100% 100%, rgb(14 174 207 / 0.14), transparent 55%),
+      linear-gradient(135deg, var(--color-navy-900), var(--color-navy-950));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .skeleton { animation: none; }
+}
+
+/* ── Login scene (the YADEA G5S glide-in and the sign-in confirmation) ───────────────────────
+   Driven by data-phase on .scene: idle | submitting | success | error — see components/auth/auth-scene.tsx.
+   The success keyframes are only reachable when the server has confirmed a session. */
+@keyframes scene-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes bike-in {
+  0% { opacity: 0; transform: translateX(58%) skewX(-4deg); filter: blur(8px); }
+  35% { opacity: 1; filter: blur(2px); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+@keyframes bike-rev {
+  from { transform: translateX(0) rotate(0); }
+  to { transform: translateX(-4px) rotate(-0.5deg); }
+}
+@keyframes bike-nudge {
+  0%, 100% { transform: none; }
+  25% { transform: translateX(10px); }
+  55% { transform: translateX(-5px); }
+  80% { transform: translateX(3px); }
+}
+@keyframes bike-out {
+  0% { transform: none; opacity: 1; filter: none; }
+  16% { transform: translateX(2.5%) rotate(0.8deg); opacity: 1; }
+  80% { opacity: 1; filter: blur(0); }
+  100% { transform: translateX(-165%) skewX(7deg); opacity: 0; filter: blur(7px); }
+}
+@keyframes streak-in {
+  0% { opacity: 0; transform: scaleX(0.15) translateX(30%); }
+  30% { opacity: 0.85; }
+  100% { opacity: 0; transform: scaleX(1) translateX(-35%); }
+}
+@keyframes streak-out {
+  0% { opacity: 0; transform: scaleX(0.2); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: scaleX(2.2) translateX(-60%); }
+}
+@keyframes scene-sweep {
+  from { transform: translateX(-130%) skewX(-18deg); opacity: 0; }
+  20% { opacity: 1; }
+  to { transform: translateX(330%) skewX(-18deg); opacity: 0; }
+}
+@keyframes headlight-on {
+  0% { opacity: 0; transform: scale(0.4); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes headlight-flare {
+  0% { transform: scale(1); }
+  35% { transform: scale(3.2); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+@keyframes glow-breathe {
+  from { opacity: 0.7; }
+  to { opacity: 1; }
+}
+@keyframes dot-pulse {
+  from { opacity: 1; }
+  to { opacity: 0.35; }
+}
+
+.scene-rise { animation: scene-rise 0.7s var(--ease-out-expo) both; }
+.scene-bike { animation: bike-in 1.7s var(--ease-out-expo) 0.25s both; will-change: transform, opacity; }
+.scene-shadow { opacity: 0.85; }
+.scene-glow { animation: glow-breathe 4.5s ease-in-out 1.6s infinite alternate; transition: opacity 0.4s; }
+.scene-headlight {
+  opacity: 0;
+  box-shadow: 0 0 14px 5px rgb(126 231 255 / 0.65), 0 0 40px 14px rgb(53 207 238 / 0.3);
+  animation: headlight-on 0.9s ease-out 1.6s both;
+}
+.scene-streak {
+  position: absolute;
+  height: 2px;
+  opacity: 0;
+  transform-origin: right center;
+  background: linear-gradient(to left, transparent, rgb(126 231 255 / 0.9) 40%, rgb(255 255 255 / 0.15));
+  border-radius: 9999px;
+  animation: streak-in 1.4s ease-out 0.25s both;
+}
+.scene-sweep {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 38%;
+  opacity: 0;
+  background: linear-gradient(100deg, transparent, rgb(126 231 255 / 0.12) 35%, rgb(255 255 255 / 0.3) 50%, rgb(126 231 255 / 0.12) 65%, transparent);
+  mix-blend-mode: screen;
+}
+.scene-dot { background: var(--color-volt-400); box-shadow: 0 0 8px var(--color-volt-400); }
+
+.scene[data-phase="submitting"] .scene-bike { animation: bike-rev 0.38s ease-in-out infinite alternate; }
+.scene[data-phase="submitting"] .scene-headlight { animation: dot-pulse 0.45s ease-in-out infinite alternate; opacity: 1; }
+.scene[data-phase="submitting"] .scene-dot { background: #fbbf24; box-shadow: 0 0 8px #fbbf24; animation: dot-pulse 0.6s ease-in-out infinite alternate; }
+
+.scene[data-phase="error"] .scene-bike { animation: bike-nudge 0.5s var(--ease-soft) both; }
+.scene[data-phase="error"] .scene-dot { background: #f87171; box-shadow: 0 0 8px #f87171; }
+
+.scene[data-phase="success"] .scene-bike { animation: bike-out 0.85s cubic-bezier(0.55, 0.05, 0.9, 0.45) both; }
+.scene[data-phase="success"] .scene-shadow { opacity: 0; transition: opacity 0.5s; }
+.scene[data-phase="success"] .scene-headlight { opacity: 1; animation: headlight-flare 0.7s ease-out both; }
+.scene[data-phase="success"] .scene-streak { animation: streak-out 0.85s ease-out both; }
+.scene[data-phase="success"] .scene-sweep { animation: scene-sweep 0.9s var(--ease-soft) 0.1s both; }
+.scene[data-phase="success"] .scene-glow { opacity: 1; animation: none; }
+.scene[data-phase="success"] .scene-dot { background: #34d399; box-shadow: 0 0 8px #34d399; }
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-glow { animation: none; }
+  .scene[data-phase="success"] .scene-bike { animation: none; opacity: 1; transform: none; filter: none; }
+  .scene[data-phase="submitting"] .scene-bike, .scene[data-phase="error"] .scene-bike { animation: none; }
 }

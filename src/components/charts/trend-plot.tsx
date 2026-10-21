@@ -12,7 +12,7 @@ export default function TrendPlot({ data, series, colors }: { data: Record<strin
         <defs>
           {series.map((s, i) => (
             <linearGradient key={s.key} id={`g-${s.key}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={colors[i]} stopOpacity={0.18} />
+              <stop offset="0%" stopColor={colors[i]} stopOpacity={0.28} />
               <stop offset="100%" stopColor={colors[i]} stopOpacity={0} />
             </linearGradient>
           ))}
@@ -27,7 +27,7 @@ export default function TrendPlot({ data, series, colors }: { data: Record<strin
           itemStyle={{ color: "#363e4d", padding: 0 }}
         />
         {series.map((s, i) => (
-          <Area key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={colors[i]} strokeWidth={2} fill={`url(#g-${s.key})`} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: "#fff" }} />
+          <Area key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={colors[i]} strokeWidth={2.5} animationDuration={900} animationEasing="ease-out" fill={`url(#g-${s.key})`} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: "#fff" }} />
         ))}
       </AreaChart>
     </ResponsiveContainer>

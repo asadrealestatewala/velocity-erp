@@ -234,6 +234,13 @@ Development mode compiles each page on first visit and runs React's extra develo
 
 Built-in optimisations: route-level loading skeletons (instant feedback on navigation), Recharts loaded lazily (dashboard JS 228 kB → 126 kB), per-row dialogs mounted only when opened, parallel database queries per page, and indexes on every list filter. Keep memory free on small machines — each running Next.js server uses several hundred MB.
 
+### Design system, motion and the sign-in scene
+
+- **Tokens** live in `src/app/globals.css` (`@theme`): YADEA orange (`brand-*`, 600+ for text/buttons for AA contrast), graphite (`navy-*` — the legacy name is kept so every consumer re-themes at once) and a sparing electric teal (`volt-*`). Motion tokens: `--ease-out-expo`, `--ease-soft`; utilities `.reveal`, `.stagger`, `.page-enter`, `.skeleton`, `.card-hover`.
+- **Reduced motion:** a global `prefers-reduced-motion` rule removes animation/transition time; the count-up figures and progress bars show their real values immediately, and sign-in navigates with no scene delay.
+- **Sign-in scene** (`components/auth/auth-scene.tsx`, `login-stage.tsx`, `login-form.tsx`): the supplied YADEA G5S photo (`public/brand/yadea-g5s.webp`, background already transparent) glides in on a graphite stage. The scene phase mirrors the real request — `idle → submitting → success | error`. `success` is set only when `loginWithResultAction` returns `ok: true` (the session already exists); invalid credentials, rate limits and network failures show the error and never play the success scene. The form posts to the same single `authenticate()` path as the classic `loginAction` (still used as the no-JavaScript fallback). Because it is one flat photograph the motion is image-based (glide, reflection, light, streaks); independent wheel rotation or true 3D would need layered or 3D source assets.
+- **Dashboard gamification** uses only recorded rows: `server/services/progress.ts` derives points, the day streak, week-over-week change, rank and next-badge progress from `GamificationEvent`/`UserAchievement`; goals come from the `Goal` table via `goalProgress`.
+
 ## 9. Known limitations & assumptions
 
 - Dashboards aggregate trend data in the application layer; fine for tens of thousands of leads per period — move to SQL aggregation / materialised views at larger scale. Search uses `ILIKE`; add `pg_trgm` indexes for very large contact tables.

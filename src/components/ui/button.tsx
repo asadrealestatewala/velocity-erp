@@ -4,13 +4,13 @@ import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const variants = {
-  primary: "bg-brand-500 text-white hover:bg-brand-600 shadow-sm",
-  secondary: "bg-white text-ink-800 border border-ink-200 hover:bg-ink-50 hover:border-ink-300",
+  primary: "bg-brand-600 text-white hover:bg-brand-700 shadow-sm active:scale-[0.98]",
+  secondary: "bg-white text-ink-800 border border-ink-200 hover:bg-ink-50 hover:border-ink-300 active:scale-[0.98]",
   ghost: "text-ink-600 hover:bg-ink-100 hover:text-ink-900",
   danger: "bg-red-600 text-white hover:bg-red-700",
-  dark: "bg-ink-900 text-white hover:bg-ink-800",
+  dark: "bg-navy-900 text-white hover:bg-navy-700 active:scale-[0.98]",
   // Outlined primary, as used for secondary actions in the reference dashboard
-  outlineBrand: "border border-brand-500 text-brand-600 bg-white hover:bg-brand-50",
+  outlineBrand: "border border-brand-500/70 text-brand-700 bg-white hover:bg-brand-50 active:scale-[0.98]",
 } as const;
 
 const sizes = {
@@ -30,7 +30,7 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 
 export const buttonClass = (variant: keyof typeof variants = "primary", size: keyof typeof sizes = "md", className?: string) =>
   cn(
-    "inline-flex items-center font-medium whitespace-nowrap transition-colors select-none disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
+    "inline-flex items-center font-medium whitespace-nowrap transition duration-150 select-none disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
     variants[variant],
     sizes[size],
     className,

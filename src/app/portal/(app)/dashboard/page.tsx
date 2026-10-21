@@ -9,6 +9,7 @@ import { getKpis, goalProgress, GOAL_LABELS } from "@/server/services/analytics"
 import { dealerBalance } from "@/server/services/ledger";
 import { stockState } from "@/lib/ops-constants";
 import { Card, CardHeader, EmptyState, PageHeader, ProgressBar, StatCard, Badge } from "@/components/ui/misc";
+import { GoalsPanel } from "@/components/gamification/progress-panel";
 import { BadgeGrid } from "@/components/gamification/badges";
 import { Celebrate } from "@/components/gamification/celebrate";
 import { fmtDateTime, fmtMoney, fmtRelative, fullName } from "@/lib/utils";
@@ -138,26 +139,7 @@ export default async function PortalDashboard({ searchParams }: { searchParams: 
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-3">
-        <Card className="xl:col-span-2">
-          <CardHeader title="Goals & targets" description="Set by YADEA — progress is calculated from recorded activity" />
-          {goalRows.length ? (
-            <ul className="divide-y divide-ink-100">
-              {goalRows.map(({ g, p }) => (
-                <li key={g.id} className="px-5 py-4">
-                  <div className="mb-2 flex items-baseline justify-between gap-3">
-                    <p className="text-sm font-medium text-ink-900">{g.name} {p.achieved && <Badge tone="green" className="ml-1">Achieved 🎯</Badge>}</p>
-                    <p className="text-sm text-ink-600 tabular-nums">
-                      <b className="text-ink-900">{g.metric === "SALES_REVENUE" ? fmtMoney(p.current) : `${p.current}${GOAL_LABELS[g.metric].unit}`}</b>
-                      {" "}/ {g.metric === "SALES_REVENUE" ? fmtMoney(p.target) : `${p.target}${GOAL_LABELS[g.metric].unit}`}{p.lowerIsBetter && " (lower is better)"}
-                    </p>
-                  </div>
-                  <ProgressBar value={p.progress} color={p.achieved ? "#16a34a" : undefined} />
-                  <p className="mt-1 text-xs text-ink-400">Ends {g.endsAt.toLocaleDateString("en-GB")}</p>
-                </li>
-              ))}
-            </ul>
-          ) : <EmptyState icon={Target} title="No active goals" description="YADEA can set monthly targets for your dealership." />}
-        </Card>
+        <GoalsPanel rows={goalRows} className="xl:col-span-2" description="Set by YADEA — progress is calculated from recorded activity" emptyHint="YADEA can set monthly targets for your dealership." />
         <Card>
           <CardHeader title="Your badges" />
           <div className="p-4"><BadgeGrid all={achievements} earned={earnedMap} /></div>

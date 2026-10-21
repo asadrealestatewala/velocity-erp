@@ -1,39 +1,190 @@
 "use client";
-import { useActionState, useRef } from "react";
-import { Copy, FlaskConical, LogIn } from "lucide-react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { AlertCircle, ArrowRight, Check, Copy, Eye, EyeOff, FlaskConical, Loader2, Lock, LogIn, Mail } from "lucide-react";
 import { toast } from "sonner";
-import { loginAction } from "@/server/actions/auth";
-import { Field, FormError, Input, SubmitButton } from "@/components/ui/form";
+import { loginAction, loginWithResultAction } from "@/server/actions/auth";
+import { cn } from "@/lib/utils";
 import type { DemoGroup, DemoInfo } from "@/server/demo";
+import { useScene } from "./auth-scene";
 
 type Portal = "crm" | "portal" | "procurement";
+type FieldErrors = { identifier?: string; password?: string };
+
+const fieldCls = (invalid: boolean) =>
+  cn(
+    "peer h-12 w-full rounded-xl border bg-white pr-11 pl-11 text-[15px] text-ink-900 shadow-[0_1px_2px_rgb(16_24_40/0.04)] transition duration-200 placeholder:text-ink-400",
+    "hover:border-ink-300 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none disabled:bg-ink-50 disabled:text-ink-400",
+    invalid ? "border-red-400 focus:border-red-500 focus:ring-red-500/15" : "border-ink-200",
+  );
 
 export function LoginForm({ portal, next, demo }: { portal: Portal; next?: string; demo?: DemoInfo }) {
-  const [state, action] = useActionState(loginAction, undefined);
+  const router = useRouter();
+  const { phase, setPhase } = useScene();
+  // Without JavaScript the form still posts to the server action (it redirects on success). With JavaScript the
+  // submit handler below takes over so the scene can show the real outcome before navigating.
+  const [fallback, fallbackAction] = useActionState(loginAction, undefined);
   const formRef = useRef<HTMLFormElement>(null);
   const idRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
+  const busy = phase === "submitting" || phase === "success";
+  const message = error ?? fallback?.error ?? null;
+
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   const useAccount = (identifier: string) => {
-    if (!demo) return;
+    if (!demo || busy) return;
     idRef.current!.value = identifier;
     passwordRef.current!.value = demo.password;
     formRef.current?.requestSubmit();
   };
 
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (busy) return; // one request at a time — no duplicate sign-ins
+    const data = new FormData(e.currentTarget);
+    const identifier = String(data.get("identifier") ?? "").trim();
+    const password = String(data.get("password") ?? "");
+    const fe: FieldErrors = {};
+    if (identifier.length < 3) fe.identifier = "Enter your email address or mobile number.";
+    if (!password) fe.password = "Enter your password.";
+    setFieldErrors(fe);
+    setError(null);
+    if (fe.identifier || fe.password) {
+      (fe.identifier ? idRef.current : passwordRef.current)?.focus();
+      return;
+    }
+    setPhase("submitting");
+    try {
+      const result = await loginWithResultAction(undefined, data);
+      if (!result.ok) {
+        setError(result.error);
+        setPhase("error");
+        passwordRef.current?.select();
+        return;
+      }
+      // The server has confirmed the credentials and created the session: only now does the success scene play.
+      setPhase("success");
+      router.prefetch(result.redirectTo);
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      timers.current.push(setTimeout(() => router.replace(result.redirectTo), reduce ? 0 : 750));
+      timers.current.push(setTimeout(() => window.location.assign(result.redirectTo), 8000)); // safety net if client navigation stalls
+    } catch {
+      setError("We couldn't reach the server. Check your connection and try again.");
+      setPhase("error");
+    }
+  };
+
+  const clearFeedback = (field: keyof FieldErrors) => {
+    if (fieldErrors[field]) setFieldErrors((f) => ({ ...f, [field]: undefined }));
+    if (phase === "error") setPhase("idle");
+  };
+
   return (
     <>
-      <form ref={formRef} action={action} className="space-y-4">
+      <form ref={formRef} action={fallbackAction} onSubmit={onSubmit} noValidate className="space-y-5" aria-busy={busy}>
         <input type="hidden" name="portal" value={portal} />
         {next && <input type="hidden" name="next" value={next} />}
-        <FormError error={state?.error} />
-        <Field label="Email or mobile number">
-          {(p) => <Input {...p} ref={idRef} name="identifier" type="text" inputMode="email" autoComplete="username" required placeholder="name@company.com or 03xx xxxxxxx" />}
-        </Field>
-        <Field label="Password">{(p) => <Input {...p} ref={passwordRef} name="password" type="password" autoComplete="current-password" required />}</Field>
-        <SubmitButton className="w-full" size="lg">
-          Sign in
-        </SubmitButton>
+
+        {message && (
+          <div role="alert" className="reveal flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-800">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" aria-hidden />
+            <span>{message}</span>
+          </div>
+        )}
+
+        <div>
+          <label htmlFor="login-id" className="label">Email or mobile number</label>
+          <div className="relative">
+            <input
+              id="login-id"
+              ref={idRef}
+              name="identifier"
+              type="text"
+              inputMode="email"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              required
+              disabled={busy}
+              placeholder="name@company.com or 03xx xxxxxxx"
+              aria-invalid={fieldErrors.identifier ? true : undefined}
+              aria-describedby={fieldErrors.identifier ? "login-id-err" : undefined}
+              onInput={() => clearFeedback("identifier")}
+              className={fieldCls(!!fieldErrors.identifier)}
+            />
+            <Mail className="pointer-events-none absolute top-1/2 left-3.5 h-[18px] w-[18px] -translate-y-1/2 text-ink-400 transition-colors peer-focus:text-brand-600" aria-hidden />
+          </div>
+          {fieldErrors.identifier && <p id="login-id-err" className="mt-1.5 text-xs font-medium text-red-600">{fieldErrors.identifier}</p>}
+        </div>
+
+        <div>
+          <label htmlFor="login-pw" className="label">Password</label>
+          <div className="relative">
+            <input
+              id="login-pw"
+              ref={passwordRef}
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              required
+              disabled={busy}
+              placeholder="Your password"
+              aria-invalid={fieldErrors.password ? true : undefined}
+              aria-describedby={cn(fieldErrors.password && "login-pw-err", capsLock && "login-caps") || undefined}
+              onInput={() => clearFeedback("password")}
+              onKeyUp={(e) => setCapsLock(e.getModifierState("CapsLock"))}
+              onBlur={() => setCapsLock(false)}
+              className={fieldCls(!!fieldErrors.password)}
+            />
+            <Lock className="pointer-events-none absolute top-1/2 left-3.5 h-[18px] w-[18px] -translate-y-1/2 text-ink-400 transition-colors peer-focus:text-brand-600" aria-hidden />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              disabled={busy}
+              className="absolute top-1/2 right-2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-ink-400 transition hover:bg-ink-100 hover:text-ink-700 disabled:opacity-50"
+            >
+              {showPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
+            </button>
+          </div>
+          {fieldErrors.password && <p id="login-pw-err" className="mt-1.5 text-xs font-medium text-red-600">{fieldErrors.password}</p>}
+          {capsLock && <p id="login-caps" className="mt-1.5 text-xs font-medium text-amber-700">Caps Lock is on.</p>}
+        </div>
+
+        <button
+          type="submit"
+          disabled={busy}
+          data-state={phase}
+          className={cn(
+            "group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-xl text-[15px] font-semibold text-white shadow-[var(--shadow-glow)] transition duration-200",
+            "bg-gradient-to-b from-brand-500 to-brand-600 hover:-translate-y-px hover:to-brand-700 active:translate-y-0 active:scale-[0.985]",
+            "disabled:pointer-events-none",
+            phase === "success" && "!from-emerald-500 !to-emerald-600",
+            phase === "submitting" && "opacity-90",
+          )}
+        >
+          <span aria-hidden className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/25 opacity-0 transition duration-700 group-hover:translate-x-[420%] group-hover:opacity-100 motion-reduce:hidden" />
+          {phase === "success" ? (
+            <>
+              <Check className="h-5 w-5" aria-hidden /> Welcome back
+            </>
+          ) : phase === "submitting" ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> Signing in…
+            </>
+          ) : (
+            <>
+              Sign in <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+            </>
+          )}
+        </button>
       </form>
       {demo && <DemoAccounts demo={demo} portal={portal} onUse={useAccount} />}
     </>

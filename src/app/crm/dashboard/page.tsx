@@ -4,7 +4,10 @@ import {
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireCentralPage, leadScope, contactScope, testDriveScope, taskScope } from "@/server/authz";
-import { getCharts, getDealershipPerformance, getKpis, parseRange } from "@/server/services/analytics";
+import { getCharts, getDealershipPerformance, getKpis, goalProgress, parseRange } from "@/server/services/analytics";
+import { getUserProgress } from "@/server/services/progress";
+import { GoalsPanel, ProgressHero } from "@/components/gamification/progress-panel";
+import { BadgeGrid } from "@/components/gamification/badges";
 import { lookups, opt } from "@/server/lookups";
 import { PageHeader, StatCard, Card, CardHeader, Avatar, Badge, EmptyState } from "@/components/ui/misc";
 import { FilterBar } from "@/components/filters/filter-bar";
@@ -15,13 +18,16 @@ import { parseListParams } from "@/components/ui/table";
 
 export const metadata = { title: "Dashboard" };
 
+const q0 = (p: Record<string, string>) => `/crm/contacts?${new URLSearchParams(p).toString()}`;
+
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireCentralPage("dashboard.view");
   const { flat } = parseListParams(await searchParams);
   const range = parseRange(flat, 30);
   const f = { ...range, cityId: flat.city, dealershipId: flat.dealership, sourceId: flat.source, stageId: flat.stage, ownerId: flat.owner };
   const scope = leadScope(user);
-  const [kpi, charts, perf, lk, staff, recent, followUps, unassigned] = await Promise.all([
+  const now = new Date();
+  const [kpi, charts, perf, lk, staff, recent, followUps, unassigned, progress, goals, achievements, earned] = await Promise.all([
     getKpis(scope, f, { central: true, contactScope: contactScope(user), testDriveScope: testDriveScope(user) }),
     getCharts(scope, f, testDriveScope(user)),
     getDealershipPerformance(f),
@@ -45,7 +51,24 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       take: 6,
       include: { contact: { select: { id: true, firstName: true, lastName: true, phone: true } }, city: { select: { name: true } }, source: { select: { name: true } } },
     }),
+    getUserProgress(user.id),
+    db.goal.findMany({
+      where: { endsAt: { gte: now }, startsAt: { lte: now } },
+      orderBy: { endsAt: "asc" },
+      take: 8,
+      include: { dealership: { select: { name: true } }, user: { select: { name: true } } },
+    }),
+    db.achievement.findMany({ where: { isActive: true }, orderBy: { createdAt: "asc" } }),
+    db.userAchievement.findMany({ where: { userId: user.id } }),
   ]);
+  const goalRows = await Promise.all(goals.map(async (g) => ({ g: { ...g, dealershipName: g.dealership?.name, userName: g.user?.name }, p: await goalProgress(g) })));
+  const earnedMap = new Map(earned.map((e) => [e.achievementId, e.earnedAt]));
+  const hasProgress = progress.totalPoints > 0 || progress.badgesEarned > 0;
+  const attention = [
+    { label: "unassigned leads", n: kpi.unassigned, href: q0({ assigned: "no" }), tone: "red" as const },
+    { label: "follow-ups due or overdue", n: kpi.followUp, href: q0({ followUp: "due" }), tone: "amber" as const },
+    { label: "pending dealership applications", n: kpi.pendingApps, href: "/crm/applications", tone: "violet" as const },
+  ].filter((a) => a.n > 0);
 
   const q = (p: Record<string, string>) => `/crm/contacts?${new URLSearchParams(p).toString()}`;
 
@@ -55,6 +78,21 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         title={`Welcome back, ${user.name.split(" ")[0]}`}
         description={`Network performance from ${range.from.toLocaleDateString("en-GB")} to ${range.to.toLocaleDateString("en-GB")} · compared with the previous period of equal length`}
       />
+      {attention.length > 0 && (
+        <div className="stagger mb-4 flex flex-wrap gap-2" aria-label="Needs attention">
+          {attention.map((a) => (
+            <Link key={a.label} href={a.href} className="card card-hover flex items-center gap-2.5 px-3.5 py-2 text-sm">
+              <span className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-xs font-bold text-white ${a.tone === "red" ? "bg-red-500" : a.tone === "amber" ? "bg-amber-500" : "bg-violet-500"}`}>{a.n}</span>
+              <span className="text-ink-700">{a.label}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+      {hasProgress && (
+        <div className="mb-4">
+          <ProgressHero progress={progress} leaderboardHref="/crm/leaderboard" />
+        </div>
+      )}
       <FilterBar
         filters={[
           { type: "daterange", from: "from", to: "to", label: "Period", presets: true },
@@ -66,7 +104,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         ]}
       />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+      <div className="stagger grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         <StatCard label="Total contacts" value={fmtNumber(kpi.totalContacts)} icon={Users} delta={kpi.contactsDelta === null ? null : { value: kpi.contactsDelta }} hint={`+${kpi.newContacts} new`} href="/crm/contacts" />
         <StatCard label="Leads in period" value={fmtNumber(kpi.leadsInPeriod)} icon={UserPlus} tone="blue" delta={kpi.leadsDelta === null ? null : { value: kpi.leadsDelta }} hint={`${fmtNumber(kpi.totalLeads)} total`} />
         <StatCard label="New leads today" value={kpi.newToday} icon={Sparkles} tone="violet" />
@@ -83,6 +121,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <StatCard label="Recorded payments" value={fmtMoney(kpi.recordedPayments)} icon={CircleDollarSign} tone="gray" hint="manually entered, unverified" />
         <StatCard label="Lead → customer" value={`${kpi.conversionRate}%`} icon={Target} tone="brand" hint="of leads created in period" />
       </div>
+
+      {(goalRows.length > 0 || achievements.length > 0) && (
+        <div className="mt-6 grid gap-4 xl:grid-cols-3">
+          <GoalsPanel rows={goalRows} className="xl:col-span-2" description="Active targets set in Settings — progress is calculated from recorded activity" />
+          <Card>
+            <CardHeader title="Your badges" action={<Link href="/crm/leaderboard" className="text-xs font-medium text-brand-600 hover:underline">Leaderboard →</Link>} />
+            <div className="p-4"><BadgeGrid all={achievements} earned={earnedMap} /></div>
+          </Card>
+        </div>
+      )}
 
       <div className="mt-6 grid gap-4 xl:grid-cols-3">
         <Card className="xl:col-span-2">

@@ -4,8 +4,8 @@ import dynamic from "next/dynamic";
 // Recharts is loaded on demand; the legend and layout render immediately.
 const TrendPlot = dynamic(() => import("./trend-plot"), { ssr: false, loading: () => <div className="h-full w-full animate-pulse rounded-xl bg-ink-100/70" /> });
 
-// Validated categorical order (reference palette, light surface #fff): blue, orange.
-export const SERIES = ["#2a78d6", "#eb6834"] as const;
+// Categorical order on a light surface: YADEA orange, electric teal.
+export const SERIES = ["#ee6c00", "#0a8aa6"] as const;
 
 type TrendPoint = Record<string, string | number>;
 
@@ -53,7 +53,7 @@ export function BarList({
   if (!data.length || data.every((d) => d.value === 0)) return <p className="py-8 text-center text-sm text-ink-400">{empty}</p>;
   return (
     <ul className="space-y-2.5">
-      {data.map((d) => (
+      {data.map((d, i) => (
         <li key={d.name} className="group" title={`${d.name}: ${format(d.value)}`}>
           <div className="mb-1 flex items-baseline justify-between gap-3 text-[13px]">
             <span className="truncate text-ink-700">{d.name}</span>
@@ -61,8 +61,8 @@ export function BarList({
           </div>
           <div className="h-2 rounded-full bg-ink-100">
             <div
-              className="h-2 rounded-full transition-all duration-500 group-hover:brightness-110"
-              style={{ width: `${Math.max(2, (d.value / max) * 100)}%`, background: d.color ?? color }}
+              className="h-2 origin-left rounded-full transition duration-300 group-hover:brightness-110 motion-safe:animate-[grow-x_0.8s_var(--ease-out-expo)_both]"
+              style={{ width: `${Math.max(2, (d.value / max) * 100)}%`, background: d.color ?? color, animationDelay: `${i * 50}ms` }}
             />
           </div>
         </li>

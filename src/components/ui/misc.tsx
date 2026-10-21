@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
+import { CountUp, GrowBar } from "./motion";
 
 export function Card({ className, children, ...p }: React.HTMLAttributes<HTMLDivElement>) {
   return (
@@ -12,9 +13,9 @@ export function Card({ className, children, ...p }: React.HTMLAttributes<HTMLDiv
 
 export function CardHeader({ title, description, action, className }: { title: React.ReactNode; description?: React.ReactNode; action?: React.ReactNode; className?: string }) {
   return (
-    <div className={cn("flex items-start justify-between gap-3 border-b border-ink-200 px-5 py-3.5", className)}>
+    <div className={cn("flex items-start justify-between gap-3 border-b border-ink-100 px-5 py-3.5", className)}>
       <div className="min-w-0">
-        <h3 className="eyebrow !text-ink-700">{title}</h3>
+        <h3 className="eyebrow flex items-center gap-2 !text-ink-700"><span aria-hidden className="h-3.5 w-[3px] rounded-full bg-brand-500" />{title}</h3>
         {description && <p className="mt-1 text-[13px] text-ink-500">{description}</p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
@@ -105,7 +106,7 @@ export function PageHeader({
       {(title || actions) && (
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
-            {title && <h1 className="text-2xl font-bold tracking-tight text-ink-900">{title}</h1>}
+            {title && <h1 className="text-[26px] leading-tight font-bold tracking-tight text-ink-900">{title}</h1>}
             {description && <p className="mt-1 text-sm text-ink-500">{description}</p>}
           </div>
           {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -118,7 +119,7 @@ export function PageHeader({
 export function EmptyState({ icon: Icon, title, description, action }: { icon: LucideIcon; title: string; description?: string; action?: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
-      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+      <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-50 to-brand-100 text-brand-600 ring-1 ring-brand-200/70">
         <Icon className="h-6 w-6" />
       </div>
       <h3 className="text-[15px] font-semibold text-ink-900">{title}</h3>
@@ -157,13 +158,13 @@ export function StatCard({
   const good = delta ? (delta.goodWhenUp ?? true) === delta.value >= 0 : true;
   // Reference layout: uppercase caption in a divided header band, then a large bold figure with a muted caption.
   const body = (
-    <div className="card h-full overflow-hidden transition hover:border-ink-300 hover:shadow-[var(--shadow-card)]">
+    <div className={cn("card h-full overflow-hidden", href && "card-hover")}>
       <div className="flex min-h-[46px] items-center justify-between gap-2 border-b border-ink-200 px-5 py-2.5">
         <p className="eyebrow leading-snug">{label}</p>
         <Icon className={cn("h-[18px] w-[18px] shrink-0", iconCls)} aria-hidden />
       </div>
       <div className="px-5 py-4">
-        <p className="text-[34px] leading-none font-bold tracking-tight text-ink-900 tabular-nums">{value}</p>
+        <p className="text-[34px] leading-none font-bold tracking-tight text-ink-900 tabular-nums">{typeof value === "string" || typeof value === "number" ? <CountUp value={String(value)} /> : value}</p>
         <div className="mt-2.5 flex min-h-5 items-center gap-2 text-[13.5px]">
           {delta && delta.value !== 0 ? (
             <span className={cn("font-semibold", good ? "text-emerald-600" : "text-red-600")}>
@@ -178,7 +179,7 @@ export function StatCard({
     </div>
   );
   return href ? (
-    <Link href={href} className="block">
+    <Link href={href} className="block rounded-2xl">
       {body}
     </Link>
   ) : (
@@ -190,9 +191,14 @@ export function ProgressBar({ value, max = 100, className, color }: { value: num
   const pct = Math.max(0, Math.min(100, max > 0 ? (value / max) * 100 : 0));
   return (
     <div className={cn("h-2 w-full overflow-hidden rounded-full bg-ink-100", className)} role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
-      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: color ?? "var(--color-brand-500)" }} />
+      <GrowBar pct={pct} color={color} className="h-full rounded-full" />
     </div>
   );
+}
+
+/** Placeholder block shown while a page streams in. */
+export function Skeleton({ className }: { className?: string }) {
+  return <div aria-hidden className={cn("skeleton", className)} />;
 }
 
 export function DescriptionList({ items, cols = 2 }: { items: { label: string; value: React.ReactNode }[]; cols?: 1 | 2 | 3 }) {

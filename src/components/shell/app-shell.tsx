@@ -5,7 +5,7 @@ import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   BarChart3, Bell, BookOpen, Bike, Boxes, Building2, CheckSquare, ChevronDown, ClipboardList, FileCheck2, FileText, Folder, Footprints, History, Inbox, KanbanSquare,
-  LayoutDashboard, List, LogOut, Menu as MenuIcon, Package, Plus, Receipt, Search, Settings, Share2, Shield, Sparkles, Store, Trophy, Truck, UserCheck, Users, UsersRound, Wallet, X, Zap, KeyRound,
+  LayoutDashboard, List, LogOut, Menu as MenuIcon, Package, PanelLeftClose, PanelLeftOpen, Plus, Receipt, Search, Settings, Share2, Shield, Sparkles, Store, Trophy, Truck, UserCheck, Users, UsersRound, Wallet, X, Zap, KeyRound, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/server/actions/auth";
@@ -47,6 +47,24 @@ export function AppShell({
 }) {
   const [open, setOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  // Desktop sidebar can collapse to an icon rail; the choice is remembered per browser.
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem("yadea:sidebar") === "collapsed");
+    } catch {
+      /* storage unavailable — stay expanded */
+    }
+  }, []);
+  const toggleCollapsed = () =>
+    setCollapsed((c) => {
+      try {
+        localStorage.setItem("yadea:sidebar", c ? "expanded" : "collapsed");
+      } catch {
+        /* ignore */
+      }
+      return !c;
+    });
   const pathname = usePathname();
   const search = useSearchParams();
   const router = useRouter();
@@ -103,97 +121,161 @@ export function AppShell({
     </>
   );
 
-  const sidebar = (
+  const renderSidebar = (rail: boolean) => (
     <div className="flex h-full flex-col bg-navy-900 text-slate-300">
-      <div className="flex h-[72px] shrink-0 items-center gap-2 bg-navy-950 px-5">
+      <div className={cn("flex h-[72px] shrink-0 items-center gap-2 border-b border-white/5 bg-navy-950", rail ? "justify-center px-2" : "px-5")}>
         <Link href={`${base}/dashboard`} className="flex items-center" aria-label="YADEA home">
-          <Image src="/brand/yadea-logo-light.png" alt="YADEA" width={134} height={29} priority className="h-[29px] w-auto max-w-none" />
+          {rail ? (
+            <Image src="/brand/yadea-mark.png" alt="YADEA" width={32} height={32} priority className="h-8 w-8 object-contain" />
+          ) : (
+            <Image src="/brand/yadea-logo-light.png" alt="YADEA" width={134} height={29} priority className="h-[29px] w-auto max-w-none" />
+          )}
         </Link>
-        <span className={cn("ml-auto rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase", variant === "crm" ? "bg-white/10 text-slate-200" : variant === "portal" ? "bg-accent-500 text-white" : "bg-brand-500 text-white")}>
-          {variant === "crm" ? "CRM" : variant === "portal" ? "Dealer" : "Procurement"}
-        </span>
+        {!rail && (
+          <span className={cn("ml-auto rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase", variant === "crm" ? "bg-white/10 text-slate-200" : variant === "portal" ? "bg-accent-500 text-white" : "bg-brand-500 text-white")}>
+            {variant === "crm" ? "CRM" : variant === "portal" ? "Dealer" : "Procurement"}
+          </span>
+        )}
       </div>
 
-      <div className="space-y-3 px-4 pt-4">
+      <div className={cn("space-y-3 pt-4", rail ? "px-2" : "px-4")}>
         <Menu
           align="start"
           trigger={
-            <button className="flex w-full items-center gap-3 rounded-lg border border-white/10 bg-navy-800/70 px-3 py-2.5 text-left transition hover:bg-navy-800" aria-label="Workspace and account menu">
-              <Avatar name={user.name} size={38} className="ring-navy-900" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] font-semibold text-white">{user.name}</span>
-                <span className="block truncate text-[13px] text-slate-400">{subtitle ?? user.roleName}</span>
-              </span>
-              <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+            <button
+              className={cn("flex w-full items-center gap-3 rounded-xl border border-white/10 bg-navy-800/70 text-left transition hover:bg-navy-700/70", rail ? "justify-center p-1.5" : "px-3 py-2.5")}
+              aria-label="Workspace and account menu"
+              title={rail ? user.name : undefined}
+            >
+              <Avatar name={user.name} size={rail ? 36 : 38} className="ring-navy-900" />
+              {!rail && (
+                <>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[15px] font-semibold text-white">{user.name}</span>
+                    <span className="block truncate text-[13px] text-slate-400">{subtitle ?? user.roleName}</span>
+                  </span>
+                  <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+                </>
+              )}
             </button>
           }
         >
           {accountMenu}
         </Menu>
 
-        <form role="search" onSubmit={submitSearch} className="relative">
-          <Search className="pointer-events-none absolute top-1/2 left-3 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" />
-          <input
-            data-global-search
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={`Search ${searchNoun}`}
-            aria-label={variant === "procurement" ? "Search orders by number or dealership" : "Search contacts by name, phone, email or business"}
-            className="h-10 w-full rounded-lg border border-white/10 bg-navy-800/70 pr-[3.75rem] pl-10 text-[14.5px] text-white placeholder:text-slate-400 focus:border-brand-400 focus:bg-navy-800 focus:ring-2 focus:ring-brand-400/30 focus:outline-none"
-          />
-          <kbd className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rounded border border-white/15 bg-white/5 px-1.5 py-0.5 font-sans text-[10.5px] font-medium text-slate-400">Ctrl K</kbd>
-        </form>
+        {rail ? (
+          <button
+            type="button"
+            onClick={() => router.push(`${searchTarget}`)}
+            title={`Search ${searchNoun}`}
+            aria-label={`Search ${searchNoun}`}
+            className="flex h-10 w-full items-center justify-center rounded-xl border border-white/10 bg-navy-800/70 text-slate-400 transition hover:bg-navy-700/70 hover:text-white"
+          >
+            <Search className="h-[18px] w-[18px]" />
+          </button>
+        ) : (
+          <form role="search" onSubmit={submitSearch} className="relative">
+            <Search className="pointer-events-none absolute top-1/2 left-3 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" />
+            <input
+              data-global-search
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={`Search ${searchNoun}`}
+              aria-label={variant === "procurement" ? "Search orders by number or dealership" : "Search contacts by name, phone, email or business"}
+              className="h-10 w-full rounded-xl border border-white/10 bg-navy-800/70 pr-[3.75rem] pl-10 text-[14.5px] text-white transition placeholder:text-slate-400 focus:border-brand-400 focus:bg-navy-800 focus:ring-2 focus:ring-brand-400/30 focus:outline-none"
+            />
+            <kbd className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rounded border border-white/15 bg-white/5 px-1.5 py-0.5 font-sans text-[10.5px] font-medium text-slate-400">Ctrl K</kbd>
+          </form>
+        )}
       </div>
 
-      <nav className="scrollbar-thin mt-3 flex-1 overflow-y-auto px-4 pb-4" aria-label="Main">
+      <nav className={cn("scrollbar-thin mt-3 flex-1 overflow-y-auto pb-4", rail ? "px-2" : "px-4")} aria-label="Main">
         {nav.map((item) => {
           const Icon = ICONS[item.icon] ?? List;
           const active = isActive(item.href);
           return (
             <div key={item.href}>
-              {item.section && <p className="mt-5 mb-1.5 px-3 text-[11.5px] font-semibold tracking-wider text-slate-500 uppercase">{item.section}</p>}
+              {item.section &&
+                (rail ? <div className="mx-2 mt-4 mb-2 h-px bg-white/10" aria-hidden /> : <p className="mt-5 mb-1.5 px-3 text-[11.5px] font-semibold tracking-wider text-slate-500 uppercase">{item.section}</p>)}
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
+                title={rail ? item.label : undefined}
                 className={cn(
-                  "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] transition-colors",
-                  active ? "bg-navy-700/70 font-semibold text-white" : "font-medium text-slate-300 hover:bg-white/5 hover:text-white",
+                  "group relative flex items-center rounded-xl text-[15px] transition-all duration-200",
+                  rail ? "mb-0.5 h-10 justify-center" : "gap-3 px-3 py-2.5",
+                  active ? "bg-gradient-to-r from-brand-500/20 to-white/[0.04] font-semibold text-white ring-1 ring-white/10" : "font-medium text-slate-300 hover:bg-white/5 hover:text-white",
                 )}
               >
-                {active && <span className="absolute inset-y-1.5 left-0 w-[3px] rounded-r bg-brand-400" aria-hidden />}
-                <Icon className={cn("h-5 w-5 shrink-0", active ? "text-brand-300" : "text-slate-400 group-hover:text-slate-200")} />
-                <span className="truncate">{item.label}</span>
-                {item.icon === "bell" && unread > 0 && (
-                  <span className="ml-auto rounded-full bg-accent-500 px-1.5 py-px text-[11px] font-semibold text-white">{unread > 99 ? "99+" : unread}</span>
+                {active && <span className="absolute inset-y-2 left-0 w-[3px] rounded-r bg-brand-400 shadow-[0_0_10px_var(--color-brand-400)]" aria-hidden />}
+                <span className="relative">
+                  <Icon className={cn("h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110", active ? "text-brand-300" : "text-slate-400 group-hover:text-slate-200")} />
+                  {rail && item.icon === "bell" && unread > 0 && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent-500 ring-2 ring-navy-900" aria-hidden />}
+                </span>
+                {rail ? (
+                  <span className="sr-only">{item.label}</span>
+                ) : (
+                  <>
+                    <span className="truncate">{item.label}</span>
+                    {item.icon === "bell" && unread > 0 && (
+                      <span className="ml-auto rounded-full bg-accent-500 px-1.5 py-px text-[11px] font-semibold text-white">{unread > 99 ? "99+" : unread}</span>
+                    )}
+                  </>
                 )}
               </Link>
             </div>
           );
         })}
       </nav>
+
+      <div className="hidden border-t border-white/5 p-3 lg:block">
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          aria-label={rail ? "Expand sidebar" : "Collapse sidebar"}
+          aria-pressed={rail}
+          title={rail ? "Expand sidebar" : "Collapse sidebar"}
+          className={cn("flex h-9 w-full items-center gap-2 rounded-lg text-[13px] font-medium text-slate-400 transition hover:bg-white/5 hover:text-white", rail ? "justify-center" : "px-3")}
+        >
+          {rail ? <PanelLeftOpen className="h-[18px] w-[18px]" /> : <PanelLeftClose className="h-[18px] w-[18px]" />}
+          {!rail && "Collapse"}
+        </button>
+      </div>
     </div>
   );
 
   return (
-    <div className="min-h-dvh lg:pl-64 xl:pl-72">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 lg:block xl:w-72">{sidebar}</aside>
+    <div className={cn("min-h-dvh transition-[padding] duration-300 ease-[var(--ease-out-expo)]", collapsed ? "lg:pl-[76px]" : "lg:pl-64 xl:pl-72")}>
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-ink-900 focus:shadow-lg">Skip to content</a>
+      <aside className={cn("fixed inset-y-0 left-0 z-40 hidden transition-[width] duration-300 ease-[var(--ease-out-expo)] lg:block", collapsed ? "w-[76px]" : "w-64 xl:w-72")}>{renderSidebar(collapsed)}</aside>
       {open && (
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
-          <div className="absolute inset-0 animate-fade-in bg-navy-950/60" onClick={() => setOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 w-80 max-w-[88%] animate-pop-in shadow-xl">
+          <div className="absolute inset-0 animate-fade-in bg-navy-950/60 backdrop-blur-[2px]" onClick={() => setOpen(false)} />
+          <aside className="absolute inset-y-0 left-0 w-80 max-w-[88%] animate-[slide-in-left_0.28s_var(--ease-out-expo)] shadow-xl">
             <button className="absolute top-5 right-3 z-10 rounded-md p-1.5 text-slate-300 hover:bg-white/10" onClick={() => setOpen(false)} aria-label="Close menu">
               <X className="h-5 w-5" />
             </button>
-            {sidebar}
+            {renderSidebar(false)}
           </aside>
         </div>
       )}
 
-      <header className="sticky top-0 z-30 flex h-[72px] items-center gap-3 border-b border-ink-200 bg-white px-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-30 flex h-[72px] items-center gap-3 border-b border-ink-200/80 bg-white/85 px-4 backdrop-blur-md sm:px-6 lg:px-8">
         <button className="rounded-md p-2 text-ink-600 hover:bg-ink-100 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu">
           <MenuIcon className="h-5 w-5" />
         </button>
-        <p className="truncate text-[17px] font-semibold text-ink-900">{section}</p>
+        <div className="hidden min-w-0 sm:block">
+          <nav aria-label="Breadcrumb" className="hidden items-center gap-1 text-[12px] text-ink-400 sm:flex">
+            <Link href={`${base}/dashboard`} className="transition-colors hover:text-ink-700">{variant === "crm" ? "Central CRM" : variant === "portal" ? "Dealer Portal" : "Procurement"}</Link>
+            {section && (
+              <>
+                <ChevronRight className="h-3 w-3" aria-hidden />
+                <span className="text-ink-600">{section}</span>
+              </>
+            )}
+          </nav>
+          <p className="truncate text-[17px] leading-tight font-semibold text-ink-900">{section}</p>
+        </div>
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
           {actions.map((a) => {
             const Icon = ACTION_ICONS[a.icon];
@@ -231,7 +313,9 @@ export function AppShell({
           <Menu trigger={<button className="rounded-full hover:opacity-90" aria-label="Account menu"><Avatar name={user.name} size={40} className="ring-0" /></button>}>{accountMenu}</Menu>
         </div>
       </header>
-      <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+      <main id="main" className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
+        <div key={pathname} className="page-enter">{children}</div>
+      </main>
       {assistant && <AssistantWidget config={assistant} open={assistantOpen} onOpenChange={setAssistantOpen} />}
     </div>
   );

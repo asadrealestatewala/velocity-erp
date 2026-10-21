@@ -1,14 +1,16 @@
 import { Bike, Wrench } from "lucide-react";
 import { db } from "@/lib/db";
-import { requireProcurementPage } from "@/server/authz";
+import { can, requireProcurementPage } from "@/server/authz";
 import { Badge, Card, CardHeader, EmptyState, PageHeader } from "@/components/ui/misc";
 import { BikePriceDialog, ProductDialog } from "@/components/procurement/catalog-dialogs";
+import { ModelDialog } from "@/app/crm/bike-models/model-dialog";
 import { fmtMoney } from "@/lib/utils";
 
 export const metadata = { title: "Product catalogue" };
 
 export default async function CatalogPage() {
-  await requireProcurementPage("catalog.manage");
+  const user = await requireProcurementPage("catalog.manage");
+  const manageModels = can(user, "bikemodels.manage");
   const [models, parts] = await Promise.all([
     db.bikeModel.findMany({ orderBy: [{ isActive: "desc" }, { displayOrder: "asc" }, { name: "asc" }] }),
     db.product.findMany({ orderBy: [{ isActive: "desc" }, { category: "asc" }, { name: "asc" }] }),
@@ -19,7 +21,7 @@ export default async function CatalogPage() {
         title="Product catalogue"
         description="What dealerships can stock and order: bike models and spare parts, with the prices YADEA charges dealers."
         breadcrumbs={[{ label: "Procurement", href: "/procurement/dashboard" }, { label: "Catalogue" }]}
-        actions={<ProductDialog />}
+        actions={<>{manageModels && <ModelDialog />}<ProductDialog /></>}
       />
       {(models.some((m) => m.isSeedExample) || parts.some((p) => p.isSeedExample)) && (
         <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -28,7 +30,7 @@ export default async function CatalogPage() {
       )}
 
       <Card className="mb-6">
-        <CardHeader title="Bike models" description="Add or edit models under CRM → Bike models. Set the prices dealers pay here." />
+        <CardHeader title="Bike models" description={manageModels ? "Add and edit bike models here, and set the prices dealers pay." : "Set the prices dealers pay. Models are added by an administrator under CRM → Bike models."} />
         <div className="scrollbar-thin overflow-x-auto">
           <table className="w-full min-w-[640px]">
             <thead className="bg-ink-50/60"><tr><th className="th">Model</th><th className="th">Code</th><th className="th text-right">Retail price</th><th className="th text-right">Dealer price</th><th className="th">Status</th><th className="th"><span className="sr-only">Actions</span></th></tr></thead>
@@ -40,10 +42,10 @@ export default async function CatalogPage() {
                   <td className="td text-right tabular-nums">{m.price ? fmtMoney(m.price.toString(), m.currency) : <span className="text-ink-400">Not set</span>}</td>
                   <td className="td text-right tabular-nums">{m.dealerPrice ? fmtMoney(m.dealerPrice.toString(), m.currency) : <span className="text-ink-400">Not set</span>}</td>
                   <td className="td">{m.isActive ? <Badge tone="green">Active</Badge> : <Badge>Inactive</Badge>}</td>
-                  <td className="td text-right"><BikePriceDialog id={m.id} name={m.name} price={m.price ? Number(m.price) : null} dealerPrice={m.dealerPrice ? Number(m.dealerPrice) : null} /></td>
+                  <td className="td text-right"><span className="inline-flex items-center gap-1">{manageModels && <ModelDialog id={m.id} initial={{ name: m.name, code: m.code, category: m.category, description: m.description, specifications: m.specifications as Record<string, string>, price: m.price ? Number(m.price) : null, currency: m.currency, availability: m.availability, displayOrder: m.displayOrder, isActive: m.isActive }} />}<BikePriceDialog id={m.id} name={m.name} price={m.price ? Number(m.price) : null} dealerPrice={m.dealerPrice ? Number(m.dealerPrice) : null} /></span></td>
                 </tr>
               ))}
-              {models.length === 0 && <tr><td colSpan={6}><EmptyState icon={Bike} title="No bike models" description="Add models under CRM → Bike models." /></td></tr>}
+              {models.length === 0 && <tr><td colSpan={6}><EmptyState icon={Bike} title="No bike models" description={manageModels ? "Use “New model” above to add the first one." : "Add models under CRM → Bike models."} /></td></tr>}
             </tbody>
           </table>
         </div>

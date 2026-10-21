@@ -13,6 +13,8 @@ import { userPhoneFields } from "@/server/user-phone";
 type Actor = Awaited<ReturnType<typeof requireUser>>;
 
 /** Central dealership managers can manage any team; a dealership manager only their own reps. */
+const membershipOf = (role: "MANAGER" | "SALES_REP" | "HEAD"): "MANAGER" | "SALES_REP" => (role === "SALES_REP" ? "SALES_REP" : "MANAGER");
+
 function assertTeamAuthority(user: Actor, dealershipId: string, role: "MANAGER" | "SALES_REP") {
   if (isCentral(user)) {
     if (!can(user, "dealerships.manage")) throw forbidden();
@@ -32,17 +34,19 @@ const addSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
   name: z.string().trim().min(2).max(120),
   phone: z.string().trim().max(30).optional(),
-  role: z.enum(["MANAGER", "SALES_REP"]),
+  /** HEAD = a Dealerships Head: manages this dealership like a manager but keeps their own role across all dealerships they head. */
+  role: z.enum(["MANAGER", "SALES_REP", "HEAD"]),
 });
 
 export async function addTeamMemberAction(input: z.input<typeof addSchema>) {
   return runAction(async () => {
     const user = await requireUser();
     const v = addSchema.parse(input);
-    assertTeamAuthority(user, v.dealershipId, v.role);
+    assertTeamAuthority(user, v.dealershipId, membershipOf(v.role));
     const dealership = await db.dealership.findUnique({ where: { id: v.dealershipId } });
     if (!dealership) throw notFound();
-    const roleKey = v.role === "MANAGER" ? "DEALER_MANAGER" : "DEALER_REP";
+    const roleKey = v.role === "HEAD" ? "DEALERSHIP_HEAD" : v.role === "MANAGER" ? "DEALER_MANAGER" : "DEALER_REP";
+    const membershipRole = v.role === "SALES_REP" ? "SALES_REP" : "MANAGER";
     const role = await db.role.findUniqueOrThrow({ where: { key: roleKey } });
 
     const existing = await db.user.findUnique({ where: { email: v.email }, include: { role: true } });
@@ -53,7 +57,8 @@ export async function addTeamMemberAction(input: z.input<typeof addSchema>) {
         // Never attach a central (head-office) account to a dealership — keeps scopes separate.
         if (existing.role.scope !== "DEALERSHIP") throw new AppError("That email belongs to a YADEA central account.", "CONFLICT", { email: "Central account" });
         userId = existing.id;
-        if (v.role === "MANAGER" && existing.role.key !== "DEALER_MANAGER") await tx.user.update({ where: { id: userId }, data: { roleId: role.id } });
+        // Appointing someone as a manager upgrades a sales rep — but never downgrades a Dealerships Head.
+        if (membershipRole === "MANAGER" && existing.role.key !== "DEALER_MANAGER" && existing.role.key !== "DEALERSHIP_HEAD") await tx.user.update({ where: { id: userId }, data: { roleId: role.id } });
       } else {
         password = tempPassword();
         const phoneFields = await userPhoneFields(v.phone, { tx });
@@ -62,14 +67,14 @@ export async function addTeamMemberAction(input: z.input<typeof addSchema>) {
       }
       const m = await tx.dealershipMembership.upsert({
         where: { userId_dealershipId: { userId, dealershipId: v.dealershipId } },
-        create: { userId, dealershipId: v.dealershipId, role: v.role },
-        update: { role: v.role, isActive: true },
+        create: { userId, dealershipId: v.dealershipId, role: membershipRole },
+        update: { role: membershipRole, isActive: true },
       });
       await tx.outboxMessage.create({
         data: {
           to: v.email,
           subject: `[YADEA] You've been added to ${dealership.name}`,
-          body: `Hello ${v.name},\n\nYou now have ${v.role === "MANAGER" ? "manager" : "sales representative"} access to ${dealership.name} in the YADEA Dealer Portal.\n\nSign in: ${env.appUrl}/portal/login\n${password ? "Your administrator will share your temporary password; you'll be asked to change it." : "Use your existing password."}`,
+          body: `Hello ${v.name},\n\nYou now have ${v.role === "HEAD" ? "dealerships head" : v.role === "MANAGER" ? "manager" : "sales representative"} access to ${dealership.name} in the YADEA Dealer Portal.\n\nSign in: ${env.appUrl}/portal/login\n${password ? "Your administrator will share your temporary password; you'll be asked to change it." : "Use your existing password."}`,
         },
       });
       await notify(tx, { userIds: [userId], type: "DEALERSHIP_ONBOARDING", title: `Welcome to ${dealership.name}`, body: "Your dealer portal access is ready.", link: { portal: "/portal/dashboard" } });
@@ -87,13 +92,13 @@ export async function addTeamMemberAction(input: z.input<typeof addSchema>) {
 export async function updateMembershipAction(membershipId: string, patch: { role?: "MANAGER" | "SALES_REP"; isActive?: boolean }) {
   return runAction(async () => {
     const user = await requireUser();
-    const m = await db.dealershipMembership.findUnique({ where: { id: membershipId }, include: { user: true } });
+    const m = await db.dealershipMembership.findUnique({ where: { id: membershipId }, include: { user: { include: { role: true } } } });
     if (!m) throw notFound();
     assertTeamAuthority(user, m.dealershipId, patch.role === "MANAGER" || m.role === "MANAGER" ? "MANAGER" : "SALES_REP");
     if (m.userId === user.id) throw forbidden("You can't change your own access.");
     await db.$transaction(async (tx) => {
       await tx.dealershipMembership.update({ where: { id: membershipId }, data: patch });
-      if (patch.role) {
+      if (patch.role && m.user.role.key !== "DEALERSHIP_HEAD") {
         const role = await tx.role.findUniqueOrThrow({ where: { key: patch.role === "MANAGER" ? "DEALER_MANAGER" : "DEALER_REP" } });
         await tx.user.update({ where: { id: m.userId }, data: { roleId: role.id } });
       }

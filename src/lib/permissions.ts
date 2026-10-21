@@ -73,6 +73,7 @@ export const ROLE_KEYS = {
   CRM_STAFF: "CRM_STAFF",
   PROCUREMENT: "PROCUREMENT",
   DEALER_MANAGER: "DEALER_MANAGER",
+  DEALERSHIP_HEAD: "DEALERSHIP_HEAD",
   DEALER_REP: "DEALER_REP",
 } as const;
 
@@ -96,7 +97,22 @@ export const DEFAULT_GRANT_UPGRADES: { id: string; grants: Record<string, Permis
       PROCUREMENT: ["assistant.write"],
     },
   },
+  {
+    // Procurement is responsible for the product catalogue, bike models as well as spare parts.
+    id: "2026-10-procurement-bike-models",
+    grants: { PROCUREMENT: ["bikemodels.manage"] },
+  },
 ];
+
+/** What a dealership manager can do inside each dealership they manage (a Dealerships Head has the same powers across all of theirs). */
+const DEALERSHIP_MANAGER_PERMISSIONS: PermissionKey[] = [
+      "portal.access", "contacts.view", "contacts.create", "contacts.edit", "contacts.export",
+      "leads.assign_team", "leads.change_stage", "testdrives.view", "testdrives.manage", "tasks.manage",
+      "notes.manage", "documents.view", "documents.manage", "payments.view", "payments.manage",
+      "reports.view", "team.manage", "audit.view",
+      "inventory.view", "inventory.manage", "salesorders.manage", "procurement.order", "ledger.view", "ledger.pay",
+      "vouchers.manage", "dealerdocs.upload", "messages.send", "assistant.use", "assistant.write",
+    ];
 
 export const DEFAULT_ROLES: {
   key: string;
@@ -143,7 +159,7 @@ export const DEFAULT_ROLES: {
     description: "Receives dealership stock orders, dispatches goods, keeps dealer ledgers and reviews vouchers",
     scope: "CENTRAL",
     permissions: [
-      "procurement.view", "procurement.manage", "catalog.manage", "inventory.view_all", "ledger.view", "ledger.manage",
+      "procurement.view", "procurement.manage", "catalog.manage", "bikemodels.manage", "inventory.view_all", "ledger.view", "ledger.manage",
       "vouchers.view_all", "dealerships.view", "dealerdocs.admin", "assistant.use", "assistant.write",
     ],
   },
@@ -152,14 +168,14 @@ export const DEFAULT_ROLES: {
     name: "Dealership Manager",
     description: "Runs a dealership portal and its team",
     scope: "DEALERSHIP",
-    permissions: [
-      "portal.access", "contacts.view", "contacts.create", "contacts.edit", "contacts.export",
-      "leads.assign_team", "leads.change_stage", "testdrives.view", "testdrives.manage", "tasks.manage",
-      "notes.manage", "documents.view", "documents.manage", "payments.view", "payments.manage",
-      "reports.view", "team.manage", "audit.view",
-      "inventory.view", "inventory.manage", "salesorders.manage", "procurement.order", "ledger.view", "ledger.pay",
-      "vouchers.manage", "dealerdocs.upload", "messages.send", "assistant.use", "assistant.write",
-    ],
+    permissions: DEALERSHIP_MANAGER_PERMISSIONS,
+  },
+  {
+    key: ROLE_KEYS.DEALERSHIP_HEAD,
+    name: "Dealerships Head",
+    description: "Oversees several dealerships, possibly across regions: sees and works the leads, stock, accounts and teams of every dealership they head from one portal",
+    scope: "DEALERSHIP",
+    permissions: DEALERSHIP_MANAGER_PERMISSIONS,
   },
   {
     key: ROLE_KEYS.DEALER_REP,

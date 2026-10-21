@@ -31,7 +31,7 @@ A dealership only ever sees its own data. Anything outside a user's scope behave
     id: "roles",
     title: "Roles and permissions",
     audience: ["crm", "procurement"],
-    body: `Default roles: **Super Administrator** (everything except dealership-only actions), **YADEA Management** (dashboards, reports, oversight, application review, read access to procurement/ledgers), **Sales & CRM Staff** (contacts, leads, assignment, follow-ups, messaging), **Procurement & Accounts** (stock orders, catalogue, dealer stock, ledgers, vouchers, dealership documents), **Dealership Manager** and **Dealership Sales Representative**. Super Administrators change what each role may do under Users & Permissions (a permission matrix). Dealership-only permissions (inventory, customer orders, stock orders, payments to YADEA, vouchers) are never granted to head-office roles — YADEA staff act on dealer data through the Procurement portal instead.`,
+    body: `Default roles: **Super Administrator** (everything except dealership-only actions), **YADEA Management** (dashboards, reports, oversight, application review, read access to procurement/ledgers), **Sales & CRM Staff** (contacts, leads, assignment, follow-ups, messaging), **Procurement & Accounts** (stock orders, catalogue, dealer stock, ledgers, vouchers, dealership documents), **Dealership Manager** (one per outlet), **Dealerships Head** (oversees several dealerships, possibly across regions, from one portal) and **Dealership Sales Representative**. Super Administrators change what each role may do under Users & Permissions (a permission matrix). Dealership-only permissions (inventory, customer orders, stock orders, payments to YADEA, vouchers) are never granted to head-office roles — YADEA staff act on dealer data through the Procurement portal instead.`,
   },
   {
     id: "roles-dealer",
@@ -103,7 +103,7 @@ A dealership only ever sees its own data. Anything outside a user's scope behave
     id: "catalog",
     title: "Product catalogue and dealer prices",
     audience: ["procurement", "crm"],
-    body: `Bike models are managed under CRM → Bike models; **spare parts** under Procurement → Product Catalogue (SKU, name, category, retail price, dealer price, image). Prices are only ever what an administrator enters — the system never invents prices. Deactivating an item hides it from ordering and stocking but keeps history. Bike model dealer prices (what dealers pay YADEA) are set in the catalogue.`,
+    body: `The Procurement department owns the whole catalogue: **bike models** and **spare parts** are both added and edited under Procurement → Product Catalogue (spare parts have SKU, name, category, retail price, dealer price, image); administrators can also manage models under CRM → Bike models. Prices are only ever what an administrator enters — the system never invents prices. Deactivating an item hides it from ordering and stocking but keeps history. Bike model dealer prices (what dealers pay YADEA) are set in the catalogue.`,
   },
   {
     id: "ledger",

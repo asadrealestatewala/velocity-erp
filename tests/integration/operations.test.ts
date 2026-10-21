@@ -24,7 +24,7 @@ import { syncPermissionCatalog } from "@/server/permission-sync";
 import { runScheduledJobs } from "@/server/services/jobs";
 import { GET as exportLedger } from "@/app/api/ledger/export/route";
 import { GET as getFile } from "@/app/api/files/[id]/route";
-import { DEFAULT_ROLES, DEALER_ONLY_PERMISSIONS } from "@/lib/permissions";
+import { DEFAULT_GRANT_UPGRADES, DEFAULT_ROLES, DEALER_ONLY_PERMISSIONS } from "@/lib/permissions";
 import { asUser, buildWorld, type World } from "../support/fixtures";
 
 let w: World;
@@ -613,8 +613,12 @@ describe("permission catalogue", () => {
   it("applies a release's default-grant upgrades once and never overrides an administrator afterwards", async () => {
     const perm = await db.permission.findUniqueOrThrow({ where: { key: "audit.view" } });
     await db.rolePermission.deleteMany({ where: { permissionId: perm.id, roleId: w.roles.DEALER_MANAGER! } }); // a database from before this release
+    const bikeModels = await db.permission.findUniqueOrThrow({ where: { key: "bikemodels.manage" } });
+    await db.rolePermission.deleteMany({ where: { permissionId: bikeModels.id, roleId: w.roles.PROCUREMENT! } }); // procurement didn't own bike models before the catalogue release
     const first = await syncPermissionCatalog();
-    expect(first.upgradesApplied).toEqual(["2026-10-operations"]);
+    expect(first.upgradesApplied).toEqual(DEFAULT_GRANT_UPGRADES.map((u) => u.id)); // every release upgrade, each recorded once
+    expect(first.upgradesApplied).toContain("2026-10-procurement-bike-models");
+    expect(await db.rolePermission.count({ where: { permissionId: bikeModels.id, roleId: w.roles.PROCUREMENT! } })).toBe(1);
     expect(await db.rolePermission.count({ where: { permissionId: perm.id, roleId: w.roles.DEALER_MANAGER! } })).toBe(1);
     await db.rolePermission.deleteMany({ where: { permissionId: perm.id, roleId: w.roles.DEALER_MANAGER! } }); // the administrator removes it on purpose
     const second = await syncPermissionCatalog();

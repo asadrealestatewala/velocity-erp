@@ -109,8 +109,8 @@ export function TeamPanel({ dealershipId, members, canAppointManagers, meId }: {
           onOpenChange={setOpen}
           trigger={<Button size="sm" variant="secondary"><UserPlus className="h-4 w-4" /> Add team member</Button>}
           title="Add team member"
-          description="Creates a dealer-portal account (or adds an existing dealer account) with access to this dealership only."
-          footer={<><Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button><Button loading={add.pending} onClick={() => add.run({ dealershipId, ...f, role: f.role as "MANAGER" })}>Add</Button></>}
+          description="Creates a dealer-portal account, or adds an existing one, with access to this dealership. A Dealerships head can be added to as many dealerships as they oversee — their leads and actions from all of them appear in one portal."
+          footer={<><Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button><Button loading={add.pending} onClick={() => add.run({ dealershipId, ...f, role: f.role as "MANAGER" | "SALES_REP" | "HEAD" })}>Add</Button></>}
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Full name" required error={add.fieldErrors.name}>{(p) => <Input {...p} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />}</Field>
@@ -119,7 +119,8 @@ export function TeamPanel({ dealershipId, members, canAppointManagers, meId }: {
             <Field label="Role">
               {(p) => (
                 <Select {...p} value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} disabled={!canAppointManagers}>
-                  {canAppointManagers && <option value="MANAGER">Dealership manager</option>}
+                  {canAppointManagers && <option value="MANAGER">Dealership manager (this outlet)</option>}
+                  {canAppointManagers && <option value="HEAD">Dealerships head (oversees several dealerships)</option>}
                   <option value="SALES_REP">Sales representative</option>
                 </Select>
               )}

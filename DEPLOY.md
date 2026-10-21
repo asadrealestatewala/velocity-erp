@@ -23,3 +23,7 @@ The app runs on **Vercel** (Next.js), its database is **Supabase Postgres**, and
 - **Demo credentials** are for demo data only. Change every password (Users & Permissions) before real use, and keep `SHOW_DEMO_CREDENTIALS=false`.
 - **AI assistant**: add `ANTHROPIC_API_KEY`, or the `ASSISTANT_*` variables (see `.env.example`), in Vercel to switch it from built-in guide mode to a real model. Customer data is sent to the chosen AI service.
 - The free Supabase plan pauses a project after a week of inactivity, and Vercel's free plan limits function run time to 60 s.
+
+## Accounts
+
+`npm run accounts:provision -- --cloud` creates the Procurement department and Dealerships Head accounts in the local and cloud databases (see the README, "Procurement department and Dealerships Heads"). Role changes reach the cloud database automatically when the app boots, or with `npm run db:sync` against it.

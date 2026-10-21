@@ -396,9 +396,9 @@ export const PAGES: PageDoc[] = [
   },
   {
     id: "proc-catalog", workspace: "procurement", group: "Catalogue", label: "Product Catalogue", path: "/procurement/catalog", perm: "catalog.manage",
-    summary: "What dealers can stock and order, with the prices YADEA charges them.",
-    inside: ["Bike models table (add/edit models under CRM → Bike models; set dealer prices here).", "Spare parts table: SKU, name, category, retail price, dealer price, image, active state."],
-    actions: ["New spare part", "Set prices (retail and dealer price) on a model or part", "Deactivate an item (history is kept)"],
+    summary: "What dealers can stock and order — bike models and spare parts — with the prices YADEA charges them. Owned by the Procurement department.",
+    inside: ["Bike models table: add and edit models here (name, code, category, availability, image, specifications) and set dealer prices.", "Spare parts table: SKU, name, category, retail price, dealer price, image, active state."],
+    actions: ["New model / edit a model (needs the bike-model permission)", "New spare part", "Set prices (retail and dealer price) on a model or part", "Deactivate an item (history is kept)"],
     keywords: ["spare parts", "prices", "sku", "dealer price", "add part"],
   },
   {

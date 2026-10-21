@@ -215,6 +215,17 @@ export const HOWTOS: HowTo[] = [
     go: ["/crm/settings?tab=operations", "/crm/settings?tab=privacy"],
   },
   {
+    id: "crm-appoint-head", audience: CRM, q: "How do I appoint a Dealerships Head, or give a head more dealerships?", also: ["dealerships head", "regional head", "area head", "head of dealerships", "add head to dealership", "head over several dealerships", "dealership head account"],
+    steps: [
+      "A **Dealerships Head** oversees several dealerships (possibly across regions). Each dealership still has its own outlet manager; the head is an extra person above them.",
+      "Open **Dealerships**, open the dealership, find the **Team** panel and press **Add team member**.",
+      "Choose the role **Dealerships head (oversees several dealerships)**, enter their name and email (and mobile) and save. A new account is created with a one-time temporary password they must change at first sign-in; for someone who is already a head, just use their email — they keep their role.",
+      "Repeat on every dealership they oversee. To remove one, set that membership inactive in the same Team panel.",
+      "From then on every lead assigned to those dealerships shows in the head's portal (All Dealership Leads), and they can assign leads to reps, run the team, place stock orders and see the ledger of each dealership.",
+    ],
+    go: ["/crm/dealerships"],
+  },
+  {
     id: "crm-bike-models", audience: CRM, q: "How do I add or edit a bike model?", also: ["new model", "gt70", "ruibin", "keeness", "deactivate model"],
     steps: ["Open **Bike Models** and press **New model** (needs permission), or edit a row.", "Enter name, code, category, price and image. Active models appear on the public forms and can be stocked and ordered.", "Dealer prices (what dealers pay YADEA) are set in Procurement → Product Catalogue."],
     go: ["/crm/bike-models", "/procurement/catalog"],
@@ -255,6 +266,16 @@ export const HOWTOS: HowTo[] = [
     id: "portal-assign-rep", audience: PORTAL, q: "How do I assign a lead to a sales rep?", also: ["give lead to rep", "reassign lead", "unassigned lead"],
     steps: ["Managers: open **All Dealership Leads** and filter Rep → Unassigned if you like.", "Open the ⋯ menu on the contact → **Assign** (or Assign on the contact page), pick the rep and save.", "You can only choose reps inside your own dealership."],
     go: ["/portal/leads"],
+  },
+  {
+    id: "portal-head", audience: PORTAL, q: "I head several dealerships — how do I work all their leads and switch between them?", also: ["dealerships head", "multiple dealerships", "switch dealership", "regional head", "all my dealerships", "leads from all my dealerships"],
+    steps: [
+      "**All Dealership Leads**, Pipeline, Contacts, Test Drives, Tasks and the dashboard numbers combine every dealership you head.",
+      "Pages about one dealership's own books — **Inventory, Customer Orders, Stock Orders, Account Ledger, Expense Vouchers, Documents** — have a **dealership switcher** at the top: pick which dealership you are working in.",
+      "Assign a lead to a sales rep from its row menu → **Assign**, and manage each dealership's reps from **Team Performance**. Anything you do is recorded in that dealership's audit log.",
+      "Head office adds or removes dealerships from your portal (CRM → Dealerships → Team).",
+    ],
+    go: ["/portal/leads", "/portal/team"],
   },
   {
     id: "portal-team", audience: PORTAL, q: "How do I add or remove a sales rep on my team?", also: ["team members", "add staff", "add user", "remove rep", "team performance"],
@@ -375,8 +396,14 @@ export const HOWTOS: HowTo[] = [
   },
   {
     id: "proc-add-part", audience: PROC, q: "How do I add a spare part or set dealer prices?", also: ["new spare part", "product catalogue", "set price", "dealer price", "retail price", "sku"],
-    steps: ["Open **Product Catalogue**.", "**New spare part**: part name, SKU, category, unit, retail price, dealer price (what dealers pay YADEA), image and active state.", "**Set prices** on a bike model or part to change retail/dealer prices. Only the prices you enter are ever used — the system never invents prices.", "Bike models themselves are added under CRM → Bike Models. Deactivating an item hides it from ordering but keeps history."],
+    steps: ["Open **Product Catalogue**.", "**New spare part**: part name, SKU, category, unit, retail price, dealer price (what dealers pay YADEA), image and active state.", "**Set prices** on a bike model or part to change retail/dealer prices. Only the prices you enter are ever used — the system never invents prices.", "Bike models are added and edited on the same page with **New model** (or the pencil on a model row). Deactivating an item hides it from ordering but keeps history."],
     go: ["/procurement/catalog"],
+  },
+  {
+    id: "proc-bike-model", audience: PROC, q: "How do I add or edit a bike model in the product catalogue?", also: ["new bike model", "add model", "edit model", "gt70", "ruibin", "keeness", "model availability", "model specifications", "deactivate model"],
+    steps: ["Open **Product Catalogue** and press **New model** (top right), or the pencil on a model's row to edit it.", "Enter the **model name**, **code** (capital letters, numbers, dashes), category, availability (Available, Coming soon, Out of stock, Discontinued), optional price, image and specifications. Use official product data only — nothing is invented for you.", "Save. Active models appear on the public forms and can be stocked and ordered; set what dealers pay with **Set prices** on the same row.", "To retire a model, untick Active (history in leads, bookings and orders is kept)."],
+    go: ["/procurement/catalog"],
+    tip: "Procurement and administrators can manage bike models; sales & CRM staff and dealerships cannot.",
   },
   {
     id: "proc-verify-payment", audience: PROC, q: "How do I verify or reject a dealer's payment?", also: ["verify payment", "payment awaiting verification", "reject payment", "proof of payment check"],

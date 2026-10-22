@@ -10,8 +10,8 @@ export function BadgeGrid({ all, earned }: { all: { id: string; name: string; de
         const Icon = ICONS[a.icon] ?? Award;
         const at = earned.get(a.id);
         return (
-          <li key={a.id} title={a.description} className={cn("rounded-xl border p-3 text-center transition", at ? "border-brand-200 bg-gradient-to-b from-brand-50 to-white" : "border-dashed border-ink-200 opacity-60")}>
-            <span className={cn("mx-auto mb-1.5 flex h-10 w-10 items-center justify-center rounded-full", at ? "bg-brand-500 text-white shadow-md shadow-brand-500/30" : "bg-ink-100 text-ink-400")}>
+          <li key={a.id} title={a.description} className={cn("rounded-xl border p-3 text-center transition", at ? "border-xp-200 bg-gradient-to-b from-xp-50 to-white" : "border-dashed border-ink-200 opacity-60")}>
+            <span className={cn("mx-auto mb-1.5 flex h-10 w-10 items-center justify-center rounded-full", at ? "bg-xp-500 text-white shadow-md shadow-xp-500/30" : "bg-ink-100 text-ink-400")}>
               <Icon className="h-5 w-5" />
             </span>
             <p className="text-xs font-semibold text-ink-900">{a.name}</p>

@@ -164,7 +164,7 @@ export function LoginForm({ portal, next, demo }: { portal: Portal; next?: strin
           data-state={phase}
           className={cn(
             "group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-xl text-[15px] font-semibold text-white shadow-[var(--shadow-glow)] transition duration-200",
-            "bg-gradient-to-b from-brand-500 to-brand-600 hover:-translate-y-px hover:to-brand-700 active:translate-y-0 active:scale-[0.985]",
+            "bg-gradient-to-b from-yadea-500 to-yadea-600 hover:-translate-y-px hover:to-yadea-700 active:translate-y-0 active:scale-[0.985]",
             "disabled:pointer-events-none",
             phase === "success" && "!from-emerald-500 !to-emerald-600",
             phase === "submitting" && "opacity-90",

@@ -4,18 +4,35 @@
    Brand orange sampled from the supplied logo; charcoal from the wordmark.
    Change these to re-theme the whole platform. */
 @theme {
-  /* Primary (actions, links, focus, progress) — YADEA orange, sampled from the logo.
-     600+ carries white text / sits on white (AA contrast); 400-500 are for fills, rings and glows. */
-  --color-brand-50: #fff5ec;
-  --color-brand-100: #ffe7d2;
-  --color-brand-200: #ffcda3;
-  --color-brand-300: #ffab69;
-  --color-brand-400: #fb8a3c;
-  --color-brand-500: #ee6c00;
-  --color-brand-600: #c25100;
-  --color-brand-700: #a04200;
-  --color-brand-800: #7f3708;
-  --color-brand-900: #672f0b;
+  /* Primary blue — links, focus, active navigation, charts. */
+  --color-brand-50: #eff5ff;
+  --color-brand-100: #dbe8fe;
+  --color-brand-200: #bfd5fe;
+  --color-brand-300: #93b8fd;
+  --color-brand-400: #608ffa;
+  --color-brand-500: #3b73f3;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4fd0;
+  --color-brand-800: #1e3fa6;
+  --color-brand-900: #1e3a82;
+
+  /* YADEA red — primary actions and brand accents (white text passes AA from 600). */
+  --color-yadea-50: #fff1f2;
+  --color-yadea-100: #ffe0e3;
+  --color-yadea-200: #ffc2c9;
+  --color-yadea-400: #f2596a;
+  --color-yadea-500: #dc2638;
+  --color-yadea-600: #c4182b;
+  --color-yadea-700: #a11223;
+
+  /* Achievement purple — XP, levels, badges. */
+  --color-xp-50: #f5f3ff;
+  --color-xp-100: #ede9fe;
+  --color-xp-200: #ddd6fe;
+  --color-xp-400: #a78bfa;
+  --color-xp-500: #8b5cf6;
+  --color-xp-600: #7c3aed;
+  --color-xp-700: #6d28d9;
 
   /* Electric accent — used sparingly for energy: charts, light sweeps, live indicators. */
   --color-volt-300: #7ee7ff;
@@ -31,12 +48,12 @@
   --color-accent-500: #f07400;
   --color-accent-600: #d95f00;
 
-  /* Graphite — sidebar, hero surfaces and the login stage (kept under the old "navy" names so every consumer re-themes at once). */
-  --color-navy-950: #0a0c10;
-  --color-navy-900: #11141a;
-  --color-navy-800: #1a1f28;
-  --color-navy-700: #262c38;
-  --color-navy-600: #384051;
+  /* Deep navy — sidebar, hero surfaces and the sign-in stage ("navy" tokens). */
+  --color-navy-950: #040e1d;
+  --color-navy-900: #07172e;
+  --color-navy-800: #0f2543;
+  --color-navy-700: #193659;
+  --color-navy-600: #2a4a75;
   --color-ink-50: #f5f7fb;
   --color-ink-100: #eceef2;
   --color-ink-200: #d6dae1;
@@ -53,7 +70,7 @@
 
   --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
   --shadow-lift: 0 14px 30px -14px rgb(16 24 40 / 0.22), 0 4px 10px -6px rgb(16 24 40 / 0.1);
-  --shadow-glow: 0 0 0 1px rgb(238 108 0 / 0.25), 0 10px 30px -8px rgb(238 108 0 / 0.45);
+  --shadow-glow: 0 0 0 1px rgb(196 24 43 / 0.25), 0 10px 30px -8px rgb(196 24 43 / 0.45);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-soft: cubic-bezier(0.22, 0.8, 0.3, 1);
   --shadow-pop: 0 12px 32px -8px rgb(16 24 40 / 0.18), 0 4px 8px -4px rgb(16 24 40 / 0.08);
@@ -154,7 +171,7 @@
   }
   .surface-graphite {
     background:
-      radial-gradient(120% 140% at 0% 0%, rgb(238 108 0 / 0.22), transparent 55%),
+      radial-gradient(120% 140% at 0% 0%, rgb(37 99 235 / 0.28), transparent 55%),
       radial-gradient(90% 120% at 100% 100%, rgb(14 174 207 / 0.14), transparent 55%),
       linear-gradient(135deg, var(--color-navy-900), var(--color-navy-950));
   }

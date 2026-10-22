@@ -88,3 +88,50 @@ export async function getUserProgress(userId: string, now = new Date()): Promise
     rank: idx >= 0 ? { position: idx + 1, of: ranked.length } : null,
   };
 }
+
+// ───────────────────────── XP levels, daily missions, streak ─────────────────────────
+
+/** Level rule (one place): level n starts at 60·(n−1)² XP — 0, 60, 240, 540, 960… Points are the existing audited GamificationEvent points. */
+export function levelFor(totalXp: number) {
+  const level = Math.floor(Math.sqrt(Math.max(0, totalXp) / 60)) + 1;
+  const floor = 60 * (level - 1) ** 2;
+  const ceil = 60 * level ** 2;
+  return { level, xpIntoLevel: totalXp - floor, xpForNext: ceil - floor, toNext: ceil - totalXp, pct: Math.min(100, Math.round(((totalXp - floor) / (ceil - floor)) * 100)) };
+}
+
+export const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100] as const;
+export const nextStreakMilestone = (days: number) => STREAK_MILESTONES.find((m) => m > days) ?? null;
+
+/**
+ * Daily missions. Targets are the defaults below; progress and XP come only from today's recorded, de-duplicated
+ * GamificationEvent rows (one award per subject), so a mission can't be completed by repeated clicking.
+ */
+export const MISSIONS = [
+  { key: "contact", title: "Contact new leads", types: ["FIRST_CONTACT"], target: 5, href: "/crm/contacts?followUp=due", action: "Open leads" },
+  { key: "followups", title: "Complete follow-ups", types: ["FOLLOW_UP_COMPLETED", "TASK_ON_TIME"], target: 3, href: "/crm/tasks", action: "Open tasks" },
+  { key: "advance", title: "Move leads forward a stage", types: ["STAGE_ADVANCED"], target: 2, href: "/crm/pipeline", action: "Open pipeline" },
+  { key: "testdrive", title: "Complete a test drive", types: ["TEST_DRIVE_COMPLETED"], target: 1, href: "/crm/test-drives", action: "Open test drives" },
+] as const;
+
+export type DailyMission = { key: string; title: string; target: number; done: number; xp: number; complete: boolean; href: string; action: string };
+
+export async function getDailyMissions(userId: string, now = new Date()) {
+  const rows = await db.gamificationEvent.findMany({ where: { userId, createdAt: { gte: startOfDay(now) } }, select: { type: true, points: true } });
+  const missions: DailyMission[] = MISSIONS.map((m) => {
+    const hits = rows.filter((r) => (m.types as readonly string[]).includes(r.type));
+    const done = hits.length;
+    return { key: m.key, title: m.title, target: m.target, done: Math.min(done, m.target), xp: hits.reduce((a, r) => a + r.points, 0), complete: done >= m.target, href: m.href, action: m.action };
+  });
+  return { missions, xpToday: rows.reduce((a, r) => a + r.points, 0) };
+}
+
+/** Which of the last 7 days (oldest → today) had at least one awarded event. */
+export async function getWeekActivity(userId: string, now = new Date()) {
+  const from = startOfDay(subDays(now, 6));
+  const rows = await db.gamificationEvent.findMany({ where: { userId, createdAt: { gte: from } }, select: { createdAt: true } });
+  const days = new Set(rows.map((r) => startOfDay(r.createdAt).getTime()));
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = startOfDay(subDays(now, 6 - i));
+    return { date: d, active: days.has(d.getTime()) };
+  });
+}

@@ -4,13 +4,14 @@ import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const variants = {
-  primary: "bg-brand-600 text-white hover:bg-brand-700 shadow-sm active:scale-[0.98]",
+  primary: "bg-yadea-600 text-white hover:bg-yadea-700 shadow-sm active:scale-[0.98]",
+  blue: "bg-brand-600 text-white hover:bg-brand-700 shadow-sm active:scale-[0.98]",
   secondary: "bg-white text-ink-800 border border-ink-200 hover:bg-ink-50 hover:border-ink-300 active:scale-[0.98]",
   ghost: "text-ink-600 hover:bg-ink-100 hover:text-ink-900",
   danger: "bg-red-600 text-white hover:bg-red-700",
   dark: "bg-navy-900 text-white hover:bg-navy-700 active:scale-[0.98]",
   // Outlined primary, as used for secondary actions in the reference dashboard
-  outlineBrand: "border border-brand-500/70 text-brand-700 bg-white hover:bg-brand-50 active:scale-[0.98]",
+  outlineBrand: "border border-brand-500/60 text-brand-700 bg-white hover:bg-brand-50 active:scale-[0.98]",
 } as const;
 
 const sizes = {

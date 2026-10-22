@@ -204,12 +204,12 @@ export function AppShell({
                 className={cn(
                   "group relative flex items-center rounded-xl text-[15px] transition-all duration-200",
                   rail ? "mb-0.5 h-10 justify-center" : "gap-3 px-3 py-2.5",
-                  active ? "bg-gradient-to-r from-brand-500/20 to-white/[0.04] font-semibold text-white ring-1 ring-white/10" : "font-medium text-slate-300 hover:bg-white/5 hover:text-white",
+                  active ? "bg-brand-600 font-semibold text-white shadow-[0_6px_16px_-6px_rgb(37_99_235/0.7)]" : "font-medium text-slate-300 hover:bg-white/5 hover:text-white",
                 )}
               >
-                {active && <span className="absolute inset-y-2 left-0 w-[3px] rounded-r bg-brand-400 shadow-[0_0_10px_var(--color-brand-400)]" aria-hidden />}
+                
                 <span className="relative">
-                  <Icon className={cn("h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110", active ? "text-brand-300" : "text-slate-400 group-hover:text-slate-200")} />
+                  <Icon className={cn("h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110", active ? "text-white" : "text-slate-400 group-hover:text-slate-200")} />
                   {rail && item.icon === "bell" && unread > 0 && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent-500 ring-2 ring-navy-900" aria-hidden />}
                 </span>
                 {rail ? (

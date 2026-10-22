@@ -4,9 +4,15 @@ import {
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireCentralPage, leadScope, contactScope, testDriveScope, taskScope } from "@/server/authz";
-import { getCharts, getDealershipPerformance, getKpis, goalProgress, parseRange } from "@/server/services/analytics";
-import { getUserProgress } from "@/server/services/progress";
-import { GoalsPanel, ProgressHero } from "@/components/gamification/progress-panel";
+import { getCharts, getDealershipPerformance, getKpis, getLeaderboard, goalProgress, leadWhere, parseRange } from "@/server/services/analytics";
+import { getDailyMissions, getUserProgress, getWeekActivity, levelFor, nextStreakMilestone } from "@/server/services/progress";
+import { getFunnel } from "@/server/services/funnel";
+import { startOfMonth } from "date-fns";
+import { GoalsPanel } from "@/components/gamification/progress-panel";
+import { AlertCards, FunnelCard, GamificationCard, LeaderboardCard, RemindersCard, greeting } from "@/components/dashboard/widgets";
+import { LevelUp } from "@/components/dashboard/level-up";
+import { Celebrate } from "@/components/gamification/celebrate";
+import { can } from "@/server/authz";
 import { BadgeGrid } from "@/components/gamification/badges";
 import { lookups, opt } from "@/server/lookups";
 import { PageHeader, StatCard, Card, CardHeader, Avatar, Badge, EmptyState } from "@/components/ui/misc";
@@ -61,38 +67,39 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     db.achievement.findMany({ where: { isActive: true }, orderBy: { createdAt: "asc" } }),
     db.userAchievement.findMany({ where: { userId: user.id } }),
   ]);
+  const [missionData, week, funnel, testDrives, applications, board] = await Promise.all([
+    getDailyMissions(user.id, now),
+    getWeekActivity(user.id, now),
+    getFunnel(leadWhere(scope, { ...f, stageId: undefined })),
+    db.testDriveBooking.findMany({
+      where: { AND: [testDriveScope(user), { scheduledAt: { gte: now }, status: { in: ["REQUESTED", "CONFIRMED", "RESCHEDULED"] } }] },
+      orderBy: { scheduledAt: "asc" },
+      take: 5,
+      include: { contact: { select: { id: true, firstName: true, lastName: true } }, bikeModel: { select: { name: true } } },
+    }),
+    can(user, "applications.review")
+      ? db.dealershipApplication.findMany({ where: { status: { in: ["SUBMITTED", "UNDER_REVIEW", "INFO_REQUIRED"] } }, orderBy: { createdAt: "asc" }, take: 4, select: { id: true, businessName: true, createdAt: true, status: true } })
+      : Promise.resolve([]),
+    getLeaderboard("rep", { from: startOfMonth(now), to: now }),
+  ]);
+  const level = levelFor(progress.totalPoints);
+  const latestBadge = earned.length ? await db.userAchievement.findFirst({ where: { userId: user.id }, orderBy: { earnedAt: "desc" }, include: { achievement: true } }) : null;
   const goalRows = await Promise.all(goals.map(async (g) => ({ g: { ...g, dealershipName: g.dealership?.name, userName: g.user?.name }, p: await goalProgress(g) })));
   const earnedMap = new Map(earned.map((e) => [e.achievementId, e.earnedAt]));
-  const hasProgress = progress.totalPoints > 0 || progress.badgesEarned > 0;
-  const attention = [
-    { label: "unassigned leads", n: kpi.unassigned, href: q0({ assigned: "no" }), tone: "red" as const },
-    { label: "follow-ups due or overdue", n: kpi.followUp, href: q0({ followUp: "due" }), tone: "amber" as const },
-    { label: "pending dealership applications", n: kpi.pendingApps, href: "/crm/applications", tone: "violet" as const },
-  ].filter((a) => a.n > 0);
-
   const q = (p: Record<string, string>) => `/crm/contacts?${new URLSearchParams(p).toString()}`;
+
+  const alerts = [
+    { label: "Unassigned leads", count: kpi.unassigned, href: q0({ assigned: "no" }), tone: "red" as const, icon: UserX, action: "Assign" },
+    { label: "Follow-ups due or overdue", count: kpi.followUp, href: q0({ followUp: "due" }), tone: "amber" as const, icon: AlarmClock, action: "View" },
+    ...(can(user, "applications.review") ? [{ label: "Pending dealership applications", count: kpi.pendingApps, href: "/crm/applications", tone: "violet" as const, icon: FileClock, action: "Review" }] : []),
+  ];
 
   return (
     <>
       <PageHeader
-        title={`Welcome back, ${user.name.split(" ")[0]}`}
-        description={`Network performance from ${range.from.toLocaleDateString("en-GB")} to ${range.to.toLocaleDateString("en-GB")} · compared with the previous period of equal length`}
+        title={`${greeting(now)}, ${user.name.split(" ")[0]} 👋`}
+        description={`Here's what's happening across your sales network · ${range.from.toLocaleDateString("en-GB")} – ${range.to.toLocaleDateString("en-GB")}, compared with the previous period of equal length`}
       />
-      {attention.length > 0 && (
-        <div className="stagger mb-4 flex flex-wrap gap-2" aria-label="Needs attention">
-          {attention.map((a) => (
-            <Link key={a.label} href={a.href} className="card card-hover flex items-center gap-2.5 px-3.5 py-2 text-sm">
-              <span className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-xs font-bold text-white ${a.tone === "red" ? "bg-red-500" : a.tone === "amber" ? "bg-amber-500" : "bg-violet-500"}`}>{a.n}</span>
-              <span className="text-ink-700">{a.label}</span>
-            </Link>
-          ))}
-        </div>
-      )}
-      {hasProgress && (
-        <div className="mb-4">
-          <ProgressHero progress={progress} leaderboardHref="/crm/leaderboard" />
-        </div>
-      )}
       <FilterBar
         filters={[
           { type: "daterange", from: "from", to: "to", label: "Period", presets: true },
@@ -104,10 +111,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         ]}
       />
 
-      <div className="stagger grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-        <StatCard label="Total contacts" value={fmtNumber(kpi.totalContacts)} icon={Users} delta={kpi.contactsDelta === null ? null : { value: kpi.contactsDelta }} hint={`+${kpi.newContacts} new`} href="/crm/contacts" />
+      <AlertCards items={alerts} />
+
+      <section aria-label="Key metrics" className="stagger grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <StatCard label="Total contacts" value={fmtNumber(kpi.totalContacts)} icon={Users} tone="violet" delta={kpi.contactsDelta === null ? null : { value: kpi.contactsDelta }} hint={`+${kpi.newContacts} new`} href="/crm/contacts" />
         <StatCard label="Leads in period" value={fmtNumber(kpi.leadsInPeriod)} icon={UserPlus} tone="blue" delta={kpi.leadsDelta === null ? null : { value: kpi.leadsDelta }} hint={`${fmtNumber(kpi.totalLeads)} total`} />
-        <StatCard label="New leads today" value={kpi.newToday} icon={Sparkles} tone="violet" />
+        <StatCard label="New leads today" value={kpi.newToday} icon={Sparkles} tone="brand" />
         <StatCard label="Need follow-up" value={kpi.followUp} icon={AlarmClock} tone="amber" hint="due today or overdue" href={q({ followUp: "due" })} />
         <StatCard label="Unassigned leads" value={kpi.unassigned} icon={UserX} tone="red" hint="awaiting assignment" href={q({ assigned: "no" })} />
         <StatCard label="Assigned to dealers" value={kpi.assigned} icon={Building2} tone="gray" hint="open leads" href={q({ assigned: "yes" })} />
@@ -120,45 +129,38 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <StatCard label="Recognised sales" value={fmtMoney(kpi.salesRevenue)} icon={CircleDollarSign} tone="green" delta={kpi.salesDelta === null ? null : { value: kpi.salesDelta }} hint="converted lead values" />
         <StatCard label="Recorded payments" value={fmtMoney(kpi.recordedPayments)} icon={CircleDollarSign} tone="gray" hint="manually entered, unverified" />
         <StatCard label="Lead → customer" value={`${kpi.conversionRate}%`} icon={Target} tone="brand" hint="of leads created in period" />
-      </div>
+      </section>
 
-      {(goalRows.length > 0 || achievements.length > 0) && (
-        <div className="mt-6 grid gap-4 xl:grid-cols-3">
-          <GoalsPanel rows={goalRows} className="xl:col-span-2" description="Active targets set in Settings — progress is calculated from recorded activity" />
-          <Card>
-            <CardHeader title="Your badges" action={<Link href="/crm/leaderboard" className="text-xs font-medium text-brand-600 hover:underline">Leaderboard →</Link>} />
-            <div className="p-4"><BadgeGrid all={achievements} earned={earnedMap} /></div>
-          </Card>
+      <section aria-label="Daily goals and gamification" className="mt-6">
+        <GamificationCard missions={missionData.missions} xpToday={missionData.xpToday} level={level} streak={{ days: progress.streakDays, next: nextStreakMilestone(progress.streakDays) }} week={week} />
+      </section>
+      <LevelUp userId={user.id} level={level.level} />
+      <Celebrate badge={latestBadge && Date.now() - latestBadge.earnedAt.getTime() < 3 * 86400_000 ? latestBadge.achievement : null} />
+
+      <section aria-label="Pipeline and analytics" className="mt-4 grid gap-4 xl:grid-cols-5">
+        <div className="xl:col-span-2">
+          <FunnelCard stages={funnel.stages} total={funnel.total} lost={funnel.lost} hrefFor={(id) => q({ stage: id })} />
         </div>
-      )}
-
-      <div className="mt-6 grid gap-4 xl:grid-cols-3">
-        <Card className="xl:col-span-2">
-          <CardHeader title="Lead creation trend" description={`Leads created and converted per ${charts.bucket}`} />
+        <Card className="xl:col-span-3">
+          <CardHeader title="Performance overview" description={`Leads created and converted per ${charts.bucket}`} />
           <div className="p-5">
             <TrendChart data={charts.trend} series={[{ key: "leads", label: "Leads created" }, { key: "converted", label: "Since converted" }]} />
           </div>
         </Card>
-        <Card>
-          <CardHeader title="Leads by stage" description="Current pipeline (all open & closed)" action={<Link href="/crm/pipeline" className="text-xs font-medium text-brand-600 hover:underline">Pipeline →</Link>} />
-          <div className="p-5">
-            <BarList data={charts.byStage.map((s) => ({ name: s.name, value: s.value, color: s.color }))} />
-          </div>
-        </Card>
-      </div>
+      </section>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card>
-          <CardHeader title="Leads by source" />
+          <CardHeader title="Leads by stage" action={<Link href="/crm/pipeline" className="text-xs font-medium text-brand-600 hover:underline">Pipeline →</Link>} />
+          <div className="p-5"><BarList data={charts.byStage.map((s) => ({ name: s.name, value: s.value, color: s.color }))} /></div>
+        </Card>
+        <Card>
+          <CardHeader title="Lead-source performance" />
           <div className="p-5"><BarList data={charts.bySource} /></div>
         </Card>
         <Card>
           <CardHeader title="Leads by city" />
           <div className="p-5"><BarList data={charts.byCity} /></div>
-        </Card>
-        <Card>
-          <CardHeader title="Leads by dealership" />
-          <div className="p-5"><BarList data={charts.byDealership} /></div>
         </Card>
         <Card>
           <CardHeader title="Lead origin" description="Company-assigned vs dealership walk-in" />
@@ -174,11 +176,21 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       <div className="mt-4 grid gap-4 xl:grid-cols-3">
         <Card className="xl:col-span-2">
-          <CardHeader title="Test-drive bookings" description="Requested vs completed" />
+          <CardHeader title="Test-drive activity" description="Requested vs completed" />
           <div className="p-5">
             <TrendChart data={charts.trend} series={[{ key: "tdBooked", label: "Booked" }, { key: "tdCompleted", label: "Completed" }]} height={220} />
           </div>
         </Card>
+        <Card>
+          <CardHeader title="Leads by dealership" />
+          <div className="p-5"><BarList data={charts.byDealership} /></div>
+        </Card>
+      </div>
+
+      <section aria-label="Reminders and activity" className="mt-6 grid gap-4 xl:grid-cols-3">
+        <div className="xl:col-span-2">
+          <RemindersCard followUps={followUps} testDrives={testDrives} applications={applications} canReviewApplications={can(user, "applications.review")} />
+        </div>
         <Card>
           <CardHeader title="Unassigned — needs attention" action={<Link href={q({ assigned: "no" })} className="text-xs font-medium text-brand-600 hover:underline">View all →</Link>} />
           {unassigned.length ? (
@@ -198,13 +210,22 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <EmptyState icon={Inbox} title="All leads are assigned" description="New unrouted leads will appear here." />
           )}
         </Card>
-      </div>
+      </section>
+
+      <section aria-label="Team and achievements" className="mt-4 grid gap-4 xl:grid-cols-3">
+        <LeaderboardCard rows={board} period={`Dealership reps · ${now.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}`} />
+        <Card>
+          <CardHeader title="Your achievements" description={`${progress.badgesEarned} of ${progress.badgesTotal} unlocked`} action={<Link href="/crm/leaderboard" className="text-xs font-medium text-brand-600 hover:underline">Details →</Link>} />
+          <div className="p-4"><BadgeGrid all={achievements} earned={earnedMap} /></div>
+        </Card>
+        <GoalsPanel rows={goalRows} description="Active targets — progress from recorded activity" />
+      </section>
 
       <Card className="mt-4">
         <CardHeader title="Dealership performance" description="Normalised rates for the selected period — compare outlets of different sizes fairly" action={<Link href="/crm/reports" className="text-xs font-medium text-brand-600 hover:underline">Full report →</Link>} />
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-sm">
-            <thead className="bg-ink-50/60">
+            <thead className="bg-ink-50/70">
               <tr>
                 <th className="th">Dealership</th><th className="th text-right">Leads</th><th className="th text-right">Converted</th>
                 <th className="th text-right">Conv. rate</th><th className="th text-right">Test drives done</th><th className="th text-right">TD completion</th>
@@ -213,7 +234,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </thead>
             <tbody className="divide-y divide-ink-100">
               {perf.map((d) => (
-                <tr key={d.id} className="hover:bg-ink-50/50">
+                <tr key={d.id} className="transition-colors hover:bg-brand-50/40">
                   <td className="td"><Link href={`/crm/dealerships/${d.id}`} className="link">{d.name}</Link><span className="ml-2 text-xs text-ink-400">{d.city}</span></td>
                   <td className="td text-right tabular-nums">{d.leads}</td>
                   <td className="td text-right tabular-nums">{d.converted}</td>
@@ -229,51 +250,23 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       </Card>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader title="Recent activity" />
-          <ul className="divide-y divide-ink-100">
-            {recent.map((a) => (
-              <li key={a.id} className="flex gap-3 px-5 py-3">
-                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-400" />
-                <div className="min-w-0 flex-1 text-sm">
-                  <p className="text-ink-800">
-                    <span className="font-medium">{ACTIVITY_LABELS[a.type]}</span>
-                    {a.contact && (
-                      <> · <Link href={`/crm/contacts/${a.contact.id}`} className="link">{fullName(a.contact)}</Link></>
-                    )}
-                  </p>
-                  <p className="truncate text-xs text-ink-500">{a.title} · {a.user?.name ?? "System"} · {fmtRelative(a.occurredAt)}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Card>
-        <Card>
-          <CardHeader title="Upcoming follow-ups" description="Next 7 days, including overdue" action={<Link href="/crm/tasks" className="text-xs font-medium text-brand-600 hover:underline">All tasks →</Link>} />
-          {followUps.length ? (
-            <ul className="divide-y divide-ink-100">
-              {followUps.map((t) => {
-                const overdue = t.dueAt < new Date();
-                return (
-                  <li key={t.id} className="flex items-center gap-3 px-5 py-3 text-sm">
-                    <AlarmClock className={overdue ? "h-4 w-4 text-red-500" : "h-4 w-4 text-ink-400"} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-ink-800">{t.title}</p>
-                      <p className="truncate text-xs text-ink-500">
-                        {t.contact ? <Link href={`/crm/contacts/${t.contact.id}`} className="hover:underline">{fullName(t.contact)}</Link> : "—"} · {t.assignedTo.name}
-                      </p>
-                    </div>
-                    <span className={overdue ? "text-xs font-semibold text-red-600" : "text-xs text-ink-500"}>{overdue ? "Overdue · " : ""}{fmtDateTime(t.dueAt)}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <EmptyState icon={AlarmClock} title="No follow-ups due" />
-          )}
-        </Card>
-      </div>
+      <Card className="mt-4">
+        <CardHeader title="Recent activity" />
+        <ul className="divide-y divide-ink-100">
+          {recent.map((a) => (
+            <li key={a.id} className="flex gap-3 px-5 py-3">
+              <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-400" />
+              <div className="min-w-0 flex-1 text-sm">
+                <p className="text-ink-800">
+                  <span className="font-medium">{ACTIVITY_LABELS[a.type]}</span>
+                  {a.contact && (<> · <Link href={`/crm/contacts/${a.contact.id}`} className="link">{fullName(a.contact)}</Link></>)}
+                </p>
+                <p className="truncate text-xs text-ink-500">{a.title} · {a.user?.name ?? "System"} · {fmtRelative(a.occurredAt)}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Card>
     </>
   );
 }

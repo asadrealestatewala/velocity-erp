@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { AlarmClock, Users } from "lucide-react";
 import type { CurrentUser } from "@/server/auth/session";
 import { can, isCentral, managedDealershipIds } from "@/server/authz";
 import type { listContacts } from "@/server/queries/contacts";
@@ -9,6 +9,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { fmtDateTime, fmtRelative, fullName } from "@/lib/utils";
 import { ORIGIN_LABEL } from "@/lib/constants";
 import { ContactRowActions } from "./row-actions";
+import { BulkBar, SelectAll, SelectionProvider, SelectRow } from "./selection";
 
 type Rows = Awaited<ReturnType<typeof listContacts>>["rows"];
 
@@ -31,6 +32,10 @@ export function ContactsTable({
 }) {
   const listBase = `${base}/contacts`;
   const managed = managedDealershipIds(user);
+  // Bulk selection only where the existing permission and action allow it (central assignment).
+  const bulk = isCentral(user) && can(user, "leads.assign");
+  const selectable = rows.map((c) => ({ contactId: c.id, leadId: c.leads[0]?.id ?? null }));
+  const now = Date.now();
   if (!rows.length)
     return (
       <div className="card">
@@ -43,21 +48,23 @@ export function ContactsTable({
       </div>
     );
   return (
-    <>
+    <SelectionProvider resetKey={`${page}|${JSON.stringify(params)}`}>
+      {bulk && <BulkBar canAssign />}
       {/* Desktop / tablet table */}
       <TableWrap className="hidden md:block" footer={<Pagination base={listBase} params={params} page={page} pageSize={pageSize} total={total} />}>
-        <thead className="bg-ink-50/60">
+        <thead>
           <tr>
+            {bulk && <th className="th w-10"><SelectAll rows={selectable} /></th>}
             <SortHeader label="Contact" field="name" base={listBase} params={params} />
             <th className="th">Phone</th>
-            <th className="th">Email</th>
-            <SortHeader label="Type" field="type" base={listBase} params={params} />
-            <th className="th">Source</th>
+            <th className="th hidden 2xl:table-cell">Email</th>
+            <SortHeader label="Type" field="type" base={listBase} params={params} className="hidden 2xl:table-cell" />
+            <th className="th hidden 2xl:table-cell">Source</th>
             <th className="th">Stage</th>
-            <SortHeader label="City" field="city" base={listBase} params={params} />
+            <SortHeader label="City" field="city" base={listBase} params={params} className="hidden 2xl:table-cell" />
             <th className="th">Dealership</th>
-            <SortHeader label="Created" field="created" base={listBase} params={params} />
-            <SortHeader label="Recent activity" field="activity" base={listBase} params={params} />
+            <SortHeader label="Created" field="created" base={listBase} params={params} className="hidden 2xl:table-cell" />
+            <SortHeader label="Last activity" field="activity" base={listBase} params={params} />
             <th className="th">Sales rep</th>
             <th className="th sr-only">Actions</th>
           </tr>
@@ -70,23 +77,28 @@ export function ContactsTable({
                 ? can(user, "leads.assign") ? ("central" as const) : null
                 : can(user, "leads.assign_team") && lead.dealership && managed.includes(lead.dealership.id) ? ("team" as const) : null
               : null;
+            const overdue = !!lead?.nextFollowUpAt && lead.nextFollowUpAt.getTime() < now && lead.stage.kind === "OPEN";
             return (
-              <tr key={c.id} className="hover:bg-ink-50/50">
+              <tr key={c.id} className={overdue ? "bg-red-50/30" : undefined}>
+                {bulk && <td className="td w-10"><SelectRow contactId={c.id} leadId={lead?.id ?? null} name={fullName(c)} /></td>}
                 <td className="td">
                   <div className="flex items-center gap-3">
                     <Avatar name={fullName(c)} src={c.avatarFile ? `/api/files/${c.avatarFile.id}` : null} size={34} />
                     <div className="min-w-0">
-                      <Link href={`${listBase}/${c.id}`} className="link block max-w-[180px] truncate">{fullName(c)}</Link>
-                      {c.businessName && <p className="max-w-[180px] truncate text-xs text-ink-400">{c.businessName}</p>}
+                      <Link href={`${listBase}/${c.id}`} className="link block max-w-[200px] truncate" title={fullName(c)}>{fullName(c)}</Link>
+                      {c.businessName && <p className="max-w-[200px] truncate text-xs text-ink-400" title={c.businessName}>{c.businessName}</p>}
                     </div>
                   </div>
                 </td>
                 <td className="td whitespace-nowrap tabular-nums">{c.phone ?? "—"}</td>
-                <td className="td max-w-[180px] truncate">{c.email ?? "—"}</td>
-                <td className="td"><Badge tone={c.type === "CUSTOMER" ? "green" : "gray"}>{c.type === "CUSTOMER" ? "Customer" : "Lead"}</Badge></td>
-                <td className="td whitespace-nowrap">{c.source?.name ?? "—"}</td>
-                <td className="td">{lead ? <StageBadge name={lead.stage.name} color={lead.stage.color} /> : "—"}</td>
-                <td className="td whitespace-nowrap">{c.city?.name ?? "—"}</td>
+                <td className="td hidden max-w-[180px] truncate 2xl:table-cell" title={c.email ?? undefined}>{c.email ?? "—"}</td>
+                <td className="td hidden 2xl:table-cell"><Badge tone={c.type === "CUSTOMER" ? "green" : "gray"}>{c.type === "CUSTOMER" ? "Customer" : "Lead"}</Badge></td>
+                <td className="td hidden whitespace-nowrap 2xl:table-cell">{c.source?.name ?? "—"}</td>
+                <td className="td">
+                  {lead ? <StageBadge name={lead.stage.name} color={lead.stage.color} /> : "—"}
+                  {overdue && <p className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-red-600"><AlarmClock className="h-3 w-3" aria-hidden />Follow-up overdue</p>}
+                </td>
+                <td className="td hidden whitespace-nowrap 2xl:table-cell">{c.city?.name ?? "—"}</td>
                 <td className="td">
                   {lead?.dealership ? (
                     <div className="max-w-[160px]">
@@ -95,9 +107,13 @@ export function ContactsTable({
                     </div>
                   ) : lead ? <Badge tone="red">Unassigned</Badge> : "—"}
                 </td>
-                <td className="td whitespace-nowrap text-xs">{fmtDateTime(c.createdAt)}</td>
+                <td className="td hidden whitespace-nowrap text-xs 2xl:table-cell">{fmtDateTime(c.createdAt)}</td>
                 <td className="td whitespace-nowrap text-xs">{fmtRelative(c.lastActivityAt)}</td>
-                <td className="td whitespace-nowrap">{lead?.assignedUser?.name ?? "—"}</td>
+                <td className="td whitespace-nowrap">
+                  {lead?.assignedUser ? (
+                    <span className="flex items-center gap-2"><Avatar name={lead.assignedUser.name} size={24} /><span className="max-w-[120px] truncate">{lead.assignedUser.name}</span></span>
+                  ) : "—"}
+                </td>
                 <td className="td text-right">
                   <ContactRowActions
                     contactId={c.id}
@@ -139,6 +155,6 @@ export function ContactsTable({
       <div className="card mt-3 overflow-hidden md:hidden">
         <Pagination base={listBase} params={params} page={page} pageSize={pageSize} total={total} />
       </div>
-    </>
+    </SelectionProvider>
   );
 }

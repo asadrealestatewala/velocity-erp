@@ -44,7 +44,7 @@ export function LoginStage({ eyebrow, children }: { eyebrow: string; children: R
 
       {/* Stage: floor, light, bike. Absolutely positioned so it never pushes the layout (no CLS, no horizontal scroll). */}
       <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[56%] lg:h-[58%]">
-        <div className="scene-glow absolute inset-x-[8%] bottom-[10%] h-[55%] rounded-[50%] bg-[radial-gradient(closest-side,rgb(238_108_0/0.34),rgb(14_174_207/0.10)_60%,transparent)] blur-2xl" />
+        <div className="scene-glow absolute inset-x-[8%] bottom-[10%] h-[55%] rounded-[50%] bg-[radial-gradient(closest-side,rgb(37_99_235/0.40),rgb(14_174_207/0.10)_60%,transparent)] blur-2xl" />
         <div className="absolute inset-x-0 bottom-[12%] h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-[12%] bg-gradient-to-b from-white/[0.05] to-transparent" />
 

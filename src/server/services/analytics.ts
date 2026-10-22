@@ -30,7 +30,7 @@ export function parseRange(sp: Record<string, string | undefined>, defaultDays =
   return { from: isNaN(from.getTime()) ? startOfDay(subDays(new Date(), defaultDays - 1)) : from, to: isNaN(to.getTime()) ? endOfDay(new Date()) : to };
 }
 
-function leadWhere(scope: Prisma.LeadWhereInput, f: Partial<AnalyticsFilters>): Prisma.LeadWhereInput {
+export function leadWhere(scope: Prisma.LeadWhereInput, f: Partial<AnalyticsFilters>): Prisma.LeadWhereInput {
   return {
     AND: [
       scope,

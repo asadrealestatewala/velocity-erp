@@ -76,3 +76,36 @@ export function GrowBar({ pct, color, className }: { pct: number; color?: string
   }, []);
   return <div className={className} style={{ width: `${on ? pct : 0}%`, background: color ?? "var(--color-brand-500)", transition: "width 900ms var(--ease-out-expo)" }} />;
 }
+
+/** Circular progress that sweeps from empty to the real percentage. */
+export function ProgressRing({ pct, size = 112, stroke = 10, color = "var(--color-brand-600)", track = "var(--color-ink-100)", children }: { pct: number; size?: number; stroke?: number; color?: string; track?: string; children?: React.ReactNode }) {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (reducedMotion()) return setOn(true);
+    const id = window.setTimeout(() => setOn(true), 60);
+    return () => clearTimeout(id);
+  }, []);
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const clamped = Math.max(0, Math.min(100, pct));
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }} role="img" aria-label={`${Math.round(clamped)}% complete`}>
+      <svg width={size} height={size} className="-rotate-90" aria-hidden>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={track} strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={on ? c * (1 - clamped / 100) : c}
+          style={{ transition: "stroke-dashoffset 1000ms var(--ease-out-expo)" }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">{children}</div>
+    </div>
+  );
+}

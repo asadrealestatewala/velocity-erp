@@ -6,6 +6,7 @@ export function ContactFilters({ lk, reps, central }: { lk: Lookups; reps: { id:
   return (
     <FilterBar
       keep={["pageSize"]}
+      primary={4}
       filters={[
         { type: "search", name: "q", label: "Search", placeholder: "Name, phone, email, business…" },
         { type: "select", name: "type", label: "Any type", options: [{ value: "LEAD", label: "Lead" }, { value: "CUSTOMER", label: "Customer" }] },

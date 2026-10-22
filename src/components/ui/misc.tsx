@@ -129,6 +129,17 @@ export function EmptyState({ icon: Icon, title, description, action }: { icon: L
   );
 }
 
+const STAT_TONES = {
+  brand: { chip: "bg-brand-50 text-brand-600", ring: "group-hover:ring-brand-200" },
+  blue: { chip: "bg-blue-50 text-blue-600", ring: "group-hover:ring-blue-200" },
+  green: { chip: "bg-emerald-50 text-emerald-600", ring: "group-hover:ring-emerald-200" },
+  red: { chip: "bg-red-50 text-red-600", ring: "group-hover:ring-red-200" },
+  violet: { chip: "bg-xp-50 text-xp-600", ring: "group-hover:ring-xp-100" },
+  amber: { chip: "bg-amber-50 text-amber-600", ring: "group-hover:ring-amber-200" },
+  gray: { chip: "bg-ink-100 text-ink-500", ring: "group-hover:ring-ink-200" },
+} as const;
+
+/** Compact KPI tile: icon chip, label, animated figure, a trend only when a previous period exists, and a hint. */
 export function StatCard({
   label,
   value,
@@ -143,38 +154,30 @@ export function StatCard({
   icon: LucideIcon;
   delta?: { value: number; goodWhenUp?: boolean } | null;
   hint?: string;
-  tone?: "brand" | "blue" | "green" | "red" | "violet" | "amber" | "gray";
+  tone?: keyof typeof STAT_TONES;
   href?: string;
 }) {
-  const iconCls = {
-    brand: "text-brand-500",
-    blue: "text-blue-500",
-    green: "text-emerald-500",
-    red: "text-red-500",
-    violet: "text-violet-500",
-    amber: "text-amber-500",
-    gray: "text-ink-400",
-  }[tone];
+  const t = STAT_TONES[tone];
   const good = delta ? (delta.goodWhenUp ?? true) === delta.value >= 0 : true;
-  // Reference layout: uppercase caption in a divided header band, then a large bold figure with a muted caption.
   const body = (
-    <div className={cn("card h-full overflow-hidden", href && "card-hover")}>
-      <div className="flex min-h-[46px] items-center justify-between gap-2 border-b border-ink-200 px-5 py-2.5">
-        <p className="eyebrow leading-snug">{label}</p>
-        <Icon className={cn("h-[18px] w-[18px] shrink-0", iconCls)} aria-hidden />
+    <div className={cn("card group h-full p-4 ring-1 ring-transparent", href && "card-hover", href && t.ring)}>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[13px] leading-snug font-medium text-ink-500">{label}</p>
+        <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", t.chip)}>
+          <Icon className="h-[18px] w-[18px]" aria-hidden />
+        </span>
       </div>
-      <div className="px-5 py-4">
-        <p className="text-[34px] leading-none font-bold tracking-tight text-ink-900 tabular-nums">{typeof value === "string" || typeof value === "number" ? <CountUp value={String(value)} /> : value}</p>
-        <div className="mt-2.5 flex min-h-5 items-center gap-2 text-[13.5px]">
-          {delta && delta.value !== 0 ? (
-            <span className={cn("font-semibold", good ? "text-emerald-600" : "text-red-600")}>
-              {delta.value > 0 ? "▲" : "▼"} {Math.abs(delta.value)}%
-            </span>
-          ) : delta ? (
-            <span className="font-medium text-ink-400">— 0%</span>
-          ) : null}
-          {hint && <span className="text-ink-500">{hint}</span>}
-        </div>
+      <p className="mt-1 text-[30px] leading-none font-bold tracking-tight text-ink-900 tabular-nums">{typeof value === "string" || typeof value === "number" ? <CountUp value={String(value)} /> : value}</p>
+      <div className="mt-2 flex min-h-5 flex-wrap items-center gap-x-2 text-[12.5px]">
+        {delta && delta.value !== 0 ? (
+          <span className={cn("inline-flex items-center gap-0.5 font-semibold", good ? "text-emerald-600" : "text-red-600")}>
+            {delta.value > 0 ? "▲" : "▼"} {Math.abs(delta.value)}%
+            <span className="font-normal text-ink-400"> vs last period</span>
+          </span>
+        ) : delta ? (
+          <span className="font-medium text-ink-400">— no change</span>
+        ) : null}
+        {hint && <span className="text-ink-500">{hint}</span>}
       </div>
     </div>
   );

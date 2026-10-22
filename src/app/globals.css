@@ -16,14 +16,14 @@
   --color-brand-800: #1e3fa6;
   --color-brand-900: #1e3a82;
 
-  /* YADEA red — primary actions and brand accents (white text passes AA from 600). */
-  --color-yadea-50: #fff1f2;
-  --color-yadea-100: #ffe0e3;
-  --color-yadea-200: #ffc2c9;
-  --color-yadea-400: #f2596a;
-  --color-yadea-500: #dc2638;
-  --color-yadea-600: #c4182b;
-  --color-yadea-700: #a11223;
+  /* YADEA orange — primary action buttons and brand accents (the logo orange; 600 is the button fill). */
+  --color-yadea-50: #fff6ed;
+  --color-yadea-100: #ffe8d1;
+  --color-yadea-200: #ffd0a3;
+  --color-yadea-400: #fb8a3c;
+  --color-yadea-500: #f07400;
+  --color-yadea-600: #dd6200;
+  --color-yadea-700: #b84f00;
 
   /* Achievement purple — XP, levels, badges. */
   --color-xp-50: #f5f3ff;
@@ -70,7 +70,7 @@
 
   --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
   --shadow-lift: 0 14px 30px -14px rgb(16 24 40 / 0.22), 0 4px 10px -6px rgb(16 24 40 / 0.1);
-  --shadow-glow: 0 0 0 1px rgb(196 24 43 / 0.25), 0 10px 30px -8px rgb(196 24 43 / 0.45);
+  --shadow-glow: 0 0 0 1px rgb(240 116 0 / 0.25), 0 10px 30px -8px rgb(240 116 0 / 0.45);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-soft: cubic-bezier(0.22, 0.8, 0.3, 1);
   --shadow-pop: 0 12px 32px -8px rgb(16 24 40 / 0.18), 0 4px 8px -4px rgb(16 24 40 / 0.08);

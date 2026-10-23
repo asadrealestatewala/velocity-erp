@@ -17,8 +17,6 @@ import { DOC_CATEGORIES, PAYMENT_METHODS, PAYMENT_STATUS, PAYMENT_TYPES, TASK_PR
 import {
   addNoteAction, createTaskAction, deleteDocumentAction, recordPaymentAction, setTaskStatusAction, updateNoteAction, updatePaymentStatusAction, uploadDocumentAction,
 } from "@/server/actions/work";
-import type { ChatMessage } from "@/server/actions/messages";
-import { ChatTab, type ChannelFlags } from "./chat-tab";
 
 type Activity = { id: string; type: string; title: string; body: string | null; outcome: string | null; direction: string | null; occurredAt: Date; user: { name: string } | null };
 type Task = { id: string; title: string; description: string | null; type: string; dueAt: Date; priority: string; status: string; assignedTo: { id: string; name: string }; completedAt: Date | null };
@@ -43,7 +41,6 @@ const ACT_TONE: Record<string, string> = {
 
 const TABS = [
   { key: "activity", label: "Activity", icon: ActivityIcon },
-  { key: "chat", label: "Chat", icon: MessageCircle },
   { key: "tasks", label: "Tasks", icon: CheckSquare },
   { key: "notes", label: "Notes", icon: StickyNote },
   { key: "documents", label: "Documents", icon: FileText },
@@ -61,8 +58,7 @@ export function ContactSidePanel(props: {
   meId: string;
   central: boolean;
   members: { id: string; name: string }[];
-  can: { tasks: boolean; notes: boolean; docsView: boolean; docsManage: boolean; paymentsView: boolean; paymentsManage: boolean; messages: boolean };
-  chat: { phoneDigits: string | null; email: string | null; channels: ChannelFlags; messages: ChatMessage[] };
+  can: { tasks: boolean; notes: boolean; docsView: boolean; docsManage: boolean; paymentsView: boolean; paymentsManage: boolean };
   activities: Activity[];
   tasks: Task[];
   notes: Note[];
@@ -72,7 +68,7 @@ export function ContactSidePanel(props: {
   const search = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const tabs = TABS.filter((t) => (t.key === "tasks" ? props.can.tasks : t.key === "documents" ? props.can.docsView : t.key === "payments" ? props.can.paymentsView : t.key === "chat" ? props.can.messages : true));
+  const tabs = TABS.filter((t) => (t.key === "tasks" ? props.can.tasks : t.key === "documents" ? props.can.docsView : t.key === "payments" ? props.can.paymentsView : true));
   const initial = (search.get("tab") as TabKey) || "activity";
   const [tab, setTab] = useState<TabKey>(tabs.some((t) => t.key === initial) ? initial : "activity");
   const [open, setOpen] = useState(true);
@@ -81,14 +77,12 @@ export function ContactSidePanel(props: {
 
   const totals: Record<TabKey, number> = {
     activity: props.activities.length,
-    chat: props.chat.messages.length,
     tasks: props.tasks.length,
     notes: props.notes.length,
     documents: props.documents.length,
     payments: props.payments.length,
   };
   const badge: Partial<Record<TabKey, number>> = {
-    chat: props.chat.messages.filter((m) => m.direction === "INBOUND" && Date.now() - new Date(m.at).getTime() < 24 * 3600_000).length,
     tasks: props.tasks.filter((t) => t.status === "OPEN" || t.status === "IN_PROGRESS").length,
     notes: props.notes.length,
     documents: props.documents.length,
@@ -137,7 +131,6 @@ export function ContactSidePanel(props: {
           </header>
           <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="scrollbar-thin flex-1 overflow-y-auto p-4">
             {tab === "activity" && <ActivityTab items={props.activities} />}
-            {tab === "chat" && <ChatTab contactId={props.contactId} leadId={props.leadId} phoneDigits={props.chat.phoneDigits} email={props.chat.email} channels={props.chat.channels} initial={props.chat.messages} />}
             {tab === "tasks" && <TasksTab {...props} />}
             {tab === "notes" && <NotesTab {...props} />}
             {tab === "documents" && <DocumentsTab {...props} />}

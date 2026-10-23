@@ -147,12 +147,12 @@ export const HOWTOS: HowTo[] = [
     go: ["/crm/tasks", "/portal/tasks"],
   },
   {
-    id: "crm-chat", audience: CRM_PORTAL, q: "How do I chat with a customer on WhatsApp or email?", also: ["whatsapp", "send message", "email customer", "chat tab", "log a conversation"],
+    id: "crm-chat", audience: CRM_PORTAL, q: "How do I message or call a customer on WhatsApp?", also: ["whatsapp", "send message", "call customer", "phone icon", "log a conversation", "chat"],
     steps: [
-      "Open the contact page → **Chat** tab in the records dock.",
-      "If WhatsApp Business or email (SMTP) is connected by an administrator, type and send — replies and delivery/read receipts arrive automatically. WhatsApp free-text replies only work within 24 hours of the customer's last message.",
-      "If the channel is **not connected**, the tab says so: use WhatsApp or your mail app yourself, then press **Log a conversation**. Logged items are labelled “Logged manually”.",
-      "Contacts who opted out of a channel cannot be messaged on it.",
+      "Find the contact in **Contacts** (or open their page).",
+      "Next to the phone number, click the green **WhatsApp** icon to open the chat with that number in WhatsApp, or the **phone** icon to call.",
+      "The conversation itself happens in WhatsApp. To keep a record, open the contact and press **Log interaction**, choose WhatsApp or Call, and note what was said — it appears on the activity timeline.",
+      "Contacts who opted out of a channel should not be contacted on it.",
     ],
   },
   {

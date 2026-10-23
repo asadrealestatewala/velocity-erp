@@ -13,7 +13,8 @@ import { INQUIRY_CATEGORIES, INQUIRY_TYPES, ORIGIN_LABEL, SUBMISSION_STATUS, TES
 import { ContactSidePanel } from "./side-panel";
 import { AvatarUpload, ContactQuickActions } from "./quick-actions";
 import { TestDriveStatusControl } from "@/components/test-drives/status-control";
-import { channelStatus } from "@/server/messaging/providers";
+import { PhoneWithActions } from "./phone-actions";
+import { normalizePhone } from "@/lib/utils";
 
 export async function ContactDetailView({ user, id, base, leadParam }: { user: CurrentUser; id: string; base: string; leadParam?: string }) {
   const data = await getContactDetail(user, id, leadParam);
@@ -75,7 +76,7 @@ export async function ContactDetailView({ user, id, base, leadParam }: { user: C
                 )}
               </div>
               <div className="mt-4 grid gap-x-6 gap-y-2 text-sm text-ink-600 sm:grid-cols-2 xl:grid-cols-3">
-                <span className="flex items-center gap-2"><Phone className="h-4 w-4 text-ink-400" />{c.phone ?? "—"}</span>
+                <span className="flex items-center gap-2 sm:col-span-full"><Phone className="h-4 w-4 text-ink-400" /><PhoneWithActions phone={c.phone} digits={c.phoneNormalized} name={fullName(c)} /></span>
                 <span className="flex min-w-0 items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-ink-400" /><span className="truncate">{c.email ?? "—"}</span></span>
                 <span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-ink-400" />{c.city?.name ?? "—"}</span>
                 <span className="flex items-center gap-2"><Building2 className="h-4 w-4 text-ink-400" />{lead?.dealership?.name ?? <span className="text-red-600">Unassigned</span>}</span>
@@ -86,7 +87,6 @@ export async function ContactDetailView({ user, id, base, leadParam }: { user: C
                 <ContactQuickActions
                   base={base}
                   contactId={c.id}
-                  phone={c.phone}
                   email={c.email}
                   lead={lead ? { id: lead.id, dealershipId: lead.dealershipId, userId: lead.assignedUserId, interestedModelId: lead.interestedModelId } : null}
                   can={{
@@ -129,8 +129,8 @@ export async function ContactDetailView({ user, id, base, leadParam }: { user: C
                   { label: "Date of birth", value: fmtDate(c.dateOfBirth) },
                   { label: "Gender", value: c.gender },
                   { label: "Profession", value: c.profession },
-                  { label: "Contact number", value: c.phone },
-                  { label: "Alternate number", value: c.alternatePhone },
+                  { label: "Contact number", value: <PhoneWithActions phone={c.phone} digits={c.phoneNormalized} name={fullName(c)} /> },
+                  { label: "Alternate number", value: <PhoneWithActions phone={c.alternatePhone} digits={normalizePhone(c.alternatePhone)} name={`${fullName(c)} (alternate)`} /> },
                   { label: "Email", value: c.email },
                   { label: "Business name", value: c.businessName },
                   { label: "Website", value: c.website ? <a href={c.website} target="_blank" rel="noreferrer noopener" className="link">{c.website}</a> : null },
@@ -285,13 +285,6 @@ export async function ContactDetailView({ user, id, base, leadParam }: { user: C
             can={{
               tasks: can(user, "tasks.manage"), notes: can(user, "notes.manage"), docsView: can(user, "documents.view"),
               docsManage: can(user, "documents.manage"), paymentsView: can(user, "payments.view"), paymentsManage: can(user, "payments.manage"),
-              messages: can(user, "messages.send"),
-            }}
-            chat={{
-              phoneDigits: c.phoneNormalized,
-              email: c.email,
-              channels: { whatsapp: channelStatus().whatsapp, email: channelStatus().email },
-              messages: data.messages.map((m) => ({ id: m.id, channel: m.channel, direction: m.direction, status: m.status, subject: m.subject, body: m.body, error: m.error, at: (m.sentAt ?? m.createdAt).toISOString(), by: m.sentBy?.name ?? null })),
             }}
             activities={data.activities}
             tasks={data.tasks}

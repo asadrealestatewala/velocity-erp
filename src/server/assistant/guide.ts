@@ -125,9 +125,9 @@ A dealership only ever sees its own data. Anything outside a user's scope behave
   },
   {
     id: "messaging",
-    title: "WhatsApp and email chat with contacts",
+    title: "Calling and WhatsApp from a contact",
     audience: ["crm", "portal"],
-    body: `The **Chat** tab on a contact shows WhatsApp and email conversations. When WhatsApp Business (Meta Cloud API) or SMTP is connected by an administrator, messages are sent from the CRM and replies, delivery and read receipts arrive automatically; a message is only marked **Sent** after the provider accepts it. WhatsApp only allows free-text replies within 24 hours of the customer's last message. When a channel is **not connected**, the tab says so plainly: open the chat on WhatsApp (or write the email in your mail app) and use **Log a conversation** — logged items are labelled "Logged manually" and are never presented as sent by the CRM. Contacts who opted out of a channel cannot be messaged on it.`,
+    body: `Next to every phone number — on the **Contacts** list and on the contact page — there are two icons. The green **WhatsApp** icon opens that number's chat in WhatsApp (WhatsApp Web or the app) in a new tab; the **phone** icon starts a call on a device that can place calls. Conversations happen in WhatsApp itself, not inside the CRM. To keep a record on the contact, use **Log interaction** (call, WhatsApp, SMS, email or meeting) — logged items appear on the activity timeline and are labelled as manually logged. Contacts who opted out of a channel should not be contacted on it.`,
   },
   {
     id: "tasks",

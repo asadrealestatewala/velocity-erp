@@ -177,11 +177,9 @@ prisma/schema.prisma      ~40 models with FKs, uniques and indexes
 - **Procurement role** — `PROCUREMENT` is a central role with its own portal and sign-in. Dealership-only permissions (inventory, orders, payments, vouchers) are never granted to head-office roles; head office acts on dealer data through the procurement pages.
 - **Sign-in with mobile number** — dealership users can sign in with email or mobile number (any common format, normalised; one number per account). Failed attempts are audited with only the last four digits, and the error for an unknown number is identical to a wrong password.
 
-### WhatsApp / email chat
+### Calling and WhatsApp from a contact
 
-The **Chat** tab on a contact shows WhatsApp and email conversations. When the integration is connected, messages are sent through the provider, a row is stored *before* sending and only becomes **Sent** when the provider accepts it (failures show the provider's reason); inbound messages, delivery and read receipts arrive by webhook (idempotent, signature-checked). WhatsApp's 24-hour rule is enforced: free text only within 24 hours of the customer's last message. When a channel is **not connected** the tab says so and offers **Open WhatsApp** (wa.me) plus **Log a conversation** — logged items are labelled "Logged manually" and never shown as sent by the CRM. Conversations are tagged with the dealership like notes are, so a dealership never sees central-only chats.
-
-Setting up WhatsApp: create a Meta WhatsApp Business app, put the phone-number id and a permanent access token in `.env`, register `https://<domain>/api/webhooks/whatsapp` as the webhook with your verify token, subscribe to `messages`, and set `WHATSAPP_APP_SECRET`. Template (outbound-first) messages are not implemented. Inbound email: point an inbound-parse service (Postmark, SendGrid, a mail rule…) at `POST /api/webhooks/email` with header `x-webhook-secret`; body `{ "from", "subject", "text", "messageId" }` (Postmark's native payload also works).
+Every phone number (contacts list, contact page, general information) carries two icons: a green **WhatsApp** icon that opens `https://wa.me/<number>` (the chat with that number in WhatsApp) and a **call** icon (`tel:`). The in-app Chat tab and the "Log a conversation" box were removed — conversations happen in WhatsApp, and **Log interaction** records a call or WhatsApp exchange on the contact's timeline. The WhatsApp Cloud API / email webhooks and message storage remain in the backend (`/api/webhooks/whatsapp`, `/api/webhooks/email`, `WHATSAPP_*` variables) but are not shown in the UI.
 
 ### AI assistant
 

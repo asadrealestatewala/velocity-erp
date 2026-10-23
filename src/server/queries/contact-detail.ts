@@ -28,7 +28,7 @@ export async function getContactDetail(user: CurrentUser, id: string, selectedLe
   // Central users see everything; dealership users only child records of their own dealership(s).
   const childWhere = { contactId: id, ...child };
 
-  const [activities, tasks, notes, documents, payments, testDrives, stageHistory, assignmentHistory, submissions, avatar, messages] = await Promise.all([
+  const [activities, tasks, notes, documents, payments, testDrives, stageHistory, assignmentHistory, submissions, avatar] = await Promise.all([
     db.activity.findMany({ where: childWhere, orderBy: { occurredAt: "desc" }, take: 200, include: { user: { select: { name: true } } } }),
     can(user, "tasks.manage")
       ? db.task.findMany({ where: { AND: [{ contactId: id }, taskScope(user)] }, orderBy: [{ status: "asc" }, { dueAt: "asc" }], include: { assignedTo: { select: { id: true, name: true } } } })
@@ -55,12 +55,9 @@ export async function getContactDetail(user: CurrentUser, id: string, selectedLe
       ? db.formSubmission.findMany({ where: { contactId: id }, orderBy: { createdAt: "desc" }, include: { form: { select: { name: true } } } })
       : Promise.resolve([]),
     contact.avatarFileId ? Promise.resolve(contact.avatarFileId) : Promise.resolve(null),
-    can(user, "messages.send")
-      ? db.message.findMany({ where: childWhere, orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: 300, include: { sentBy: { select: { name: true } } } })
-      : Promise.resolve([]),
   ]);
 
-  return { contact, leads, lead, activities, tasks, notes, documents, payments, testDrives, stageHistory, assignmentHistory, submissions, avatarFileId: avatar, messages };
+  return { contact, leads, lead, activities, tasks, notes, documents, payments, testDrives, stageHistory, assignmentHistory, submissions, avatarFileId: avatar };
 }
 
 export type ContactDetail = NonNullable<Awaited<ReturnType<typeof getContactDetail>>>;

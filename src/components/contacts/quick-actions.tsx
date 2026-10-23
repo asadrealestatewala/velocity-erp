@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Bike, CalendarClock, Camera, Mail, MessageSquarePlus, Pencil, Phone, Plus, Share2 } from "lucide-react";
+import { Bike, CalendarClock, Camera, Mail, MessageSquarePlus, Pencil, Plus, Share2 } from "lucide-react";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/form";
@@ -19,7 +19,6 @@ type Opt = { id: string; name: string };
 export function ContactQuickActions({
   base,
   contactId,
-  phone,
   email,
   lead,
   can,
@@ -28,7 +27,6 @@ export function ContactQuickActions({
 }: {
   base: string;
   contactId: string;
-  phone: string | null;
   email: string | null;
   lead: { id: string; dealershipId: string | null; userId: string | null; interestedModelId: string | null } | null;
   can: { edit: boolean; log: boolean; followUp: boolean; assign: "central" | "team" | null; testDrive: boolean; addLead: boolean };
@@ -38,7 +36,6 @@ export function ContactQuickActions({
   return (
     <div className="flex flex-wrap gap-2">
       {can.edit && <Link href={`${base}/contacts/${contactId}/edit`} className={buttonClass("secondary", "sm")}><Pencil className="h-4 w-4" /> Edit</Link>}
-      {phone && <a href={`tel:${phone.replace(/\s/g, "")}`} className={buttonClass("secondary", "sm")}><Phone className="h-4 w-4" /> Call</a>}
       {email && <a href={`mailto:${email}`} className={buttonClass("secondary", "sm")}><Mail className="h-4 w-4" /> Email</a>}
       {can.log && <LogInteractionDialog contactId={contactId} leadId={lead?.id ?? null} />}
       {lead && can.followUp && <FollowUpDialog leadId={lead.id} members={members} trigger={<Button variant="secondary" size="sm"><CalendarClock className="h-4 w-4" /> Follow-up</Button>} />}

@@ -48,7 +48,7 @@ export default async function PublicFormPage({ params, searchParams }: Props) {
   const { token, idempotencyKey } = issueFormToken(form.id);
 
   return (
-    <FormShell settings={settings}>
+    <FormShell settings={settings} bike={form.type !== "DEALERSHIP_APPLICATION"}>
       <PublicForm
         slug={form.slug}
         fields={fields}

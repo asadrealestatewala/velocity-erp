@@ -405,22 +405,45 @@ function ConsentText({ text, url }: { text: string; url: string }) {
   );
 }
 
-export function FormShell({ settings, children, compact }: { settings: FormSettings; children: React.ReactNode; compact?: boolean }) {
+export function FormShell({ settings, children, compact, bike }: { settings: FormSettings; children: React.ReactNode; compact?: boolean; bike?: boolean }) {
+  // The hero shows the real YADEA G5S (transparent cut-out of the supplied photo) on pages where a bike is the subject.
+  const showBike = !!bike && !compact && !settings.headerImageUrl;
   return (
     <div className={cn("bg-[#eef1f5]", compact ? "rounded-2xl" : "min-h-dvh")}>
       <header
-        className={cn("relative overflow-hidden bg-ink-950 bg-cover bg-center", compact ? "h-44 rounded-t-2xl" : "h-60 sm:h-72")}
+        className={cn("relative isolate overflow-hidden bg-navy-950 bg-cover bg-center", compact ? "h-44 rounded-t-2xl" : "h-60 sm:h-72")}
         style={settings.headerImageUrl ? { backgroundImage: `url(${settings.headerImageUrl})` } : undefined}
       >
-        <div className={cn("absolute inset-0", settings.headerImageUrl ? "bg-ink-950/60" : "bg-[radial-gradient(ellipse_at_15%_10%,rgba(240,116,0,0.45),transparent_55%),radial-gradient(ellipse_at_90%_100%,rgba(240,116,0,0.25),transparent_45%),linear-gradient(135deg,#0a0c0f,#1f2530)]")} />
-        {!settings.headerImageUrl && (
+        <div
+          className={cn(
+            "absolute inset-0",
+            settings.headerImageUrl
+              ? "bg-ink-950/60"
+              : "bg-[radial-gradient(ellipse_at_12%_0%,rgba(37,99,235,0.42),transparent_55%),radial-gradient(ellipse_at_92%_100%,rgba(240,116,0,0.30),transparent_48%),linear-gradient(135deg,#0f2543,#040e1d)]",
+          )}
+        />
+        {!settings.headerImageUrl && !showBike && (
           <svg className="absolute right-[-60px] bottom-[-40px] h-72 w-72 opacity-[0.07]" viewBox="0 0 100 100" aria-hidden><circle cx="50" cy="50" r="46" fill="none" stroke="white" strokeWidth="1" /><circle cx="50" cy="50" r="30" fill="none" stroke="white" strokeWidth="1" /></svg>
+        )}
+        {showBike && (
+          <>
+            <div aria-hidden className="absolute right-[2%] bottom-12 hidden h-[58%] w-[44%] rounded-[50%] bg-[radial-gradient(closest-side,rgba(240,116,0,0.35),transparent)] blur-2xl md:block" />
+            <Image
+              src="/brand/yadea-g5s.webp"
+              alt=""
+              width={1400}
+              height={886}
+              priority
+              sizes="(min-width: 768px) 420px, 0px"
+              className="pointer-events-none absolute right-[3%] bottom-[3.25rem] hidden h-[72%] w-auto max-w-[46%] object-contain drop-shadow-[0_14px_22px_rgba(0,0,0,0.45)] md:block"
+            />
+          </>
         )}
         <div className="relative mx-auto flex h-full max-w-5xl flex-col px-4 pt-5 sm:px-6">
           <Image src="/brand/yadea-logo-light.png" alt="YADEA" width={120} height={26} className="h-6 w-auto self-start" priority />
-          <div className={cn("flex flex-1 flex-col items-center text-center text-white", compact ? "justify-center pb-6" : "justify-center pb-14")}>
-            <h1 className={cn("font-bold tracking-tight", compact ? "text-2xl" : "text-3xl sm:text-5xl")}>{settings.title}</h1>
-            {settings.subtitle && <p className="mt-2 max-w-xl text-sm text-white/80 sm:text-base">{settings.subtitle}</p>}
+          <div className={cn("flex flex-1 flex-col items-center text-center text-white", showBike && "md:items-start md:text-left", compact ? "justify-center pb-6" : "justify-center pb-14")}>
+            <h1 className={cn("font-bold tracking-tight", compact ? "text-2xl" : "text-3xl sm:text-5xl", showBike && "md:max-w-[52%]")}>{settings.title}</h1>
+            {settings.subtitle && <p className={cn("mt-2 max-w-xl text-sm text-white/80 sm:text-base", showBike && "md:max-w-[46%]")}>{settings.subtitle}</p>}
           </div>
         </div>
       </header>

@@ -11,6 +11,8 @@ import { startOfMonth } from "date-fns";
 import { GoalsPanel } from "@/components/gamification/progress-panel";
 import { AlertCards, FunnelCard, GamificationCard, LeaderboardCard, RemindersCard, greeting } from "@/components/dashboard/widgets";
 import { LevelUp } from "@/components/dashboard/level-up";
+import { SetupChecklist } from "@/components/dashboard/setup-checklist";
+import { buildSetupChecklist } from "@/lib/setup-checklist";
 import { Celebrate } from "@/components/gamification/celebrate";
 import { can } from "@/server/authz";
 import { BadgeGrid } from "@/components/gamification/badges";
@@ -67,7 +69,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     db.achievement.findMany({ where: { isActive: true }, orderBy: { createdAt: "asc" } }),
     db.userAchievement.findMany({ where: { userId: user.id } }),
   ]);
-  const [missionData, week, funnel, testDrives, applications, board] = await Promise.all([
+  const [missionData, week, funnel, testDrives, applications, board, setupCounts] = await Promise.all([
     getDailyMissions(user.id, now),
     getWeekActivity(user.id, now),
     getFunnel(leadWhere(scope, { ...f, stageId: undefined })),
@@ -81,7 +83,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       ? db.dealershipApplication.findMany({ where: { status: { in: ["SUBMITTED", "UNDER_REVIEW", "INFO_REQUIRED"] } }, orderBy: { createdAt: "asc" }, take: 4, select: { id: true, businessName: true, createdAt: true, status: true } })
       : Promise.resolve([]),
     getLeaderboard("rep", { from: startOfMonth(now), to: now }),
+    Promise.all([
+      db.contact.count({ where: { isArchived: false } }),
+      db.lead.count({ where: { dealershipId: { not: null } } }),
+      db.task.count(),
+      db.form.count({ where: { status: "PUBLISHED" } }),
+      db.user.count({ where: { isActive: true } }),
+    ]).then(([contacts, dealerAssignedLeads, tasks, publishedForms, activeUsers]) => ({ contacts, dealerAssignedLeads, tasks, publishedForms, activeUsers })),
   ]);
+  const setupSteps = buildSetupChecklist(setupCounts, (perm) => can(user, perm as Parameters<typeof can>[1]));
   const level = levelFor(progress.totalPoints);
   const latestBadge = earned.length ? await db.userAchievement.findFirst({ where: { userId: user.id }, orderBy: { earnedAt: "desc" }, include: { achievement: true } }) : null;
   const goalRows = await Promise.all(goals.map(async (g) => ({ g: { ...g, dealershipName: g.dealership?.name, userName: g.user?.name }, p: await goalProgress(g) })));
@@ -111,6 +121,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         ]}
       />
 
+      <SetupChecklist steps={setupSteps} userId={user.id} />
       <AlertCards items={alerts} />
 
       <section aria-label="Key metrics" className="stagger grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">

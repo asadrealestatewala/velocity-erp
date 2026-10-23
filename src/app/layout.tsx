@@ -9,9 +9,11 @@ export const metadata: Metadata = {
   title: { default: "YADEA CRM", template: "%s · YADEA CRM" },
   description: "YADEA customer, lead and dealership management platform",
   icons: { icon: "/brand/yadea-mark.png" },
+  // The CRM, portals and sign-in pages are internal; only published public forms (which set their own robots) are indexable.
+  robots: { index: false, follow: false },
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#f07400" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#07172e" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

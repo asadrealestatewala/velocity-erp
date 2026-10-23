@@ -4,33 +4,33 @@
    Brand orange sampled from the supplied logo; charcoal from the wordmark.
    Change these to re-theme the whole platform. */
 @theme {
-  /* Accent — links, focus, active chips. Coral-pink from the Vetlyn-style gradient (600+ passes AA on white). */
-  --color-brand-50: #fff1f5;
-  --color-brand-100: #ffe0ea;
-  --color-brand-200: #ffc2d5;
-  --color-brand-300: #ff97b8;
-  --color-brand-400: #f9689b;
-  --color-brand-500: #ea4a86;
-  --color-brand-600: #cf2f74;
-  --color-brand-700: #aa2260;
-  --color-brand-800: #861b4d;
-  --color-brand-900: #6b163f;
+  /* Accent — violet: primary actions, links, focus, active navigation. 600+ passes AA with white text. */
+  --color-brand-50: #f5f1ff;
+  --color-brand-100: #ebe3ff;
+  --color-brand-200: #d9c9ff;
+  --color-brand-300: #bda2ff;
+  --color-brand-400: #a07afa;
+  --color-brand-500: #8657f3;
+  --color-brand-600: #7140e8;
+  --color-brand-700: #5e30cc;
+  --color-brand-800: #4a27a3;
+  --color-brand-900: #3b2080;
 
-  /* Gradient stops: coral → pink → violet. */
-  --color-coral-400: #ff8a6b;
-  --color-coral-500: #f9644b;
-  --color-coral-600: #e84a35;
+  /* Soft purple chart tones. */
+  --color-coral-400: #c4b0fb;
+  --color-coral-500: #a78bfa;
+  --color-coral-600: #8b5cf6;
   --color-violet-500: #8b5cf6;
   --color-violet-600: #7c3aed;
 
-  /* Primary action buttons: coral (the gradient button runs coral → pink). */
-  --color-yadea-50: #fff3ef;
-  --color-yadea-100: #ffe3da;
-  --color-yadea-200: #ffc7b6;
-  --color-yadea-400: #ff8a6b;
-  --color-yadea-500: #f9644b;
-  --color-yadea-600: #e84a35;
-  --color-yadea-700: #c43a28;
+  /* Primary action buttons follow the violet accent. */
+  --color-yadea-50: #f5f1ff;
+  --color-yadea-100: #ebe3ff;
+  --color-yadea-200: #d9c9ff;
+  --color-yadea-400: #a07afa;
+  --color-yadea-500: #8657f3;
+  --color-yadea-600: #7140e8;
+  --color-yadea-700: #5e30cc;
 
   /* Achievement purple — XP, levels, badges. */
   --color-xp-50: #f5f3ff;
@@ -55,29 +55,29 @@
   --color-accent-500: #f07400;
   --color-accent-600: #d95f00;
 
-  /* Warm dark — sidebar, hero surfaces and the sign-in stage ("navy" tokens kept as the names every consumer uses). */
-  --color-navy-950: #0d0908;
-  --color-navy-900: #150f0d;
-  --color-navy-800: #211815;
-  --color-navy-700: #2f231e;
-  --color-navy-600: #43322b;
-  --color-ink-50: #faf7f4;
-  --color-ink-100: #f2ede8;
-  --color-ink-200: #e4dcd5;
-  --color-ink-300: #c4b9b0;
-  --color-ink-400: #988c83;
-  --color-ink-500: #6f645c;
-  --color-ink-600: #544a43;
-  --color-ink-700: #3e3631;
-  --color-ink-800: #2a231f;
-  --color-ink-900: #1a1411;
-  --color-ink-950: #0f0a09;
+  /* Deep violet — hero surfaces, the sign-in stage and dark buttons ("navy" tokens kept as the names consumers use). */
+  --color-navy-950: #120a2b;
+  --color-navy-900: #1b1040;
+  --color-navy-800: #2a1a63;
+  --color-navy-700: #3b2585;
+  --color-navy-600: #523aa6;
+  --color-ink-50: #f7f6fb;
+  --color-ink-100: #efedf6;
+  --color-ink-200: #e1deed;
+  --color-ink-300: #bdb9d0;
+  --color-ink-400: #8f8aa8;
+  --color-ink-500: #67627f;
+  --color-ink-600: #4d4963;
+  --color-ink-700: #393550;
+  --color-ink-800: #26223a;
+  --color-ink-900: #17142a;
+  --color-ink-950: #0e0c1a;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
+  --shadow-card: 0 1px 2px rgb(40 24 90 / 0.04), 0 2px 8px -2px rgb(40 24 90 / 0.06);
   --shadow-lift: 0 14px 30px -14px rgb(16 24 40 / 0.22), 0 4px 10px -6px rgb(16 24 40 / 0.1);
-  --shadow-glow: 0 0 0 1px rgb(249 100 75 / 0.25), 0 12px 32px -8px rgb(214 48 122 / 0.5);
+  --shadow-glow: 0 0 0 1px rgb(113 64 232 / 0.25), 0 12px 32px -8px rgb(113 64 232 / 0.5);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-soft: cubic-bezier(0.22, 0.8, 0.3, 1);
   --shadow-pop: 0 12px 32px -8px rgb(16 24 40 / 0.18), 0 4px 8px -4px rgb(16 24 40 / 0.08);
@@ -186,15 +186,15 @@
   }
   .surface-graphite {
     background:
-      radial-gradient(90% 120% at 0% 0%, rgb(249 100 75 / 0.30), transparent 55%),
-      radial-gradient(80% 110% at 100% 100%, rgb(139 92 246 / 0.30), transparent 55%),
-      linear-gradient(135deg, var(--color-navy-800), var(--color-navy-950));
+      radial-gradient(70% 120% at 100% 0%, rgb(196 168 255 / 0.35), transparent 55%),
+      radial-gradient(60% 100% at 0% 100%, rgb(139 92 246 / 0.40), transparent 60%),
+      linear-gradient(135deg, #3b1c8c, #2a1a63 60%, #1b1040);
   }
-  /* Vetlyn-style brand gradient: coral → pink → violet. */
-  .bg-gradient-brand { background-image: linear-gradient(110deg, #f9644b 0%, #e23d83 55%, #8b5cf6 100%); }
-  .bg-gradient-action { background-image: linear-gradient(110deg, #ec4d38 0%, #cf2f74 100%); }
-  .text-gradient-brand { background-image: linear-gradient(110deg, #ff8a6b, #ff5fa2 55%, #b08cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .hairline-gradient { background-image: linear-gradient(90deg, transparent, rgb(249 100 75 / 0.55), rgb(139 92 246 / 0.55), transparent); }
+  /* Violet gradients (accents on dark violet surfaces and small chips). */
+  .bg-gradient-brand { background-image: linear-gradient(110deg, #a78bfa 0%, #7c3aed 100%); }
+  .bg-gradient-action { background-image: linear-gradient(110deg, #8657f3 0%, #6a3be0 100%); }
+  .text-gradient-brand { background-image: linear-gradient(110deg, #ffffff, #e4d4ff 55%, #f0b8ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hairline-gradient { background-image: linear-gradient(90deg, transparent, rgb(139 92 246 / 0.55), rgb(196 168 255 / 0.55), transparent); }
   /* Slow, pausable marquee strip. */
   .marquee { display: flex; width: max-content; animation: marquee 38s linear infinite; }
   .marquee:hover { animation-play-state: paused; }

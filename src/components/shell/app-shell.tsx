@@ -122,17 +122,17 @@ export function AppShell({
   );
 
   const renderSidebar = (rail: boolean) => (
-    <div className="flex h-full flex-col bg-navy-900 text-slate-300">
-      <div className={cn("flex h-[72px] shrink-0 items-center gap-2 border-b border-white/5 bg-navy-950", rail ? "justify-center px-2" : "px-5")}>
+    <div className="flex h-full flex-col border-r border-ink-200 bg-white text-ink-600">
+      <div className={cn("flex h-[72px] shrink-0 items-center gap-2 border-b border-ink-100 bg-white", rail ? "justify-center px-2" : "px-5")}>
         <Link href={`${base}/dashboard`} className="flex items-center" aria-label="YADEA home">
           {rail ? (
             <Image src="/brand/yadea-mark.png" alt="YADEA" width={32} height={32} priority className="h-8 w-8 object-contain" />
           ) : (
-            <Image src="/brand/yadea-logo-light.png" alt="YADEA" width={134} height={29} priority className="h-[29px] w-auto max-w-none" />
+            <Image src="/brand/yadea-logo-dark.png" alt="YADEA" width={134} height={29} priority className="h-[29px] w-auto max-w-none" />
           )}
         </Link>
         {!rail && (
-          <span className={cn("ml-auto rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase", variant === "crm" ? "bg-white/10 text-slate-200" : variant === "portal" ? "bg-accent-500 text-white" : "bg-brand-500 text-white")}>
+          <span className={cn("ml-auto rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase", variant === "crm" ? "bg-brand-50 text-brand-700" : variant === "portal" ? "bg-amber-100 text-amber-800" : "bg-brand-600 text-white")}>
             {variant === "crm" ? "CRM" : variant === "portal" ? "Dealer" : "Procurement"}
           </span>
         )}
@@ -143,15 +143,15 @@ export function AppShell({
           align="start"
           trigger={
             <button
-              className={cn("flex w-full items-center gap-3 rounded-xl border border-white/10 bg-navy-800/70 text-left transition hover:bg-navy-700/70", rail ? "justify-center p-1.5" : "px-3 py-2.5")}
+              className={cn("flex w-full items-center gap-3 rounded-xl border border-ink-200 bg-ink-50 text-left transition hover:border-brand-200 hover:bg-brand-50", rail ? "justify-center p-1.5" : "px-3 py-2.5")}
               aria-label="Workspace and account menu"
               title={rail ? user.name : undefined}
             >
-              <Avatar name={user.name} size={rail ? 36 : 38} className="ring-navy-900" />
+              <Avatar name={user.name} size={rail ? 36 : 38} className="ring-white" />
               {!rail && (
                 <>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-semibold text-white">{user.name}</span>
+                    <span className="block truncate text-[15px] font-semibold text-ink-900">{user.name}</span>
                     <span className="block truncate text-[13px] text-slate-400">{subtitle ?? user.roleName}</span>
                   </span>
                   <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
@@ -169,7 +169,7 @@ export function AppShell({
             onClick={() => router.push(`${searchTarget}`)}
             title={`Search ${searchNoun}`}
             aria-label={`Search ${searchNoun}`}
-            className="flex h-10 w-full items-center justify-center rounded-xl border border-white/10 bg-navy-800/70 text-slate-400 transition hover:bg-navy-700/70 hover:text-white"
+            className="flex h-10 w-full items-center justify-center rounded-xl border border-ink-200 bg-white text-ink-400 transition hover:border-brand-200 hover:bg-brand-50 hover:text-white"
           >
             <Search className="h-[18px] w-[18px]" />
           </button>
@@ -182,9 +182,9 @@ export function AppShell({
               onChange={(e) => setQ(e.target.value)}
               placeholder={`Search ${searchNoun}`}
               aria-label={variant === "procurement" ? "Search orders by number or dealership" : "Search contacts by name, phone, email or business"}
-              className="h-10 w-full rounded-xl border border-white/10 bg-navy-800/70 pr-[3.75rem] pl-10 text-[14.5px] text-white transition placeholder:text-slate-400 focus:border-brand-400 focus:bg-navy-800 focus:ring-2 focus:ring-brand-400/30 focus:outline-none"
+              className="h-10 w-full rounded-xl border border-ink-200 bg-white pr-[3.75rem] pl-10 text-[14.5px] text-ink-900 transition placeholder:text-ink-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
             />
-            <kbd className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rounded border border-white/15 bg-white/5 px-1.5 py-0.5 font-sans text-[10.5px] font-medium text-slate-400">Ctrl K</kbd>
+            <kbd className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rounded border border-ink-200 bg-ink-50 px-1.5 py-0.5 font-sans text-[10.5px] font-medium text-ink-400">Ctrl K</kbd>
           </form>
         )}
       </div>
@@ -196,7 +196,7 @@ export function AppShell({
           return (
             <div key={item.href}>
               {item.section &&
-                (rail ? <div className="mx-2 mt-4 mb-2 h-px bg-white/10" aria-hidden /> : <p className="mt-5 mb-1.5 px-3 text-[11.5px] font-semibold tracking-wider text-slate-500 uppercase">{item.section}</p>)}
+                (rail ? <div className="mx-2 mt-4 mb-2 h-px bg-ink-200" aria-hidden /> : <p className="mt-5 mb-1.5 px-3 text-[11.5px] font-semibold tracking-wider text-ink-400 uppercase">{item.section}</p>)}
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
@@ -204,13 +204,14 @@ export function AppShell({
                 className={cn(
                   "group relative flex items-center rounded-xl text-[15px] transition-all duration-200",
                   rail ? "mb-0.5 h-10 justify-center" : "gap-3 px-3 py-2.5",
-                  active ? "bg-gradient-brand font-semibold text-white shadow-[0_8px_20px_-8px_rgb(226_61_131/0.75)]" : "font-medium text-slate-300 hover:bg-white/5 hover:text-white",
+                  active ? "bg-brand-50 font-semibold text-brand-700" : "font-medium text-ink-600 hover:bg-ink-50 hover:text-ink-900",
                 )}
               >
                 
+                {active && <span className="absolute inset-y-2 left-0 w-[3px] rounded-r bg-brand-600" aria-hidden />}
                 <span className="relative">
-                  <Icon className={cn("h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110", active ? "text-white" : "text-slate-400 group-hover:text-slate-200")} />
-                  {rail && item.icon === "bell" && unread > 0 && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent-500 ring-2 ring-navy-900" aria-hidden />}
+                  <Icon className={cn("h-5 w-5 shrink-0 transition-transform duration-200 group-hover:scale-110", active ? "text-brand-600" : "text-ink-400 group-hover:text-ink-700")} />
+                  {rail && item.icon === "bell" && unread > 0 && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent-500 ring-2 ring-white" aria-hidden />}
                 </span>
                 {rail ? (
                   <span className="sr-only">{item.label}</span>
@@ -218,7 +219,7 @@ export function AppShell({
                   <>
                     <span className="truncate">{item.label}</span>
                     {item.icon === "bell" && unread > 0 && (
-                      <span className="ml-auto rounded-full bg-accent-500 px-1.5 py-px text-[11px] font-semibold text-white">{unread > 99 ? "99+" : unread}</span>
+                      <span className="ml-auto rounded-full bg-brand-600 px-1.5 py-px text-[11px] font-semibold text-white">{unread > 99 ? "99+" : unread}</span>
                     )}
                   </>
                 )}
@@ -228,14 +229,14 @@ export function AppShell({
         })}
       </nav>
 
-      <div className="hidden border-t border-white/5 p-3 lg:block">
+      <div className="hidden border-t border-ink-100 p-3 lg:block">
         <button
           type="button"
           onClick={toggleCollapsed}
           aria-label={rail ? "Expand sidebar" : "Collapse sidebar"}
           aria-pressed={rail}
           title={rail ? "Expand sidebar" : "Collapse sidebar"}
-          className={cn("flex h-9 w-full items-center gap-2 rounded-lg text-[13px] font-medium text-slate-400 transition hover:bg-white/5 hover:text-white", rail ? "justify-center" : "px-3")}
+          className={cn("flex h-9 w-full items-center gap-2 rounded-lg text-[13px] font-medium text-ink-500 transition hover:bg-ink-50 hover:text-ink-900", rail ? "justify-center" : "px-3")}
         >
           {rail ? <PanelLeftOpen className="h-[18px] w-[18px]" /> : <PanelLeftClose className="h-[18px] w-[18px]" />}
           {!rail && "Collapse"}
@@ -252,7 +253,7 @@ export function AppShell({
         <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
           <div className="absolute inset-0 animate-fade-in bg-navy-950/60 backdrop-blur-[2px]" onClick={() => setOpen(false)} />
           <aside className="absolute inset-y-0 left-0 w-80 max-w-[88%] animate-[slide-in-left_0.28s_var(--ease-out-expo)] shadow-xl">
-            <button className="absolute top-5 right-3 z-10 rounded-md p-1.5 text-slate-300 hover:bg-white/10" onClick={() => setOpen(false)} aria-label="Close menu">
+            <button className="absolute top-5 right-3 z-10 rounded-md p-1.5 text-ink-500 hover:bg-ink-100" onClick={() => setOpen(false)} aria-label="Close menu">
               <X className="h-5 w-5" />
             </button>
             {renderSidebar(false)}

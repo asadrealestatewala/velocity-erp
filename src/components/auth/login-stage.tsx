@@ -36,7 +36,7 @@ export function LoginStage({ eyebrow, children }: { eyebrow: string; children: R
 
       <div className="relative z-10 hidden px-12 pt-8 lg:block">
         <p className="scene-rise mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold tracking-wider uppercase ring-1 ring-white/15 backdrop-blur [animation-delay:160ms]">
-          <span aria-hidden className="bg-gradient-brand h-1.5 w-1.5 rounded-full shadow-[0_0_8px_rgb(196_168_255/0.9)]" />
+          <span aria-hidden className="bg-gradient-brand h-1.5 w-1.5 rounded-full shadow-[0_0_8px_rgb(249_100_75/0.8)]" />
           {eyebrow}
         </p>
         {children}
@@ -44,7 +44,7 @@ export function LoginStage({ eyebrow, children }: { eyebrow: string; children: R
 
       {/* Stage: floor, light, bike. Absolutely positioned so it never pushes the layout (no CLS, no horizontal scroll). */}
       <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[56%] lg:bottom-10 lg:h-[58%]">
-        <div className="scene-glow absolute inset-x-[8%] bottom-[10%] h-[55%] rounded-[50%] bg-[radial-gradient(closest-side,rgb(196_168_255/0.50),rgb(139_92_246/0.28)_60%,transparent)] blur-2xl" />
+        <div className="scene-glow absolute inset-x-[8%] bottom-[10%] h-[55%] rounded-[50%] bg-[radial-gradient(closest-side,rgb(249_100_75/0.42),rgb(139_92_246/0.24)_60%,transparent)] blur-2xl" />
         <div className="absolute inset-x-0 bottom-[12%] h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-[12%] bg-gradient-to-b from-white/[0.05] to-transparent" />
 

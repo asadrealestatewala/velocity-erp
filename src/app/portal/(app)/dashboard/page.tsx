@@ -8,7 +8,8 @@ import { can, dealershipIds, leadScope, requirePortalPage, taskScope, testDriveS
 import { getKpis, goalProgress, GOAL_LABELS } from "@/server/services/analytics";
 import { dealerBalance } from "@/server/services/ledger";
 import { stockState } from "@/lib/ops-constants";
-import { Card, CardHeader, EmptyState, PageHeader, ProgressBar, StatCard, Badge } from "@/components/ui/misc";
+import { Card, CardHeader, EmptyState, ProgressBar, StatCard, Badge } from "@/components/ui/misc";
+import { DashboardHero, greeting } from "@/components/dashboard/widgets";
 import { GoalsPanel } from "@/components/gamification/progress-panel";
 import { BadgeGrid } from "@/components/gamification/badges";
 import { Celebrate } from "@/components/gamification/celebrate";
@@ -63,9 +64,15 @@ export default async function PortalDashboard({ searchParams }: { searchParams: 
     <>
       <Celebrate badge={latestBadge ? { id: latestBadge.id, name: latestBadge.achievement.name, description: latestBadge.achievement.description } : null} />
       {sp.denied && <p className="mb-4 rounded-xl bg-red-50 px-4 py-2 text-sm text-red-700">You don&apos;t have access to that page.</p>}
-      <PageHeader
-        title={`Hi ${user.name.split(" ")[0]} 👋`}
-        description={`${user.memberships.map((m) => m.dealershipName).join(", ")} · last 30 days`}
+      <DashboardHero
+        greeting={greeting(now)}
+        name={user.name.split(" ")[0]!}
+        subtitle={`${user.memberships.map((m) => m.dealershipName).join(", ")} · last 30 days`}
+        stats={[
+          { label: "Leads received", value: String(kpi.leadsInPeriod) },
+          { label: "Need follow-up", value: String(kpi.followUp) },
+          { label: "Converted", value: String(kpi.converted) },
+        ]}
       />
 
       {/* Gamified hero */}

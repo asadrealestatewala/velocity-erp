@@ -5,7 +5,8 @@ import { db } from "@/lib/db";
 import { can, requireProcurementPage } from "@/server/authz";
 import { procurementStats } from "@/server/services/procurement";
 import { balancesByDealership } from "@/server/services/ledger";
-import { Card, CardHeader, EmptyState, PageHeader, StatCard } from "@/components/ui/misc";
+import { Card, CardHeader, EmptyState, StatCard } from "@/components/ui/misc";
+import { DashboardHero, greeting } from "@/components/dashboard/widgets";
 import { DispatchBadge, ExpectedDelivery, StatusBadge } from "@/components/procurement/order-parts";
 import { fmtDate, fmtMoney, fmtRelative } from "@/lib/utils";
 
@@ -32,7 +33,16 @@ export default async function ProcurementDashboard() {
 
   return (
     <>
-      <PageHeader title="Procurement dashboard" description="Dealership stock orders, deliveries and accounts at a glance." breadcrumbs={[{ label: "Procurement" }, { label: "Dashboard" }]} />
+      <DashboardHero
+        greeting={greeting()}
+        name={user.name.split(" ")[0]!}
+        subtitle="Dealership stock orders, deliveries and accounts at a glance."
+        stats={[
+          { label: "Orders received", value: String(stats.total) },
+          { label: "Awaiting action", value: String(stats.received) },
+          { label: "Overdue deliveries", value: String(stats.overdue) },
+        ]}
+      />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Orders received" value={stats.total} icon={ClipboardList} hint={`${thisMonth} this month`} href="/procurement/orders" />

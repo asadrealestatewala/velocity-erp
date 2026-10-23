@@ -4,8 +4,8 @@ import dynamic from "next/dynamic";
 // Recharts is loaded on demand; the legend and layout render immediately.
 const TrendPlot = dynamic(() => import("./trend-plot"), { ssr: false, loading: () => <div className="h-full w-full animate-pulse rounded-xl bg-ink-100/70" /> });
 
-// Categorical order on a light surface: violet, soft lavender.
-export const SERIES = ["#7c3aed", "#b7a1fb"] as const;
+// Categorical order on a light surface: coral, violet.
+export const SERIES = ["#f0584a", "#8b5cf6"] as const;
 
 type TrendPoint = Record<string, string | number>;
 
@@ -40,7 +40,7 @@ export function TrendChart({
 /** Horizontal bar list — single series, values always labeled; colour may follow the entity. */
 export function BarList({
   data,
-  color = "linear-gradient(90deg, #b7a1fb, #7c3aed)",
+  color = "linear-gradient(90deg, #ff7a59, #d6307a)",
   empty = "No data for this period",
   format = (n: number) => String(n),
 }: {

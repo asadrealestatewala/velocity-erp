@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRightLeft, Bike, Building2, Flag, History, Inbox, Mail, MapPin, Phone, User } from "lucide-react";
+import { ArrowRightLeft, Bike, Building2, Flag, History, Inbox, Mail, MapPin, User } from "lucide-react";
 import { db } from "@/lib/db";
 import type { CurrentUser } from "@/server/auth/session";
 import { can, isCentral, managedDealershipIds } from "@/server/authz";
@@ -76,7 +76,7 @@ export async function ContactDetailView({ user, id, base, leadParam }: { user: C
                 )}
               </div>
               <div className="mt-4 grid gap-x-6 gap-y-2 text-sm text-ink-600 sm:grid-cols-2 xl:grid-cols-3">
-                <span className="flex items-center gap-2 sm:col-span-full"><Phone className="h-4 w-4 text-ink-400" /><PhoneWithActions phone={c.phone} digits={c.phoneNormalized} name={fullName(c)} /></span>
+                <span className="flex items-center gap-2 sm:col-span-full"><PhoneWithActions phone={c.phone} digits={c.phoneNormalized} name={fullName(c)} /></span>
                 <span className="flex min-w-0 items-center gap-2"><Mail className="h-4 w-4 shrink-0 text-ink-400" /><span className="truncate">{c.email ?? "—"}</span></span>
                 <span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-ink-400" />{c.city?.name ?? "—"}</span>
                 <span className="flex items-center gap-2"><Building2 className="h-4 w-4 text-ink-400" />{lead?.dealership?.name ?? <span className="text-red-600">Unassigned</span>}</span>

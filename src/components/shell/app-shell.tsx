@@ -204,7 +204,7 @@ export function AppShell({
                 className={cn(
                   "group relative flex items-center rounded-xl text-[15px] transition-all duration-200",
                   rail ? "mb-0.5 h-10 justify-center" : "gap-3 px-3 py-2.5",
-                  active ? "bg-brand-600 font-semibold text-white shadow-[0_6px_16px_-6px_rgb(37_99_235/0.7)]" : "font-medium text-slate-300 hover:bg-white/5 hover:text-white",
+                  active ? "bg-gradient-brand font-semibold text-white shadow-[0_8px_20px_-8px_rgb(226_61_131/0.75)]" : "font-medium text-slate-300 hover:bg-white/5 hover:text-white",
                 )}
               >
                 
@@ -261,6 +261,7 @@ export function AppShell({
       )}
 
       <header className="sticky top-0 z-30 flex h-[72px] items-center gap-3 border-b border-ink-200/80 bg-white/85 px-4 backdrop-blur-md sm:px-6 lg:px-8">
+        <span aria-hidden className="hairline-gradient pointer-events-none absolute inset-x-0 -bottom-px h-px" />
         <button className="rounded-md p-2 text-ink-600 hover:bg-ink-100 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu">
           <MenuIcon className="h-5 w-5" />
         </button>

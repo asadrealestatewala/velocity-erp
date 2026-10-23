@@ -36,15 +36,15 @@ export function LoginStage({ eyebrow, children }: { eyebrow: string; children: R
 
       <div className="relative z-10 hidden px-12 pt-8 lg:block">
         <p className="scene-rise mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold tracking-wider uppercase ring-1 ring-white/15 backdrop-blur [animation-delay:160ms]">
-          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-volt-400 shadow-[0_0_8px_var(--color-volt-400)]" />
+          <span aria-hidden className="bg-gradient-brand h-1.5 w-1.5 rounded-full shadow-[0_0_8px_rgb(249_100_75/0.8)]" />
           {eyebrow}
         </p>
         {children}
       </div>
 
       {/* Stage: floor, light, bike. Absolutely positioned so it never pushes the layout (no CLS, no horizontal scroll). */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[56%] lg:h-[58%]">
-        <div className="scene-glow absolute inset-x-[8%] bottom-[10%] h-[55%] rounded-[50%] bg-[radial-gradient(closest-side,rgb(37_99_235/0.40),rgb(14_174_207/0.10)_60%,transparent)] blur-2xl" />
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[56%] lg:bottom-10 lg:h-[58%]">
+        <div className="scene-glow absolute inset-x-[8%] bottom-[10%] h-[55%] rounded-[50%] bg-[radial-gradient(closest-side,rgb(249_100_75/0.42),rgb(139_92_246/0.24)_60%,transparent)] blur-2xl" />
         <div className="absolute inset-x-0 bottom-[12%] h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-[12%] bg-gradient-to-b from-white/[0.05] to-transparent" />
 
@@ -64,11 +64,37 @@ export function LoginStage({ eyebrow, children }: { eyebrow: string; children: R
         <span className="scene-sweep" />
       </div>
 
-      <p role="status" aria-live="polite" className="absolute bottom-3 left-5 z-10 flex items-center gap-2 text-[11.5px] font-medium text-white/70 sm:bottom-4 sm:left-7 lg:bottom-6 lg:left-12">
+      {/* Floating cards (desktop): the product name and the live sign-in state. */}
+      <div className="float-y absolute top-[47%] right-6 z-10 hidden items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-3 shadow-[0_18px_40px_-18px_rgba(0,0,0,0.6)] backdrop-blur-md lg:flex xl:right-10">
+        <span className="bg-gradient-brand flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold text-white">G5S</span>
+        <span className="leading-tight">
+          <span className="block text-sm font-semibold text-white">YADEA G5S</span>
+          <span className="block text-xs text-white/60">Electric scooter</span>
+        </span>
+      </div>
+      <p role="status" aria-live="polite" className="float-y-slow absolute top-[58%] right-10 z-10 hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-4 py-2 text-xs font-medium text-white/85 shadow-[0_14px_30px_-16px_rgba(0,0,0,0.6)] backdrop-blur-md lg:flex xl:right-16">
         <span aria-hidden className="scene-dot h-1.5 w-1.5 rounded-full" />
         {STATUS[phase]}
       </p>
-      <p className="absolute right-5 bottom-3 z-10 hidden text-[11px] text-white/40 sm:right-7 sm:bottom-4 sm:block lg:right-12 lg:bottom-6">© {new Date().getFullYear()} YADEA · Electric two-wheelers</p>
+      <div aria-hidden className="absolute inset-x-0 bottom-0 z-10 hidden h-10 overflow-hidden border-t border-white/10 bg-black/25 backdrop-blur-sm lg:block">
+        <div className="marquee h-full items-center text-[12px] font-medium tracking-wide text-white/55">
+          {[0, 1].map((n) => (
+            <ul key={n} className="flex shrink-0 items-center gap-8 pr-8">
+              {["Leads", "Test drives", "Dealerships", "Procurement", "Inventory", "Account ledger", "Vouchers", "Leaderboard"].map((w) => (
+                <li key={w} className="flex items-center gap-8 whitespace-nowrap">
+                  {w}
+                  <span className="bg-gradient-brand h-1.5 w-1.5 rounded-full" />
+                </li>
+              ))}
+            </ul>
+          ))}
+        </div>
+      </div>
+      <p role="status" aria-live="polite" className="absolute bottom-3 left-5 z-10 flex items-center gap-2 text-[11.5px] font-medium text-white/70 sm:bottom-4 sm:left-7 lg:hidden">
+        <span aria-hidden className="scene-dot h-1.5 w-1.5 rounded-full" />
+        {STATUS[phase]}
+      </p>
+      <p className="absolute right-5 bottom-3 z-10 hidden text-[11px] text-white/40 sm:right-7 sm:bottom-4 sm:block lg:hidden">© {new Date().getFullYear()} YADEA · Electric two-wheelers</p>
     </section>
   );
 }

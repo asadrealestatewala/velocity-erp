@@ -9,7 +9,7 @@ import { getDailyMissions, getUserProgress, getWeekActivity, levelFor, nextStrea
 import { getFunnel } from "@/server/services/funnel";
 import { startOfMonth } from "date-fns";
 import { GoalsPanel } from "@/components/gamification/progress-panel";
-import { AlertCards, FunnelCard, GamificationCard, LeaderboardCard, RemindersCard, greeting } from "@/components/dashboard/widgets";
+import { AlertCards, DashboardHero, FunnelCard, GamificationCard, LeaderboardCard, RemindersCard, greeting } from "@/components/dashboard/widgets";
 import { LevelUp } from "@/components/dashboard/level-up";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { buildSetupChecklist } from "@/lib/setup-checklist";
@@ -106,9 +106,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageHeader
-        title={`${greeting(now)}, ${user.name.split(" ")[0]} 👋`}
-        description={`Here's what's happening across your sales network · ${range.from.toLocaleDateString("en-GB")} – ${range.to.toLocaleDateString("en-GB")}, compared with the previous period of equal length`}
+      <DashboardHero
+        greeting={greeting(now)}
+        name={user.name.split(" ")[0]!}
+        subtitle={`Here's what's happening across your sales network · ${range.from.toLocaleDateString("en-GB")} – ${range.to.toLocaleDateString("en-GB")}, compared with the previous period of equal length`}
+        stats={[
+          { label: "Leads in period", value: fmtNumber(kpi.leadsInPeriod) },
+          { label: "Converted", value: fmtNumber(kpi.converted) },
+          { label: "Lead → customer", value: `${kpi.conversionRate}%` },
+        ]}
       />
       <FilterBar
         filters={[

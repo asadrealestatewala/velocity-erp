@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const variants = {
-  primary: "bg-yadea-600 text-white hover:bg-yadea-700 shadow-sm active:scale-[0.98]",
+  primary: "bg-gradient-action text-white shadow-[0_6px_16px_-6px_rgb(214_48_122/0.55)] hover:brightness-110 hover:shadow-[0_8px_20px_-6px_rgb(214_48_122/0.7)] active:scale-[0.98]",
   blue: "bg-brand-600 text-white hover:bg-brand-700 shadow-sm active:scale-[0.98]",
   secondary: "bg-white text-ink-800 border border-ink-200 hover:bg-ink-50 hover:border-ink-300 active:scale-[0.98]",
   ghost: "text-ink-600 hover:bg-ink-100 hover:text-ink-900",

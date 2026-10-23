@@ -419,7 +419,7 @@ export function FormShell({ settings, children, compact, bike }: { settings: For
             "absolute inset-0",
             settings.headerImageUrl
               ? "bg-ink-950/60"
-              : "bg-[radial-gradient(ellipse_at_12%_0%,rgba(37,99,235,0.42),transparent_55%),radial-gradient(ellipse_at_92%_100%,rgba(240,116,0,0.30),transparent_48%),linear-gradient(135deg,#0f2543,#040e1d)]",
+              : "bg-[radial-gradient(ellipse_at_12%_0%,rgba(249,100,75,0.40),transparent_55%),radial-gradient(ellipse_at_92%_100%,rgba(139,92,246,0.34),transparent_48%),linear-gradient(135deg,#211815,#0d0908)]",
           )}
         />
         {!settings.headerImageUrl && !showBike && (
@@ -427,7 +427,7 @@ export function FormShell({ settings, children, compact, bike }: { settings: For
         )}
         {showBike && (
           <>
-            <div aria-hidden className="absolute right-[2%] bottom-12 hidden h-[58%] w-[44%] rounded-[50%] bg-[radial-gradient(closest-side,rgba(240,116,0,0.35),transparent)] blur-2xl md:block" />
+            <div aria-hidden className="absolute right-[2%] bottom-12 hidden h-[58%] w-[44%] rounded-[50%] bg-[radial-gradient(closest-side,rgba(249,100,75,0.38),transparent)] blur-2xl md:block" />
             <Image
               src="/brand/yadea-g5s.webp"
               alt=""

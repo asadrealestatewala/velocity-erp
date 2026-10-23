@@ -6,6 +6,31 @@ import type { DailyMission } from "@/server/services/progress";
 import type { FunnelStage } from "@/server/services/funnel";
 import { cn, fmtDateTime, fullName } from "@/lib/utils";
 
+/** Warm-dark welcome banner. The three figures are the period's real KPIs. */
+export function DashboardHero({ greeting: hello, name, subtitle, stats }: { greeting: string; name: string; subtitle: string; stats: { label: string; value: string }[] }) {
+  return (
+    <section aria-label="Welcome" className="surface-graphite relative isolate mb-4 overflow-hidden rounded-2xl p-5 text-white shadow-[var(--shadow-lift)] sm:p-7">
+      <div aria-hidden className="hairline-gradient absolute inset-x-0 top-0 h-px" />
+      <div className="flex flex-wrap items-end justify-between gap-6">
+        <div className="min-w-0">
+          <h1 className="text-[28px] leading-tight font-bold tracking-tight sm:text-4xl">
+            {hello}, <span className="text-gradient-brand">{name}</span>
+          </h1>
+          <p className="mt-2 max-w-xl text-sm text-white/65">{subtitle}</p>
+        </div>
+        <dl className="flex flex-wrap gap-3">
+          {stats.map((s, i) => (
+            <div key={s.label} className={cn("min-w-[104px] rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 backdrop-blur", i === 0 ? "float-y" : i === 1 ? "float-y-slow" : "float-y")}>
+              <dt className="text-[11px] font-medium text-white/55">{s.label}</dt>
+              <dd className="mt-0.5 text-2xl font-bold tabular-nums">{s.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </section>
+  );
+}
+
 /** Time-of-day greeting in the business timezone. */
 export function greeting(now = new Date(), tz = process.env.APP_TIMEZONE || "Asia/Karachi") {
   const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: tz }).format(now)) % 24;

@@ -9,7 +9,6 @@ import { ButtonLink } from "@/components/ui/button";
 import { fmtDateTime, fmtRelative, fullName } from "@/lib/utils";
 import { ORIGIN_LABEL } from "@/lib/constants";
 import { ContactRowActions } from "./row-actions";
-import { PhoneWithActions } from "./phone-actions";
 import { BulkBar, SelectAll, SelectionProvider, SelectRow } from "./selection";
 
 type Rows = Awaited<ReturnType<typeof listContacts>>["rows"];
@@ -91,7 +90,7 @@ export function ContactsTable({
                     </div>
                   </div>
                 </td>
-                <td className="td whitespace-nowrap"><PhoneWithActions phone={c.phone} digits={c.phoneNormalized} name={fullName(c)} size="sm" /></td>
+                <td className="td whitespace-nowrap tabular-nums">{c.phone ?? "—"}</td>
                 <td className="td hidden max-w-[180px] truncate 2xl:table-cell" title={c.email ?? undefined}>{c.email ?? "—"}</td>
                 <td className="td hidden 2xl:table-cell"><Badge tone={c.type === "CUSTOMER" ? "green" : "gray"}>{c.type === "CUSTOMER" ? "Customer" : "Lead"}</Badge></td>
                 <td className="td hidden whitespace-nowrap 2xl:table-cell">{c.source?.name ?? "—"}</td>
@@ -140,7 +139,7 @@ export function ContactsTable({
                 <Avatar name={fullName(c)} src={c.avatarFile ? `/api/files/${c.avatarFile.id}` : null} size={40} />
                 <div className="min-w-0 flex-1">
                   <Link href={`${listBase}/${c.id}`} className="link block truncate">{fullName(c)}</Link>
-                  {c.phone ? <PhoneWithActions phone={c.phone} digits={c.phoneNormalized} name={fullName(c)} size="sm" className="text-sm text-ink-500" /> : <p className="truncate text-sm text-ink-500">{c.email}</p>}
+                  <p className="truncate text-sm text-ink-500">{c.phone ?? c.email}</p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {lead && <StageBadge name={lead.stage.name} color={lead.stage.color} />}
                     <Badge tone={c.type === "CUSTOMER" ? "green" : "gray"}>{c.type === "CUSTOMER" ? "Customer" : "Lead"}</Badge>

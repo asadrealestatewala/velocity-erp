@@ -10,6 +10,9 @@ import { runAction } from "@/server/errors";
 import { getSettings } from "@/server/settings";
 import { normalizePhone } from "@/lib/utils";
 import { homePathFor } from "@/lib/home";
+import { runInTenant, currentTenant } from "@/server/platform/runtime";
+import { DEFAULT_SLUG, getTenant, isValidSlug } from "@/server/platform/tenants";
+import { billingState } from "@/server/platform/billing-state";
 
 export type LoginState = { error?: string } | undefined;
 /** Outcome for the animated sign-in screen: it plays the success scene only on a genuine `ok`. */
@@ -21,13 +24,33 @@ const loginSchema = z.object({
   password: z.string().min(1).max(200),
   portal: z.enum(["crm", "portal", "procurement"]),
   next: z.string().optional(),
+  // Workspace (company) code. Empty = the default workspace.
+  workspace: z.string().trim().max(60).optional(),
 });
 
 /** Dummy hash so a missing account costs the same time as a wrong password (no account enumeration). */
 const DUMMY_HASH = "$2a$12$CwTycUXWue0Thq9StjUM0uJ8.ZpQb6Y5fmmS0cVnS3SrcX1Jb7dZ2";
 
-/** The single authentication path. Returns the outcome instead of redirecting so callers choose how to navigate. */
+const INVALID = "Invalid email / mobile number or password.";
+
+/**
+ * The single authentication path. Returns the outcome instead of redirecting so callers choose how to navigate.
+ * The workspace code selects which company's database is checked; an unknown code looks exactly like a wrong password.
+ */
 async function authenticate(formData: FormData): Promise<LoginResult> {
+  const requested = String(formData.get("workspace") ?? "").trim().toLowerCase();
+  const slug = requested || DEFAULT_SLUG;
+  const tenant = isValidSlug(slug) ? await getTenant(slug).catch(() => null) : null;
+  if (!tenant || tenant.status === "PROVISIONING") {
+    await verifyPassword(String(formData.get("password") ?? ""), DUMMY_HASH); // same cost as a real attempt
+    return { ok: false, error: INVALID };
+  }
+  return runInTenant(slug, () => authenticateInWorkspace(formData));
+}
+
+async function authenticateInWorkspace(formData: FormData): Promise<LoginResult> {
+  const workspace = await currentTenant();
+  if (billingState(workspace).blocked) return { ok: false, error: "This workspace is suspended. Please contact support." };
   const parsed = loginSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { ok: false, error: "Enter your email or mobile number and your password." };
   const { identifier, password, next } = parsed.data;
@@ -52,7 +75,7 @@ async function authenticate(formData: FormData): Promise<LoginResult> {
     // Never store a full phone number in the audit trail — keep the last 4 digits only.
     const shown = email ?? `phone …${phoneNormalized!.slice(-4)}`;
     await audit({ userId: user?.id, action: "auth.login_failed", entityType: "User", entityId: user?.id, changes: { identifier: shown, via: email ? "email" : "mobile" }, ipAddress: hashIdentifier(ip) });
-    return { ok: false, error: "Invalid email / mobile number or password." };
+    return { ok: false, error: INVALID };
   }
 
   await createSession(user.id);

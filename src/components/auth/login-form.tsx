@@ -1,7 +1,7 @@
 "use client";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ArrowRight, Check, Copy, Eye, EyeOff, FlaskConical, Loader2, Lock, LogIn, Mail } from "lucide-react";
+import { AlertCircle, ArrowRight, Building2, Check, Copy, Eye, EyeOff, FlaskConical, Loader2, Lock, LogIn, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { loginAction, loginWithResultAction } from "@/server/actions/auth";
 import { cn } from "@/lib/utils";
@@ -18,7 +18,7 @@ const fieldCls = (invalid: boolean) =>
     invalid ? "border-red-400 focus:border-red-500 focus:ring-red-500/15" : "border-ink-200",
   );
 
-export function LoginForm({ portal, next, demo }: { portal: Portal; next?: string; demo?: DemoInfo }) {
+export function LoginForm({ portal, next, demo, defaultWorkspace = "" }: { portal: Portal; next?: string; demo?: DemoInfo; defaultWorkspace?: string }) {
   const router = useRouter();
   const { phase, setPhase } = useScene();
   // Without JavaScript the form still posts to the server action (it redirects on success). With JavaScript the
@@ -97,6 +97,27 @@ export function LoginForm({ portal, next, demo }: { portal: Portal; next?: strin
             <span>{message}</span>
           </div>
         )}
+
+        <div>
+          <label htmlFor="login-ws" className="label">Workspace code <span className="font-normal text-ink-400">(optional)</span></label>
+          <div className="relative">
+            <input
+              id="login-ws"
+              name="workspace"
+              type="text"
+              autoComplete="organization"
+              autoCapitalize="none"
+              spellCheck={false}
+              disabled={busy}
+              defaultValue={defaultWorkspace}
+              placeholder="your-company"
+              aria-describedby="login-ws-hint"
+              className={fieldCls(false)}
+            />
+            <Building2 className="pointer-events-none absolute top-1/2 left-3.5 h-[18px] w-[18px] -translate-y-1/2 text-ink-400 transition-colors peer-focus:text-brand-600" aria-hidden />
+          </div>
+          <p id="login-ws-hint" className="mt-1.5 text-xs text-ink-500">Your company&apos;s code from signup. Leave it empty for the default workspace.</p>
+        </div>
 
         <div>
           <label htmlFor="login-id" className="label">Email or mobile number</label>

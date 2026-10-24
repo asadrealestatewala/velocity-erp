@@ -5,6 +5,8 @@ import { cache } from "react";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
+import { currentTenant, TENANT_COOKIE } from "@/server/platform/runtime";
+import { billingState } from "@/server/platform/billing-state";
 import type { PermissionKey } from "@/lib/permissions";
 
 export const SESSION_COOKIE = "yadea_session";
@@ -60,6 +62,8 @@ export async function createSession(userId: string) {
     path: "/",
     expires: expiresAt,
   });
+  // Tells later requests which company's database holds this session (the token itself is checked inside that database).
+  jar.set(TENANT_COOKIE, (await currentTenant()).slug, { httpOnly: true, secure: env.isProd, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 });
 }
 
 export async function destroySession() {
@@ -111,6 +115,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   if (!token) return null;
   const session = await db.session.findUnique({ where: { id: hashToken(token) } });
   if (!session) return null;
+  if (billingState(await currentTenant()).blocked) return null;
   if (session.expiresAt < new Date()) {
     await db.session.delete({ where: { id: session.id } }).catch(() => {});
     return null;

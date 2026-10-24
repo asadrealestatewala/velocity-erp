@@ -38,6 +38,9 @@ const requestSlug = cache(async (): Promise<string | null> => {
   }
 });
 
+/** Workspace remembered for this browser (set by /w/<code> links and by a previous sign-in), if any. */
+export const rememberedWorkspace = requestSlug;
+
 /** The workspace for the current call: explicit context → request → default. Unknown request values fall back to the default workspace. */
 export async function currentTenant(): Promise<Tenant> {
   const explicit = als.getStore()?.slug;

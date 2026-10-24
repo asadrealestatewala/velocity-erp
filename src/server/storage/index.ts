@@ -5,6 +5,7 @@ import { promises as fs } from "node:fs";
 import { db, type Tx } from "@/lib/db";
 import { env } from "@/lib/env";
 import { AppError } from "@/server/errors";
+import { currentTenant } from "@/server/platform/runtime";
 
 export interface StorageDriver {
   put(key: string, data: Buffer, contentType: string): Promise<void>;
@@ -127,7 +128,9 @@ export async function putUpload(
   const originalName = safeFileName(file.name);
   const mimeType = detectFile(originalName, data, opts.kind);
   const ext = originalName.split(".").pop()!.toLowerCase();
-  const storageKey = `${opts.folder}/${new Date().toISOString().slice(0, 7)}/${randomUUID()}.${ext}`;
+  const ws = await currentTenant();
+  const prefix = ws.isLegacy ? "" : `tenants/${ws.slug}/`; // the original install keeps its existing keys
+  const storageKey = `${prefix}${opts.folder}/${new Date().toISOString().slice(0, 7)}/${randomUUID()}.${ext}`;
   await storage().put(storageKey, data, mimeType);
   return {
     storageKey,

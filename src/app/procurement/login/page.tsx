@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/server/auth/session";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { LoginForm } from "@/components/auth/login-form";
+import { loginWorkspace } from "@/server/platform/login-workspace";
 import { homePathFor } from "@/lib/home";
 import { sp } from "@/lib/utils";
 import { getDemoAccounts } from "@/server/demo";
@@ -25,7 +26,7 @@ export default async function ProcurementLoginPage({ searchParams }: { searchPar
         </>
       }
     >
-      <LoginForm portal="procurement" next={sp(params.next)} demo={await getDemoAccounts()} />
+      <LoginForm defaultWorkspace={await loginWorkspace()} portal="procurement" next={sp(params.next)} demo={await getDemoAccounts()} />
     </AuthLayout>
   );
 }

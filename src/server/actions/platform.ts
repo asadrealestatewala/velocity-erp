@@ -14,6 +14,7 @@ import { platformDb } from "@/server/platform/client";
 import { decryptSecret, encryptSecret, sha256 } from "@/server/platform/crypto";
 import { platformRateLimit } from "@/server/platform/guard";
 import { runLifecycle } from "@/server/platform/lifecycle";
+import { sendPlanEmail } from "@/server/platform/plan-mail";
 import { migrateAllTenants } from "@/server/platform/migrate-all";
 import { clearEntitlementCache } from "@/server/platform/plans";
 import { getPlatformSettings, savePlatformSettings } from "@/server/platform/settings";
@@ -88,6 +89,7 @@ export async function changePlanAction(id: string, input: z.input<typeof planCha
     const now = new Date();
     await changeSubscription(id, { subStatus: "ACTIVE", planKey: v.planKey, interval: v.interval, priceAmount: q.base, priceCurrency: q.currency, currentPeriodStart: now, currentPeriodEnd: addInterval(now, v.interval), graceUntil: null, cancelAtPeriodEnd: false }, { source: "ADMIN", actor: a.email, reason: v.reason });
     refreshTenant(t.slug);
+    await sendPlanEmail(id, "plan-updated", { note: `your ${v.planKey} plan is now active` });
     await platformAudit({ admin: a, action: "tenant.plan_changed", targetType: "Tenant", targetId: id, reason: v.reason, detail: { plan: v.planKey, interval: v.interval } });
     return { ok: true as const, message: "Plan activated." };
   });
@@ -134,6 +136,7 @@ export async function trialAction(id: string, input: z.input<typeof trialSchema>
       await changeSubscription(id, trialPatch(t.planKey ?? settings.trialPlanKey, v.days ?? settings.trialDays), who);
     }
     refreshTenant(t.slug);
+    if (v.kind !== "revoke") await sendPlanEmail(id, "plan-updated", { note: v.kind === "extend" ? `your free trial was extended by ${v.days} day(s)` : v.kind === "shorten" ? `your free trial was shortened by ${v.days} day(s)` : v.kind === "end" ? "your free trial has ended" : "a new free trial was started for you" });
     await platformAudit({ admin: a, action: `trial.${v.kind}`, targetType: "Tenant", targetId: id, reason: v.reason, detail: { days: v.days ?? null } });
     return { ok: true as const, message: "Trial updated." };
   });

@@ -3,6 +3,7 @@ import type { BillingInterval, Coupon, Invoice, Payment, PaymentMethod, Tenant }
 import { AppError } from "@/server/errors";
 import { platformDb } from "./client";
 import { renderMail, sendSystemMail, workspaceUrl } from "./mail";
+import { sendPlanEmail } from "./plan-mail";
 import { listPlans, priceOf } from "./plans";
 import { getPlatformSettings } from "./settings";
 import { addInterval, changeSubscription, type Who } from "./subscriptions";
@@ -94,14 +95,7 @@ export async function activatePlan(tenantId: string, q: Pick<Quote, "planKey" | 
     opts.who,
   );
   if (q.coupon) await db.coupon.update({ where: { code: q.coupon }, data: { uses: { increment: 1 } } }).catch(() => {});
-  if (t.ownerEmail) {
-    const mail = renderMail({
-      heading: "Payment received — thank you",
-      paragraphs: [`We received ${q.total.toLocaleString("en-US")} ${q.currency} for the ${q.planKey} plan (${q.interval === "YEAR" ? "yearly" : "monthly"}).`, `Your plan is active until ${end.toISOString().slice(0, 10)}. Invoice INV-${String(invoice.number).padStart(5, "0")} is available under Plan & billing.`],
-      cta: { label: "Open Plan & billing", url: workspaceUrl(t.slug, "/crm/billing") },
-    });
-    await sendSystemMail({ to: t.ownerEmail, subject: `Payment received — invoice INV-${String(invoice.number).padStart(5, "0")}`, text: mail.text, html: mail.html });
-  }
+  await sendPlanEmail(tenantId, "plan-active", { invoiceNumber: invoice.number, amount: q.total, currency: q.currency });
   return invoice;
 }
 
@@ -123,6 +117,7 @@ export async function submitLocalPayment(tenant: Tenant, input: { method: Paymen
       const mail = renderMail({ heading: "A payment needs confirming", paragraphs: [`${tenant.name} (${tenant.slug}) says they paid ${q.total.toLocaleString("en-US")} ${q.currency} by ${METHOD_LABEL[input.method]}.`, `Reference: ${reference}`, "Check your account, then confirm or reject it in the platform console."], cta: { label: "Open the console", url: `${process.env.APP_URL ?? ""}/platform/payments` } });
       await sendSystemMail({ to: settings.billing.operatorEmail, subject: `Payment to confirm: ${tenant.slug}`, text: mail.text, html: mail.html });
     }
+    await sendPlanEmail(tenant.id, "payment-submitted", { reference, amount: q.total, currency: q.currency, planKey: q.planKey, interval: q.interval });
     return p;
   } catch (e) {
     if ((e as { code?: string }).code === "P2002") throw new AppError("That transaction reference has already been used.", "CONFLICT", { reference: "Already used." });

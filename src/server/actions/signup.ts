@@ -9,6 +9,7 @@ import { createSession } from "@/server/auth/session";
 import { createWorkspace } from "@/server/platform/provision";
 import { platformRateLimit } from "@/server/platform/guard";
 import { renderMail, sendSystemMail, workspaceUrl, appBaseUrl } from "@/server/platform/mail";
+import { sendPlanEmail } from "@/server/platform/plan-mail";
 import { runInTenant } from "@/server/platform/runtime";
 import { getPlatformSettings } from "@/server/platform/settings";
 import { isReservedSlug, isValidSlug, DEFAULT_SLUG } from "@/server/platform/tenants";
@@ -66,6 +67,9 @@ export async function signupAction(_: SignupState, formData: FormData): Promise<
     footer: "This link works once and expires in 3 days. If you did not create this workspace, you can ignore this email.",
   });
   await sendSystemMail({ to: v.ownerEmail, subject: "Confirm your email — your workspace is ready", text: mail.text, html: mail.html });
+
+  // What the trial includes and when it ends (separate from the confirmation link so each email has one job).
+  if (created.trial) await sendPlanEmail(created.tenantId, "trial-started");
 
   // Sign the new owner in, inside their own workspace.
   await runInTenant(v.slug, async () => {

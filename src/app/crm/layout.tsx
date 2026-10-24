@@ -14,7 +14,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
     canAssign ? db.lead.count({ where: { AND: [leadScope(user), { dealershipId: null, isArchived: false, stage: { kind: "OPEN" } }] } }) : Promise.resolve(0),
   ]);
   const chrome = await workspaceChrome(can(user, "settings.manage"));
-  const nav = CRM_NAV.filter((n) => !n.perm || can(user, n.perm));
+  const nav = CRM_NAV.filter((n) => (!n.perm || can(user, n.perm)) && (n.href !== "/crm/billing" || chrome.workspaceName));
   const actions: QuickAction[] = [];
   if (can(user, "contacts.create")) actions.push({ label: "New contact", href: "/crm/contacts/new", variant: "primary", icon: "plus" });
   if (canAssign) actions.push({ label: "Assign leads", href: "/crm/contacts?assigned=no", variant: "outline", icon: "share", badge: unassigned });

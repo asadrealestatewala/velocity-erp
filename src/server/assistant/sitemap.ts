@@ -195,6 +195,16 @@ export const PAGES: PageDoc[] = [
     keywords: ["stages", "loss reasons", "sources", "cities", "custom fields", "privacy", "goals", "badges", "configuration"],
   },
   {
+    id: "crm-billing", workspace: "crm", label: "Plan & billing", path: "/crm/billing", perm: "settings.manage",
+    summary: "Your subscription: plan, trial or renewal dates, usage against limits, invoices and how to pay (workspaces on a paid plan only).",
+    inside: [
+      "Current plan, status and dates; usage meters for staff logins, dealerships, contacts and storage.",
+      "Choose a plan (monthly or yearly), apply a coupon, then pay by card or by bank/wallet transfer (Raast, Easypaisa, JazzCash…) and submit the transaction reference for confirmation.",
+      "Invoices with PDF download, subscription history, cancel at the end of the paid period.",
+    ],
+    keywords: ["billing", "subscription", "plan", "upgrade", "invoice", "trial", "pay", "payment", "renew", "limit"],
+  },
+  {
     id: "crm-account", workspace: "crm", sidebar: false, label: "Account & password", path: "/crm/account",
     summary: "Your own profile, password and notification preferences (avatar menu → Account & password).",
     inside: ["Change password, personal details, in-app / email notification switches per type."],

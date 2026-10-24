@@ -21,6 +21,7 @@ export const CRM_NAV: NavItem[] = [
   { label: "Users & Permissions", href: "/crm/users", icon: "shield", perm: "users.manage", section: "Admin" },
   { label: "Audit Log", href: "/crm/audit", icon: "history", perm: "audit.view" },
   { label: "Settings", href: "/crm/settings", icon: "settings", perm: "settings.manage" },
+  { label: "Plan & billing", href: "/crm/billing", icon: "wallet", perm: "settings.manage" },
 ];
 
 export const PORTAL_NAV: NavItem[] = [

@@ -316,6 +316,7 @@ model PlatformAdmin {
   totpSecretEnc String?
   totpEnabled   Boolean           @default(false)
   recoveryCodes Json              @default("[]")
+  lastTotpStep  Int               @default(0)
   tokenVersion  Int               @default(0)
   lastLoginAt   DateTime?
   createdAt     DateTime          @default(now())

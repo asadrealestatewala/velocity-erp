@@ -73,6 +73,7 @@ model User {
   totpSecretEnc      String?
   totpEnabled        Boolean   @default(false)
   recoveryCodes      Json      @default("[]")
+  lastTotpStep       Int       @default(0)
   notificationPrefs  Json      @default("{}")
   lastLoginAt        DateTime?
   createdAt          DateTime  @default(now())

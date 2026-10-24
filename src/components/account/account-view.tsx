@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/misc";
 import { Field, Input } from "@/components/ui/form";
 import { useAction } from "@/components/ui/use-action";
+import { TotpSetup } from "@/components/auth/totp-setup";
 import { changePasswordAction } from "@/server/actions/auth";
 import { saveNotificationPrefsAction } from "@/server/actions/notifications";
+import { beginTwoFactorAction, confirmTwoFactorAction, disableTwoFactorAction } from "@/server/actions/two-factor";
 
 type Prefs = Record<string, { inApp: boolean; email: boolean }>;
 
-export function AccountView({ user, types, prefs, mustChange, emailConfigured }: { user: { name: string; email: string; roleName: string }; types: Record<string, string>; prefs: Prefs; mustChange: boolean; emailConfigured: boolean }) {
+export function AccountView({ user, types, prefs, mustChange, emailConfigured, twoFactorEnabled = false }: { user: { name: string; email: string; roleName: string }; types: Record<string, string>; prefs: Prefs; mustChange: boolean; emailConfigured: boolean; twoFactorEnabled?: boolean }) {
   const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
   const change = useAction(changePasswordAction, { onSuccess: () => setPw({ current: "", next: "", confirm: "" }) });
   const [p, setP] = useState<Prefs>(() => Object.fromEntries(Object.keys(types).map((k) => [k, { inApp: prefs[k]?.inApp !== false, email: prefs[k]?.email !== false }])));
@@ -33,6 +35,12 @@ export function AccountView({ user, types, prefs, mustChange, emailConfigured }:
           <Field label="Confirm new password" error={change.fieldErrors.confirm}>{(f) => <Input {...f} type="password" autoComplete="new-password" value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} />}</Field>
           <div className="flex justify-end"><Button type="submit" loading={change.pending}>Update password</Button></div>
         </form>
+      </Card>
+      <Card>
+        <CardHeader title="Two-factor sign-in" description="Ask for a code from your phone after the password. Recommended for admins and anyone who handles money or dealer data." />
+        <div className="p-5">
+          <TotpSetup enabled={twoFactorEnabled} begin={beginTwoFactorAction} confirm={confirmTwoFactorAction} disable={disableTwoFactorAction} />
+        </div>
       </Card>
       <Card className="lg:col-span-2" id="notifications">
         <CardHeader title="Notification preferences" description={emailConfigured ? "Email is delivered through the configured SMTP provider." : "Email delivery is not configured on this server — only in-app notifications are delivered."} />

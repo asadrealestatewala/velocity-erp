@@ -61,7 +61,7 @@ const MAX_CLIENTS = Number(process.env.TENANT_CLIENT_CACHE || 12);
 
 /** Writes allowed even when a workspace is read-only (sign-in, audit, password reset). */
 const LOCKED_OK_MODELS = new Set(["Session", "AuditLog", "PasswordResetToken", "Notification"]);
-const USER_SELF_FIELDS = new Set(["lastLoginAt", "passwordHash", "mustChangePassword", "totpSecretEnc", "totpEnabled", "recoveryCodes", "updatedAt"]);
+const USER_SELF_FIELDS = new Set(["lastLoginAt", "passwordHash", "mustChangePassword", "totpSecretEnc", "totpEnabled", "recoveryCodes", "lastTotpStep", "updatedAt"]);
 const WRITE_OPS = new Set(["create", "createMany", "createManyAndReturn", "update", "updateMany", "upsert", "delete", "deleteMany"]);
 
 function lockedFor(slug: string) {

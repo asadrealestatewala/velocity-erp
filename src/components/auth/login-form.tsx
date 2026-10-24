@@ -1,7 +1,7 @@
 "use client";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ArrowRight, Building2, Check, Copy, Eye, EyeOff, FlaskConical, Loader2, Lock, LogIn, Mail } from "lucide-react";
+import { AlertCircle, ArrowRight, Building2, Check, Copy, Eye, EyeOff, FlaskConical, Loader2, Lock, LogIn, Mail, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { loginAction, loginWithResultAction } from "@/server/actions/auth";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,8 @@ export function LoginForm({ portal, next, demo, defaultWorkspace = "", notice }:
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [showPassword, setShowPassword] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
+  const [needsCode, setNeedsCode] = useState(false);
+  const codeRef = useRef<HTMLInputElement>(null);
   const busy = phase === "submitting" || phase === "success";
   const message = error ?? fallback?.error ?? null;
 
@@ -62,6 +64,14 @@ export function LoginForm({ portal, next, demo, defaultWorkspace = "", notice }:
     setPhase("submitting");
     try {
       const result = await loginWithResultAction(undefined, data);
+      if (!result.ok && result.needsCode) {
+        // Password was right and this account uses two-factor: ask for the code (the form keeps what was typed).
+        setNeedsCode(true);
+        setError(result.error || null);
+        setPhase(result.error ? "error" : "idle");
+        setTimeout(() => codeRef.current?.focus(), 0);
+        return;
+      }
       if (!result.ok) {
         setError(result.error);
         setPhase("error");
@@ -185,6 +195,17 @@ export function LoginForm({ portal, next, demo, defaultWorkspace = "", notice }:
           {fieldErrors.password && <p id="login-pw-err" className="mt-1.5 text-xs font-medium text-red-600">{fieldErrors.password}</p>}
           {capsLock && <p id="login-caps" className="mt-1.5 text-xs font-medium text-amber-700">Caps Lock is on.</p>}
         </div>
+
+        {needsCode && (
+          <div>
+            <label htmlFor="login-code" className="label">Authenticator code</label>
+            <div className="relative">
+              <input id="login-code" ref={codeRef} name="code" type="text" inputMode="text" autoComplete="one-time-code" autoCapitalize="none" spellCheck={false} disabled={busy} placeholder="6-digit code or recovery code" className={fieldCls(false)} />
+              <ShieldCheck className="pointer-events-none absolute top-1/2 left-3.5 h-[18px] w-[18px] -translate-y-1/2 text-ink-400 transition-colors peer-focus:text-brand-600" aria-hidden />
+            </div>
+            <p className="mt-1.5 text-xs text-ink-500">Open your authenticator app and type the current code.</p>
+          </div>
+        )}
 
         <button
           type="submit"

@@ -70,6 +70,21 @@ export async function resetUserPasswordAction(id: string) {
   });
 }
 
+/** For a colleague who lost their phone: removes their two-factor setup so they can sign in with their password and enrol again. */
+export async function resetUserTwoFactorAction(id: string) {
+  return runAction(async () => {
+    const me = await requireUser("users.manage");
+    const u = await db.user.findUnique({ where: { id }, include: { role: true } });
+    if (!u) throw notFound();
+    if (id === me.id) throw forbidden("Use Account to change your own two-factor setting.");
+    if (u.role.key === "SUPER_ADMIN" && !isSuperAdmin(me)) throw forbidden();
+    await db.user.update({ where: { id }, data: { totpEnabled: false, totpSecretEnc: null, recoveryCodes: [], lastTotpStep: 0 } });
+    await db.session.deleteMany({ where: { userId: id } });
+    await audit({ userId: me.id, action: "user.2fa_reset", entityType: "User", entityId: id });
+    return { ok: true as const, message: "Two-factor sign-in removed. They can enrol again from Account." };
+  });
+}
+
 /**
  * Edit a role's permission grants. Guards against privilege escalation:
  * nobody edits the role they hold, the Super Administrator role is immutable,

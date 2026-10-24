@@ -13,10 +13,11 @@ import { homePathFor } from "@/lib/home";
 import { runInTenant, currentTenant } from "@/server/platform/runtime";
 import { DEFAULT_SLUG, getTenant, isValidSlug } from "@/server/platform/tenants";
 import { billingState } from "@/server/platform/billing-state";
+import { checkUserSecondFactor } from "@/server/auth/two-factor";
 
 export type LoginState = { error?: string } | undefined;
 /** Outcome for the animated sign-in screen: it plays the success scene only on a genuine `ok`. */
-export type LoginResult = { ok: true; redirectTo: string } | { ok: false; error: string };
+export type LoginResult = { ok: true; redirectTo: string } | { ok: false; error: string; needsCode?: boolean };
 
 const loginSchema = z.object({
   // An email address OR a mobile number (dealership staff may use either).
@@ -78,6 +79,15 @@ async function authenticateInWorkspace(formData: FormData): Promise<LoginResult>
     return { ok: false, error: INVALID };
   }
 
+  if (user.totpEnabled) {
+    const code = String(formData.get("code") ?? "");
+    if (!code.trim()) return { ok: false, error: "", needsCode: true };
+    if (!(await checkUserSecondFactor(user, code))) {
+      await audit({ userId: user.id, action: "auth.login_failed", entityType: "User", entityId: user.id, changes: { reason: "second factor" }, ipAddress: hashIdentifier(ip) });
+      return { ok: false, error: "That code is not valid. Enter the current 6-digit code from your authenticator app, or a recovery code.", needsCode: true };
+    }
+  }
+
   await createSession(user.id);
   await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
   await audit({ userId: user.id, action: "auth.login", entityType: "User", entityId: user.id, changes: { via: email ? "email" : "mobile" }, ipAddress: hashIdentifier(ip) });
@@ -92,7 +102,7 @@ async function authenticateInWorkspace(formData: FormData): Promise<LoginResult>
 /** Classic form action: redirects straight away on success. */
 export async function loginAction(_: LoginState, formData: FormData): Promise<LoginState> {
   const r = await authenticate(formData);
-  if (!r.ok) return { error: r.error };
+  if (!r.ok) return { error: r.needsCode ? "Two-factor sign-in needs JavaScript. Please enable it and try again." : r.error };
   redirect(r.redirectTo);
 }
 

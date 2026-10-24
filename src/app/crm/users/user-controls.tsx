@@ -1,13 +1,13 @@
 "use client";
 import { Fragment, useState } from "react";
-import { Copy, KeyRound, Pencil, Plus } from "lucide-react";
+import { Copy, KeyRound, Pencil, Plus, ShieldOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Checkbox, Field, Input, Select } from "@/components/ui/form";
 import { ConfirmButton } from "@/components/ui/confirm";
 import { useAction } from "@/components/ui/use-action";
-import { createDepartmentAction, resetUserPasswordAction, saveUserAction, setRolePermissionsAction } from "@/server/actions/users";
+import { createDepartmentAction, resetUserPasswordAction, resetUserTwoFactorAction, saveUserAction, setRolePermissionsAction } from "@/server/actions/users";
 
 type Opt = { id: string; name: string };
 
@@ -48,6 +48,19 @@ export function UserDialog({ user, roles, departments, isSelf }: { user?: { id: 
       </Dialog>
       <SecretDialog pw={secret} onClose={() => setSecret(null)} />
     </>
+  );
+}
+
+export function ResetTwoFactorButton({ id, name }: { id: string; name: string }) {
+  const reset = useAction(resetUserTwoFactorAction);
+  return (
+    <ConfirmButton
+      trigger={<Button size="iconSm" variant="ghost" aria-label={`Reset two-factor sign-in for ${name}`}><ShieldOff className="h-4 w-4" /></Button>}
+      title={`Remove two-factor sign-in for ${name}?`}
+      description="Use this when they lost their phone. They are signed out and can enrol again from their Account page."
+      confirmLabel="Remove two-factor"
+      onConfirm={() => reset.run(id)}
+    />
   );
 }
 

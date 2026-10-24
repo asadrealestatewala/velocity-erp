@@ -1,5 +1,6 @@
 import { Card, CardHeader, PageHeader } from "@/components/ui/misc";
-import { ActionForm, TotpSetup } from "@/components/platform/console";
+import { ActionForm } from "@/components/platform/console";
+import { TotpSetup } from "@/components/auth/totp-setup";
 import { beginTotpAction, changeOwnPasswordAction, confirmTotpAction, disableTotpAction } from "@/server/actions/platform";
 import { requireAdminPage } from "@/server/platform/admin-auth";
 

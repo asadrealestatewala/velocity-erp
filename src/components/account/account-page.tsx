@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/ui/misc";
 import { AccountView } from "./account-view";
 
 export async function AccountPage({ user }: { user: CurrentUser }) {
-  const u = await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { notificationPrefs: true } });
+  const u = await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { notificationPrefs: true, totpEnabled: true } });
   return (
     <>
       <PageHeader title="Account" description="Your profile, password and notification preferences" />
@@ -15,6 +15,7 @@ export async function AccountPage({ user }: { user: CurrentUser }) {
         prefs={(u.notificationPrefs ?? {}) as Record<string, { inApp: boolean; email: boolean }>}
         mustChange={user.mustChangePassword}
         emailConfigured={smtpConfigured()}
+        twoFactorEnabled={u.totpEnabled}
       />
     </>
   );

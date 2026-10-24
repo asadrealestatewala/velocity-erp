@@ -4,7 +4,7 @@ import { isSuperAdmin, requireCentralPage } from "@/server/authz";
 import { Badge, Card, CardHeader, PageHeader } from "@/components/ui/misc";
 import { TableWrap } from "@/components/ui/table";
 import { fmtDateTime } from "@/lib/utils";
-import { NewDepartment, PermissionMatrix, ResetPasswordButton, UserDialog } from "./user-controls";
+import { NewDepartment, PermissionMatrix, ResetPasswordButton, ResetTwoFactorButton, UserDialog } from "./user-controls";
 import { InviteDialog, RevokeInviteButton } from "./invite-controls";
 import { currentTenant } from "@/server/platform/runtime";
 
@@ -61,6 +61,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                       <>
                         <UserDialog user={{ id: u.id, name: u.name, email: u.email, phone: u.phone, roleId: u.roleId, departmentId: u.departmentId, isActive: u.isActive }} roles={central} departments={departments} isSelf={u.id === me.id} />
                         {u.id !== me.id && <ResetPasswordButton id={u.id} name={u.name} />}
+                        {u.id !== me.id && u.totpEnabled && <ResetTwoFactorButton id={u.id} name={u.name} />}
                       </>
                     )}
                     {u.role.scope === "DEALERSHIP" && u.memberships[0] && <Link href={`/crm/dealerships/${u.memberships[0].dealership.id}`} className="text-xs text-brand-600 hover:underline">Manage via team →</Link>}

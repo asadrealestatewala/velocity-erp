@@ -1,5 +1,5 @@
 import "server-only";
-import type { BillingInterval, Prisma, Tenant } from "@/generated/platform";
+import type { BillingInterval, Prisma, Tenant } from "@yadea/platform-client";
 import { platformDb } from "./client";
 import { invalidateTenant } from "./tenants";
 

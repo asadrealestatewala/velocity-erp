@@ -2,7 +2,7 @@ import "server-only";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import type { PlatformAdmin, PlatformRole } from "@/generated/platform";
+import type { PlatformAdmin, PlatformRole } from "@yadea/platform-client";
 import { AppError } from "@/server/errors";
 import { verifyTotp } from "@/lib/totp";
 import { platformDb } from "./client";

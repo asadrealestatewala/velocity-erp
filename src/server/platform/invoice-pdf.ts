@@ -1,6 +1,6 @@
 import "server-only";
 import PDFDocument from "pdfkit";
-import type { Invoice, Refund, Tenant } from "@/generated/platform";
+import type { Invoice, Refund, Tenant } from "@yadea/platform-client";
 import { pdfText } from "@/server/pdf";
 import { invoiceNumber, METHOD_LABEL } from "./billing";
 

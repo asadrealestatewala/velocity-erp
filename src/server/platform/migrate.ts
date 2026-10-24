@@ -2,6 +2,7 @@ import "server-only";
 import fs from "node:fs";
 import path from "node:path";
 import { Client } from "pg";
+import { EMBEDDED_MIGRATIONS } from "./migrations.generated";
 
 /**
  * Applies the CRM's Prisma migrations (prisma/migrations/*) to ONE workspace schema.
@@ -10,7 +11,12 @@ import { Client } from "pg";
  */
 export type MigrationFile = { name: string; sql: string };
 
+/**
+ * The migration files, read from disk when prisma/migrations is present (development, scripts, tests) and otherwise from
+ * the copy embedded at build time (serverless hosts do not ship the prisma/ folder with the server).
+ */
 export function listMigrations(dir = path.join(process.cwd(), "prisma", "migrations")): MigrationFile[] {
+  if (!fs.existsSync(dir)) return EMBEDDED_MIGRATIONS;
   return fs
     .readdirSync(dir, { withFileTypes: true })
     .filter((d) => d.isDirectory() && fs.existsSync(path.join(dir, d.name, "migration.sql")))

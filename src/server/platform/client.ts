@@ -1,5 +1,5 @@
 import "server-only";
-import { PrismaClient as PlatformClient } from "@/generated/platform";
+import { PrismaClient as PlatformClient } from "@yadea/platform-client";
 
 /** `postgresql://…?schema=public` → same server, different schema (plus optional extra params). */
 export function withParams(url: string, params: Record<string, string>) {
@@ -27,4 +27,4 @@ export function platformDb(): PlatformClient {
 }
 
 export type { PlatformClient };
-export { Prisma as PlatformPrisma } from "@/generated/platform";
+export { Prisma as PlatformPrisma } from "@yadea/platform-client";

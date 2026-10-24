@@ -1,5 +1,5 @@
 import "server-only";
-import type { BillingInterval, Coupon, Invoice, Payment, PaymentMethod, Tenant } from "@/generated/platform";
+import type { BillingInterval, Coupon, Invoice, Payment, PaymentMethod, Tenant } from "@yadea/platform-client";
 import { AppError } from "@/server/errors";
 import { platformDb } from "./client";
 import { renderMail, sendSystemMail, workspaceUrl } from "./mail";

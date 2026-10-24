@@ -1,5 +1,5 @@
 import "server-only";
-import type { Plan, PlanPrice, Tenant } from "@/generated/platform";
+import type { Plan, PlanPrice, Tenant } from "@yadea/platform-client";
 import { platformDb } from "./client";
 
 /**

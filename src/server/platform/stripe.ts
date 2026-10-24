@@ -1,6 +1,6 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { BillingInterval, Tenant } from "@/generated/platform";
+import type { BillingInterval, Tenant } from "@yadea/platform-client";
 import { AppError } from "@/server/errors";
 import { platformDb } from "./client";
 import { activatePlan, buildQuote } from "./billing";

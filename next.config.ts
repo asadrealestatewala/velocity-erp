@@ -18,9 +18,8 @@ const nextConfig: NextConfig = {
   // Separate build dir lets the E2E server run alongside `npm run dev`.
   distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
-  serverExternalPackages: ["@prisma/client", "bcryptjs", "nodemailer", "pdfkit", "exceljs", "pg"],
-  // Workspace provisioning applies prisma/migrations/*.sql at run time, so those files must ship with the server bundle.
-  outputFileTracingIncludes: { "/**": ["./prisma/migrations/**/*"] },
+  serverExternalPackages: ["@prisma/client", "bcryptjs", "nodemailer", "pdfkit", "exceljs", "pg", "@yadea/platform-client"],
+  // Workspace provisioning applies the CRM migrations at run time; they are embedded at build (scripts/embed-migrations.mjs).
   experimental: {
     serverActions: {
       // Uploads go through server actions; the per-file limit is enforced in the storage layer.

@@ -1,5 +1,5 @@
 import "server-only";
-import type { Tenant } from "@/generated/platform";
+import type { Tenant } from "@yadea/platform-client";
 import { platformDb } from "./client";
 import { sha256 } from "./crypto";
 import { invalidateTenant } from "./tenants";

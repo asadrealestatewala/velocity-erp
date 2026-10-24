@@ -3,7 +3,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { cookies, headers } from "next/headers";
 import { cache } from "react";
 import { PrismaClient } from "@prisma/client";
-import type { Tenant } from "@/generated/platform";
+import type { Tenant } from "@yadea/platform-client";
 import { AppError } from "@/server/errors";
 import { billingState } from "./billing-state";
 import { maintenanceActive } from "./settings";

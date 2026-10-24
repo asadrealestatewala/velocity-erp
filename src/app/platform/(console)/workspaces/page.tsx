@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Prisma } from "@/generated/platform";
+import type { Prisma } from "@yadea/platform-client";
 import { Badge, PageHeader } from "@/components/ui/misc";
 import { TableWrap } from "@/components/ui/table";
 import { requireAdminPage } from "@/server/platform/admin-auth";

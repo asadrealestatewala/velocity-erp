@@ -4,7 +4,7 @@
  */
 import { loadEnvFile } from "node:process";
 try { loadEnvFile(process.argv.includes("--cloud") ? ".env.cloud" : ".env"); } catch { /* env may already be set */ }
-import { ensureFirstAdmin } from "../src/server/platform/admin-auth";
+import { ensureFirstAdmin } from "../src/server/platform/admin-bootstrap";
 import { ensureDefaultPlans } from "../src/server/platform/plans";
 import { ensureLegacyTenant } from "../src/server/platform/tenants";
 

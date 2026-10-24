@@ -29,7 +29,8 @@
     "platform:deploy": "prisma migrate deploy --schema prisma/platform/schema.prisma",
     "platform:lifecycle": "tsx --conditions=react-server scripts/run-lifecycle.ts",
     "tenants:migrate": "tsx --conditions=react-server scripts/migrate-tenants.ts",
-    "platform:bootstrap": "tsx --conditions=react-server scripts/platform-bootstrap.ts"
+    "platform:bootstrap": "tsx --conditions=react-server scripts/platform-bootstrap.ts",
+    "platform:backup": "tsx --conditions=react-server scripts/backup-platform.ts"
   },
   "prisma": {
     "seed": "tsx --conditions=react-server prisma/seed.ts"

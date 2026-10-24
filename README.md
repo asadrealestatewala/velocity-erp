@@ -254,3 +254,17 @@ Built-in optimisations: route-level loading skeletons (instant feedback on navig
 - Dependencies are pinned to proven majors (Next 15, Prisma 6, Zod 3, Recharts 2) rather than the newest majors.
 - `public/brand/hero-dealership.jpg`, `public/brand/hero-test-drive.jpg` and `tests/support/mock-session.ts` are untracked leftovers (unused) and can be deleted.
 - A consent checkbox alone does not establish legal compliance — have the policy, wording and retention periods reviewed.
+
+## 10. SaaS platform (multi-company)
+
+The app can host many companies, each with its own private database schema, users, plan and billing. Public pages (`/`, `/pricing`, `/signup`) sell and onboard; staff sign in with a workspace code; the platform operator runs everything from `/platform`.
+
+| Command | Purpose |
+| --- | --- |
+| `npm run platform:deploy` | Create/upgrade the control-plane tables |
+| `npm run platform:bootstrap` | Seed plans, register the original install as a workspace, create the first platform owner |
+| `npm run tenants:migrate` | Apply pending CRM migrations to every company (add `-- --cloud` to use `.env.cloud`) |
+| `npm run platform:lifecycle` | Run the trial/renewal job once |
+| `npm run platform:backup` | pg_dump the control plane and every company |
+
+Full guide, runbooks and limits: [docs/saas-operations.md](docs/saas-operations.md).

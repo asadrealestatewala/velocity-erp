@@ -21,3 +21,6 @@ scripts/*.tmp
 
 # Generated Prisma client for the platform (control-plane) schema
 /src/generated/
+
+# pg_dump backups from npm run platform:backup
+/backups/

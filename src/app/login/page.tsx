@@ -32,7 +32,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </div>
       }
     >
-      <LoginForm defaultWorkspace={await loginWorkspace()} portal="crm" next={sp(params.next)} demo={await getDemoAccounts()} />
+      <LoginForm defaultWorkspace={await loginWorkspace()} notice={sp(params.reset) === "1" ? "Your password was changed. Sign in with the new one." : undefined} portal="crm" next={sp(params.next)} demo={await getDemoAccounts()} />
     </AuthLayout>
   );
 }

@@ -18,7 +18,7 @@ const fieldCls = (invalid: boolean) =>
     invalid ? "border-red-400 focus:border-red-500 focus:ring-red-500/15" : "border-ink-200",
   );
 
-export function LoginForm({ portal, next, demo, defaultWorkspace = "" }: { portal: Portal; next?: string; demo?: DemoInfo; defaultWorkspace?: string }) {
+export function LoginForm({ portal, next, demo, defaultWorkspace = "", notice }: { portal: Portal; next?: string; demo?: DemoInfo; defaultWorkspace?: string; notice?: string }) {
   const router = useRouter();
   const { phase, setPhase } = useScene();
   // Without JavaScript the form still posts to the server action (it redirects on success). With JavaScript the
@@ -91,6 +91,12 @@ export function LoginForm({ portal, next, demo, defaultWorkspace = "" }: { porta
         <input type="hidden" name="portal" value={portal} />
         {next && <input type="hidden" name="next" value={next} />}
 
+        {notice && !message && (
+          <div role="status" className="reveal flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-sm text-emerald-900">
+            <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
+            <span>{notice}</span>
+          </div>
+        )}
         {message && (
           <div role="alert" className="reveal flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-800">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" aria-hidden />
@@ -175,6 +181,7 @@ export function LoginForm({ portal, next, demo, defaultWorkspace = "" }: { porta
               {showPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
             </button>
           </div>
+          <div className="mt-1.5 text-right"><a href="/forgot-password" className="text-xs font-medium text-brand-600 hover:underline">Forgot your password?</a></div>
           {fieldErrors.password && <p id="login-pw-err" className="mt-1.5 text-xs font-medium text-red-600">{fieldErrors.password}</p>}
           {capsLock && <p id="login-caps" className="mt-1.5 text-xs font-medium text-amber-700">Caps Lock is on.</p>}
         </div>

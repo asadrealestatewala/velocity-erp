@@ -5,12 +5,16 @@ import { Badge, Card, CardHeader, PageHeader } from "@/components/ui/misc";
 import { TableWrap } from "@/components/ui/table";
 import { fmtDateTime } from "@/lib/utils";
 import { NewDepartment, PermissionMatrix, ResetPasswordButton, UserDialog } from "./user-controls";
+import { InviteDialog, RevokeInviteButton } from "./invite-controls";
+import { currentTenant } from "@/server/platform/runtime";
 
 export const metadata = { title: "Users & permissions" };
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const me = await requireCentralPage("users.manage");
   const tab = (await searchParams).tab === "roles" ? "roles" : "users";
+  const ws = await currentTenant();
+  const pendingInvites = await db.userInvitation.findMany({ where: { acceptedAt: null, revokedAt: null, expiresAt: { gt: new Date() } }, orderBy: { createdAt: "desc" }, include: { role: true } });
   const [users, roles, departments, permissions] = await Promise.all([
     db.user.findMany({
       orderBy: [{ role: { scope: "asc" } }, { name: "asc" }],
@@ -26,7 +30,14 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
       <PageHeader
         title="Users & permissions"
         breadcrumbs={[{ label: "CRM", href: "/crm/dashboard" }, { label: "Users & permissions" }]}
-        actions={tab === "users" ? <UserDialog roles={central} departments={departments} /> : undefined}
+        actions={
+          tab === "users" ? (
+            <>
+              <InviteDialog roles={central} canInvite={!!ws.emailConfirmedAt} blockedReason={ws.emailConfirmedAt ? undefined : "Confirm your own email address first (see the link we emailed you)."} />
+              <UserDialog roles={central} departments={departments} />
+            </>
+          ) : undefined
+        }
       />
       <div className="mb-4 flex rounded-lg border border-ink-200 bg-white p-0.5 text-sm sm:w-fit">
         <Link href="/crm/users" className={`rounded-md px-4 py-1.5 ${tab === "users" ? "bg-ink-900 text-white" : "text-ink-600"}`}>Users ({users.length})</Link>
@@ -58,6 +69,23 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
               ))}
             </tbody>
           </TableWrap>
+          {pendingInvites.length > 0 && (
+            <Card className="mt-4">
+              <CardHeader title="Pending invitations" description="Links stay valid for 7 days. A newer invitation to the same address replaces the older one." />
+              <ul className="divide-y divide-ink-100">
+                {pendingInvites.map((i) => (
+                  <li key={i.id} className="flex items-center gap-3 px-5 py-3 text-sm">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-ink-900">{i.email}</p>
+                      <p className="text-xs text-ink-500">{i.role.name} · expires {fmtDateTime(i.expiresAt)}</p>
+                    </div>
+                    <Badge tone="amber">Invited</Badge>
+                    <RevokeInviteButton id={i.id} email={i.email} />
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
           <Card className="mt-4 max-w-lg">
             <CardHeader title="Departments" description={departments.map((d) => d.name).join(" · ") || "None"} />
             <div className="p-4"><NewDepartment /></div>

@@ -6,6 +6,7 @@ import { PrismaClient } from "@prisma/client";
 import type { Tenant } from "@/generated/platform";
 import { AppError } from "@/server/errors";
 import { billingState } from "./billing-state";
+import { maintenanceActive } from "./settings";
 import { cachedTenant, DEFAULT_SLUG, getTenant, listActiveTenants, tenantDbUrl } from "./tenants";
 
 export const TENANT_COOKIE = "yadea_tenant";
@@ -68,6 +69,12 @@ function lockedFor(slug: string) {
   return t ? billingState(t).locked : false;
 }
 
+export class MaintenanceError extends AppError {
+  constructor() {
+    super("The system is in scheduled maintenance and is read-only for a short while. Please try again shortly.", "BILLING_LOCKED");
+  }
+}
+
 export class BillingLockedError extends AppError {
   constructor() {
     super("Your workspace is read-only until billing is up to date. Open Plan & billing to fix this.", "BILLING_LOCKED");
@@ -81,9 +88,12 @@ function build(t: Tenant): PrismaClient {
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
-          if (WRITE_OPS.has(operation) && lockedFor(t.slug) && !LOCKED_OK_MODELS.has(model)) {
+          if (WRITE_OPS.has(operation) && !LOCKED_OK_MODELS.has(model)) {
             const selfOnly = model === "User" && (operation === "update" || operation === "updateMany") && Object.keys((args as { data?: object }).data ?? {}).every((k) => USER_SELF_FIELDS.has(k));
-            if (!selfOnly) throw new BillingLockedError();
+            if (!selfOnly) {
+              if (await maintenanceActive()) throw new MaintenanceError();
+              if (lockedFor(t.slug)) throw new BillingLockedError();
+            }
           }
           return query(args);
         },

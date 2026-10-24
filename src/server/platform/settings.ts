@@ -44,7 +44,22 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
   };
 }
 
+let maintenanceCache: { on: boolean; at: number } | null = null;
+
+/** Cached for 10 s so the write guard can ask on every write without a query each time. Fails open: a settings outage never blocks the CRM. */
+export async function maintenanceActive(): Promise<boolean> {
+  if (maintenanceCache && Date.now() - maintenanceCache.at < 10_000) return maintenanceCache.on;
+  try {
+    const on = (await getPlatformSettings()).maintenance.on;
+    maintenanceCache = { on, at: Date.now() };
+    return on;
+  } catch {
+    return false;
+  }
+}
+
 export async function savePlatformSettings(patch: Partial<PlatformSettings>) {
+  maintenanceCache = null;
   const next = { ...(await getPlatformSettings()), ...patch };
   await platformDb().siteSetting.upsert({ where: { key: "platform" }, create: { key: "platform", value: next as object }, update: { value: next as object } });
   return next;

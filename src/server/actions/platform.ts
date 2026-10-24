@@ -64,10 +64,11 @@ export async function platformLogoutAction() {
 
 // ───────────────────────── workspaces
 
-export async function setWorkspaceStatusAction(id: string, status: "ACTIVE" | "SUSPENDED" | "CANCELLED", reason: string) {
+export async function setWorkspaceStatusAction(id: string, input: { status: "ACTIVE" | "SUSPENDED" | "CANCELLED"; reason: string }) {
   return runAction(async () => {
     const a = await requireAdminAction("tenants.manage");
-    const why = reasonSchema.parse(reason);
+    const why = reasonSchema.parse(input.reason);
+    const status = z.enum(["ACTIVE", "SUSPENDED", "CANCELLED"]).parse(input.status);
     const t = await platformDb().tenant.update({ where: { id }, data: { status } });
     refreshTenant(t.slug);
     await platformAudit({ admin: a, action: `tenant.${status.toLowerCase()}`, targetType: "Tenant", targetId: id, reason: why, detail: { slug: t.slug } });
@@ -138,10 +139,10 @@ export async function trialAction(id: string, input: z.input<typeof trialSchema>
   });
 }
 
-export async function saveNotesAction(id: string, notes: string) {
+export async function saveNotesAction(id: string, input: { notes: string }) {
   return runAction(async () => {
     const a = await requireAdminAction("tenants.manage");
-    await platformDb().tenant.update({ where: { id }, data: { notes: notes.slice(0, 4000) } });
+    await platformDb().tenant.update({ where: { id }, data: { notes: String(input.notes ?? "").slice(0, 4000) } });
     await platformAudit({ admin: a, action: "tenant.notes_saved", targetType: "Tenant", targetId: id });
     return { ok: true as const, message: "Notes saved." };
   });
@@ -160,9 +161,10 @@ export async function confirmPaymentAction(id: string) {
   });
 }
 
-export async function rejectPaymentAction(id: string, reason: string) {
+export async function rejectPaymentAction(id: string, input: { reason: string }) {
   return runAction(async () => {
     const a = await requireAdminAction("payments.manage");
+    const reason = reasonSchema.parse(input.reason);
     await rejectPayment(id, reason, { source: "PAYMENT", actor: a.email, reason });
     await platformAudit({ admin: a, action: "payment.rejected", targetType: "Payment", targetId: id, reason });
     return { ok: true as const, message: "Rejected. The customer has been emailed the reason." };
@@ -188,10 +190,11 @@ const planSchema = z.object({
   apiAccess: z.boolean(), procurement: z.boolean(), assistant: z.boolean(), isVisible: z.boolean(), isRecommended: z.boolean(), trialEligible: z.boolean(),
   graceDays: z.number().int().min(0).max(60), features: z.array(z.string().trim().min(1).max(120)).max(12),
 });
-export async function savePlanAction(id: string, input: z.input<typeof planSchema>) {
+const lines = (x: unknown) => (typeof x === "string" ? x.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : x);
+export async function savePlanAction(id: string, input: Record<string, unknown>) {
   return runAction(async () => {
     const a = await requireAdminAction("plans.manage");
-    const v = planSchema.parse(input);
+    const v = planSchema.parse({ ...input, features: lines(input.features) });
     const p = await platformDb().plan.update({ where: { id }, data: { ...v, description: v.description ?? null, features: v.features } });
     clearEntitlementCache();
     await platformAudit({ admin: a, action: "plan.saved", targetType: "Plan", targetId: id, detail: { key: p.key } });
@@ -254,10 +257,11 @@ export async function saveAddOnAction(input: z.input<typeof addOnSchema>) {
     return { ok: true as const, message: "Add-on saved." };
   });
 }
-export async function grantAddOnAction(tenantId: string, addOnKey: string, quantity: number, reason: string) {
+export async function grantAddOnAction(tenantId: string, input: { addOnKey: string; quantity: number; reason: string }) {
   return runAction(async () => {
     const a = await requireAdminAction("payments.manage");
-    const why = reasonSchema.parse(reason);
+    const { addOnKey, quantity } = input;
+    const why = reasonSchema.parse(input.reason);
     const addOn = await platformDb().addOn.findUniqueOrThrow({ where: { key: addOnKey } });
     const q = Math.max(0, Math.floor(quantity));
     if (q === 0) await platformDb().tenantAddOn.deleteMany({ where: { tenantId, addOnId: addOn.id } });
@@ -274,10 +278,11 @@ const settingsSchema = z.object({
   trialDays: z.number().int().min(0).max(60), trialPlanKey: z.string().min(1), graceDays: z.number().int().min(0).max(60), oneTrialPerOwner: z.boolean(),
   reminderDays: z.array(z.number().int().min(0).max(30)).max(6), supportEmail: z.string().trim().max(160), supportPhone: z.string().trim().max(40), operatorEmail: z.string().trim().max(160),
 });
-export async function saveSettingsAction(input: z.input<typeof settingsSchema>) {
+export async function saveSettingsAction(input: Record<string, unknown>) {
   return runAction(async () => {
     const a = await requireAdminAction("settings.manage");
-    const v = settingsSchema.parse(input);
+    const days = typeof input.reminderDays === "string" ? input.reminderDays.split(",").map((x) => x.trim()).filter(Boolean).map(Number) : input.reminderDays;
+    const v = settingsSchema.parse({ ...input, reminderDays: days });
     const cur = await getPlatformSettings();
     await savePlatformSettings({ trialDays: v.trialDays, trialPlanKey: v.trialPlanKey, graceDays: v.graceDays, oneTrialPerOwner: v.oneTrialPerOwner, reminderDays: v.reminderDays, support: { email: v.supportEmail, phone: v.supportPhone }, billing: { ...cur.billing, operatorEmail: v.operatorEmail } });
     await platformAudit({ admin: a, action: "settings.saved", detail: { trialDays: v.trialDays, graceDays: v.graceDays } });
@@ -285,10 +290,11 @@ export async function saveSettingsAction(input: z.input<typeof settingsSchema>) 
   });
 }
 
-export async function setMaintenanceAction(on: boolean, message: string) {
+export async function setMaintenanceAction(input: { on: boolean; message: string }) {
   return runAction(async () => {
     const a = await requireAdminAction("system.manage");
-    await savePlatformSettings({ maintenance: { on, message: message.trim().slice(0, 300) || "We are doing scheduled maintenance. Please try again shortly." } });
+    const on = Boolean(input.on);
+    await savePlatformSettings({ maintenance: { on, message: String(input.message ?? "").trim().slice(0, 300) || "We are doing scheduled maintenance. Please try again shortly." } });
     await platformAudit({ admin: a, action: on ? "maintenance.on" : "maintenance.off" });
     return { ok: true as const, message: on ? "Maintenance mode is ON: workspaces are read-only." : "Maintenance mode is off." };
   });
@@ -296,10 +302,11 @@ export async function setMaintenanceAction(on: boolean, message: string) {
 
 const stripeSchema = z.object({ secretKey: z.string().trim().max(200).optional(), webhookSecret: z.string().trim().max(200).optional(), publishableKey: z.string().trim().max(200).optional(), mode: z.enum(["test", "live"]), prices: z.record(z.string(), z.string().trim().max(80)) });
 /** Keys are encrypted before storage and never shown again; leaving a key field empty keeps the stored one. */
-export async function saveStripeAction(input: z.input<typeof stripeSchema>) {
+export async function saveStripeAction(input: Record<string, unknown>) {
   return runAction(async () => {
     const a = await requireAdminAction("settings.manage");
-    const v = stripeSchema.parse(input);
+    const priceMap = typeof input.prices === "string" ? Object.fromEntries(input.prices.split(/\r?\n/).map((l) => l.split("=").map((x) => x.trim())).filter((kv) => kv.length === 2 && kv[0] && kv[1])) : input.prices;
+    const v = stripeSchema.parse({ ...input, prices: priceMap ?? {} });
     if (v.secretKey && !/^(sk|rk)_(test|live)_/.test(v.secretKey)) throw new AppError("That does not look like a Stripe secret key (it should start with sk_test_ or sk_live_).");
     if (v.webhookSecret && !v.webhookSecret.startsWith("whsec_")) throw new AppError("The webhook signing secret starts with whsec_.");
     const cur = await getPlatformSettings();
@@ -329,7 +336,7 @@ export async function testStripeAction() {
 }
 
 const accountSchema = z.object({ method: z.enum(["BANK_TRANSFER", "RAAST", "EASYPAISA", "JAZZCASH", "SADAPAY", "NAYAPAY"]), title: z.string().trim().min(2).max(60), accountName: z.string().trim().max(80).optional().nullable(), accountNo: z.string().trim().min(3).max(60), bankName: z.string().trim().max(60).optional().nullable(), instructions: z.string().trim().max(300).optional().nullable(), isActive: z.boolean().default(true) });
-export async function saveAccountAction(id: string | null, input: z.input<typeof accountSchema>) {
+export async function saveAccountAction(id: string | null, input: Record<string, unknown>) {
   return runAction(async () => {
     const a = await requireAdminAction("settings.manage");
     const v = accountSchema.parse(input);
@@ -378,8 +385,9 @@ export async function updateAdminAction(id: string, patch: { isActive?: boolean;
 
 // ───────────────────────── my account: password and two-factor
 
-export async function changeOwnPasswordAction(current: string, next: string) {
+export async function changeOwnPasswordAction(input: { current: string; next: string }) {
   return runAction(async () => {
+    const { current, next } = input;
     const a = await requireAdminAction("dashboard");
     const row = await platformDb().platformAdmin.findUniqueOrThrow({ where: { id: a.id } });
     if (!(await bcrypt.compare(current, row.passwordHash))) throw new AppError("Your current password is not correct.", "VALIDATION", { current: "Incorrect password" });

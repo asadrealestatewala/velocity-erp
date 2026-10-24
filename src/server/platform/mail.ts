@@ -7,6 +7,8 @@ export const appBaseUrl = () => (process.env.APP_URL ?? "http://localhost:3000")
 /** Link into a workspace. The default workspace keeps its plain URLs; every other company is addressed as /w/<code>/… */
 export const workspaceUrl = (slug: string, path = "/") => `${appBaseUrl()}${slug === DEFAULT_SLUG ? "" : `/w/${slug}`}${path.startsWith("/") ? path : `/${path}`}`;
 
+export const mailConfigured = () => Boolean(process.env.RESEND_API_KEY || process.env.SMTP_HOST);
+
 export type MailResult = { delivered: boolean; via: "resend" | "smtp" | "log" };
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);

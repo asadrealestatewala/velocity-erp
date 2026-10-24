@@ -36,6 +36,7 @@ async function cleanup() {
     await p.tenant.deleteMany({ where: { slug } });
   }
   for (const e of EMAILS) await p.trialClaim.deleteMany({ where: { ownerEmailHash: emailHash(e) } });
+  await p.rateLimitBucket.deleteMany({}); // buckets from earlier runs would throttle this one
   invalidateTenant();
 }
 const form = (o: Record<string, string>) => {

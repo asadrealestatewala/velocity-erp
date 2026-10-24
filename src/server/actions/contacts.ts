@@ -12,6 +12,7 @@ import { createLead } from "@/server/services/leads";
 import { assignLead } from "@/server/services/assignment";
 import { logActivity } from "@/server/services/activity";
 import { saveUpload } from "@/server/storage";
+import { assertWithinPlan } from "@/server/platform/guard";
 import { fullName } from "@/lib/utils";
 
 export type DuplicateMatch = {
@@ -82,6 +83,7 @@ export async function createContactAction(input: z.input<typeof createSchema>) {
       if (!v.attachToContactId || !dups.some((d) => d.id === v.attachToContactId)) throw new AppError("Choose one of the matching records.");
     }
 
+    if (v.mode !== "attach") await assertWithinPlan("maxContacts", 1);
     const result = await db.$transaction(async (tx) => {
       let contactId: string;
       if (v.mode === "attach") {

@@ -6,6 +6,7 @@ import { env } from "@/lib/env";
 import { requireUser } from "@/server/authz";
 import { audit } from "@/server/audit";
 import { AppError, notFound, runAction } from "@/server/errors";
+import { assertWithinPlan } from "@/server/platform/guard";
 import { dealershipUserIds, notify } from "@/server/services/notifications";
 
 const TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> = {
@@ -138,6 +139,7 @@ export async function convertApplicationAction(id: string, input: z.input<typeof
     if (await db.dealership.findUnique({ where: { code: v.code } })) throw new AppError("That code is already used.", "CONFLICT", { code: "Already used" });
     const city = await db.city.findUnique({ where: { id: v.cityId } });
     if (!city) throw new AppError("Invalid city.");
+    await assertWithinPlan("maxDealerships", 1);
     const d = await db.$transaction(async (tx) => {
       const dealer = await tx.dealership.create({
         data: {

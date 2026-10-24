@@ -34,6 +34,8 @@ export function AppShell({
   subtitle,
   actions = [],
   assistant = null,
+  banner = null,
+  workspaceName = null,
   children,
 }: {
   variant: "crm" | "portal" | "procurement";
@@ -43,6 +45,8 @@ export function AppShell({
   subtitle?: string;
   actions?: QuickAction[];
   assistant?: AssistantConfig | null;
+  banner?: { tone: "info" | "warn" | "danger"; text: string; href?: string } | null;
+  workspaceName?: string | null;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -267,7 +271,7 @@ export function AppShell({
         </button>
         <div className="hidden min-w-0 sm:block">
           <nav aria-label="Breadcrumb" className="hidden items-center gap-1 text-[12px] text-ink-400 sm:flex">
-            <Link href={`${base}/dashboard`} className="transition-colors hover:text-ink-700">{variant === "crm" ? "Central CRM" : variant === "portal" ? "Dealer Portal" : "Procurement"}</Link>
+            <Link href={`${base}/dashboard`} className="transition-colors hover:text-ink-700">{workspaceName ?? (variant === "crm" ? "Central CRM" : variant === "portal" ? "Dealer Portal" : "Procurement")}</Link>
             {section && (
               <>
                 <ChevronRight className="h-3 w-3" aria-hidden />
@@ -314,6 +318,18 @@ export function AppShell({
           <Menu trigger={<button className="rounded-full hover:opacity-90" aria-label="Account menu"><Avatar name={user.name} size={40} className="ring-0" /></button>}>{accountMenu}</Menu>
         </div>
       </header>
+      {banner && (
+        <div
+          role="status"
+          className={cn(
+            "flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-2 text-sm sm:px-6 lg:px-8",
+            banner.tone === "danger" ? "border-red-200 bg-red-50 text-red-900" : banner.tone === "warn" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-brand-200 bg-brand-50 text-brand-900",
+          )}
+        >
+          <span className="font-medium">{banner.text}</span>
+          {banner.href ? <Link href={banner.href} className="font-semibold underline underline-offset-2">Plan &amp; billing →</Link> : <span className="opacity-80">Ask your administrator to review the subscription.</span>}
+        </div>
+      )}
       <main id="main" className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
         <div key={pathname} className="page-enter">{children}</div>
       </main>

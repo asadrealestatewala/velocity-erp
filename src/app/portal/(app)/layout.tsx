@@ -4,10 +4,12 @@ import { can, requirePortalPage } from "@/server/authz";
 import { AppShell, type QuickAction } from "@/components/shell/app-shell";
 import { PORTAL_NAV } from "@/components/shell/nav";
 import { assistantConfigFor } from "@/server/assistant/config";
+import { workspaceChrome } from "@/server/platform/chrome";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const user = await requirePortalPage();
   const unread = await db.notification.count({ where: { userId: user.id, isRead: false } });
+  const chrome = await workspaceChrome(false);
   const isManager = user.memberships.some((m) => m.role === "MANAGER");
   const nav = PORTAL_NAV.filter((n) => (!n.perm || can(user, n.perm)) && (!n.managerOnly || isManager));
   const actions: QuickAction[] = can(user, "contacts.create") ? [{ label: "New walk-in lead", href: "/portal/leads/new", variant: "primary", icon: "plus" }] : [];
@@ -20,7 +22,9 @@ export default async function PortalLayout({ children }: { children: React.React
         unread={unread}
         subtitle={user.memberships.map((m) => m.dealershipName).join(", ")}
         actions={actions}
-        assistant={assistantConfigFor(user)}
+        assistant={chrome.assistantAllowed ? assistantConfigFor(user) : null}
+        banner={chrome.banner}
+        workspaceName={chrome.workspaceName}
       >
         {children}
       </AppShell>

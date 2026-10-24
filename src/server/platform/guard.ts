@@ -50,7 +50,7 @@ export async function assertWithinPlan(limit: keyof typeof LABEL, adding = 1): P
   if (cap === null) return;
   const used = (await currentUsage())[USAGE_KEY[limit]];
   if (used + adding > cap) {
-    throw new AppError(`Your ${ent.planKey ?? "current"} plan includes ${cap.toLocaleString("en-US")} ${LABEL[limit]} and you are using ${used.toLocaleString("en-US")}. Upgrade in Settings → Plan & billing to add more.`, "PLAN_LIMIT");
+    throw new AppError(`Your ${ent.planKey ?? "current"} plan includes ${cap.toLocaleString("en-US")} ${LABEL[limit]} and you are using ${used.toLocaleString("en-US")}. Upgrade in Plan & billing to add more.`, "PLAN_LIMIT");
   }
 }
 
@@ -59,11 +59,11 @@ export async function assertModule(module: keyof Pick<Entitlements, "procurement
   const t = await currentTenant();
   if (t.isLegacy) return;
   const ent = await entitlementsFor(t);
-  if (!ent[module]) throw new AppError(`This feature is not included in your ${ent.planKey ?? "current"} plan. Upgrade in Settings → Plan & billing.`, "PLAN_LIMIT");
+  if (!ent[module]) throw new AppError(`This feature is not included in your ${ent.planKey ?? "current"} plan. Upgrade in Plan & billing.`, "PLAN_LIMIT");
 }
 
 /** Throws when the workspace is read-only (use before work that wouldn't hit the database guard, e.g. sending messages). */
 export async function assertWritable(): Promise<void> {
   const state = billingState(await currentTenant());
-  if (state.locked) throw new AppError("Your workspace is read-only until billing is up to date. Open Settings → Plan & billing.", "BILLING_LOCKED");
+  if (state.locked) throw new AppError("Your workspace is read-only until billing is up to date. Open Plan & billing.", "BILLING_LOCKED");
 }

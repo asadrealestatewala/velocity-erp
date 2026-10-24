@@ -7,9 +7,12 @@ import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { currentTenant, TENANT_COOKIE } from "@/server/platform/runtime";
 import { billingState } from "@/server/platform/billing-state";
-import type { PermissionKey } from "@/lib/permissions";
+import { PERMISSIONS, type PermissionKey } from "@/lib/permissions";
+import { entitlementsCached } from "@/server/platform/plans";
 
 export const SESSION_COOKIE = "yadea_session";
+/** Permission groups that belong to the paid "Procurement & dealer operations" module. */
+const MODULE_GROUPS = new Set(["Procurement", "Inventory", "Finance"]);
 
 export type Membership = {
   dealershipId: string;
@@ -86,6 +89,12 @@ export async function loadUser(userId: string): Promise<CurrentUser | null> {
     },
   });
   if (!user || !user.isActive) return null;
+  let granted = new Set(user.role.permissions.map((rp) => rp.permission.key as PermissionKey));
+  const ws = await currentTenant();
+  if (!ws.isLegacy && !(await entitlementsCached(ws)).procurement) {
+    // The plan does not include Procurement & dealer operations: those permissions simply do not exist for this workspace.
+    granted = new Set([...granted].filter((k) => !MODULE_GROUPS.has(PERMISSIONS[k]?.group ?? "")));
+  }
   return {
     id: user.id,
     name: user.name,
@@ -93,7 +102,7 @@ export async function loadUser(userId: string): Promise<CurrentUser | null> {
     roleKey: user.role.key,
     roleName: user.role.name,
     scope: user.role.scope,
-    permissions: new Set(user.role.permissions.map((rp) => rp.permission.key as PermissionKey)),
+    permissions: granted,
     // Suspended / inactive dealerships lose portal access to their data.
     memberships: user.memberships
       .filter((m) => m.dealership.status === "ACTIVE" || m.dealership.status === "PENDING")

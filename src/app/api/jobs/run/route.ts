@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { env } from "@/lib/env";
 import { runScheduledJobs } from "@/server/services/jobs";
 import { forEachTenant } from "@/server/platform/runtime";
+import { runLifecycle } from "@/server/platform/lifecycle";
 
 /** Constant-time comparison; the secret must be at least 16 characters. */
 function authorised(given: string) {
@@ -15,7 +16,8 @@ async function run() {
     const perWorkspace = await forEachTenant(() => runScheduledJobs());
     // Back-compat: the original response shape is the default workspace's result.
     const first = perWorkspace.find((r) => r.ok)?.result ?? {};
-    return NextResponse.json({ ok: perWorkspace.every((r) => r.ok), ...first, workspaces: perWorkspace.map((r) => ({ slug: r.slug, ok: r.ok, error: r.error })) });
+    const lifecycle = await runLifecycle().catch((e) => { console.error("[lifecycle] failed", e); return null; });
+    return NextResponse.json({ ok: perWorkspace.every((r) => r.ok), ...first, workspaces: perWorkspace.map((r) => ({ slug: r.slug, ok: r.ok, error: r.error })), lifecycle });
   } catch (e) {
     console.error("[jobs] failed", e);
     return NextResponse.json({ ok: false, error: "Job run failed" }, { status: 500 });

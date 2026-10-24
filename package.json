@@ -26,7 +26,10 @@
     "accounts:provision": "tsx --conditions=react-server scripts/provision-accounts.ts",
     "forms:refresh-templates": "tsx --conditions=react-server scripts/refresh-form-templates.ts",
     "postinstall": "prisma generate && prisma generate --schema prisma/platform/schema.prisma",
-    "platform:deploy": "prisma migrate deploy --schema prisma/platform/schema.prisma"
+    "platform:deploy": "prisma migrate deploy --schema prisma/platform/schema.prisma",
+    "platform:lifecycle": "tsx --conditions=react-server scripts/run-lifecycle.ts",
+    "tenants:migrate": "tsx --conditions=react-server scripts/migrate-tenants.ts",
+    "platform:bootstrap": "tsx --conditions=react-server scripts/platform-bootstrap.ts"
   },
   "prisma": {
     "seed": "tsx --conditions=react-server prisma/seed.ts"

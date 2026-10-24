@@ -6,6 +6,7 @@ import { db, type Tx } from "@/lib/db";
 import { env } from "@/lib/env";
 import { AppError } from "@/server/errors";
 import { currentTenant } from "@/server/platform/runtime";
+import { assertWithinPlan } from "@/server/platform/guard";
 
 export interface StorageDriver {
   put(key: string, data: Buffer, contentType: string): Promise<void>;
@@ -124,6 +125,7 @@ export async function putUpload(
   if (file.size > env.maxUploadBytes) {
     throw new AppError(`The file exceeds the ${Math.round(env.maxUploadBytes / 1024 / 1024)} MB limit.`);
   }
+  await assertWithinPlan("maxStorageMb", Math.max(1, Math.ceil(file.size / 1024 / 1024)));
   const data = Buffer.from(await file.arrayBuffer());
   const originalName = safeFileName(file.name);
   const mimeType = detectFile(originalName, data, opts.kind);

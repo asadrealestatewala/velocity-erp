@@ -70,7 +70,7 @@ function lockedFor(slug: string) {
 
 export class BillingLockedError extends AppError {
   constructor() {
-    super("Your workspace is read-only until billing is up to date. Open Settings → Plan & billing to fix this.", "BILLING_LOCKED");
+    super("Your workspace is read-only until billing is up to date. Open Plan & billing to fix this.", "BILLING_LOCKED");
   }
 }
 

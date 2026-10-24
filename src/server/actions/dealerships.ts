@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/server/authz";
 import { audit, diff } from "@/server/audit";
 import { AppError, notFound, runAction } from "@/server/errors";
+import { assertWithinPlan } from "@/server/platform/guard";
 import { dealershipUserIds, notify } from "@/server/services/notifications";
 
 const optStr = (max = 200) => z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? null : v), z.string().trim().max(max).nullable().optional());
@@ -51,6 +52,7 @@ export async function saveDealershipAction(id: string | null, input: DealershipI
       await audit({ userId: user.id, action: "dealership.updated", entityType: "Dealership", entityId: id, changes: diff(before as unknown as Record<string, unknown>, data as unknown as Record<string, unknown>) });
       return { ok: true as const, data: { id }, message: "Dealership saved." };
     }
+    await assertWithinPlan("maxDealerships", 1);
     const created = await db.dealership.create({ data: { ...data, status: "PENDING", acceptsLeads: false } });
     await audit({ userId: user.id, action: "dealership.created", entityType: "Dealership", entityId: created.id, changes: { code: v.code } });
     return { ok: true as const, data: { id: created.id }, message: "Dealership created as Pending. Activate it once onboarding is complete." };

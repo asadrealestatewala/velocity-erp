@@ -71,6 +71,18 @@ export type Entitlements = {
 
 const UNLIMITED: Entitlements = { planKey: null, maxUsers: null, maxDealerships: null, maxContacts: null, maxStorageMb: null, apiAccess: true, procurement: true, assistant: true };
 
+const entCache = new Map<string, { at: number; ent: Entitlements }>();
+/** 60-second cache: entitlements are read on every request (module gating) but change rarely. */
+export async function entitlementsCached(t: Pick<Tenant, "id" | "isLegacy" | "planKey">): Promise<Entitlements> {
+  const key = `${t.id}|${t.planKey}`;
+  const hit = entCache.get(key);
+  if (hit && Date.now() - hit.at < 60_000) return hit.ent;
+  const ent = await entitlementsFor(t);
+  entCache.set(key, { at: Date.now(), ent });
+  return ent;
+}
+export const clearEntitlementCache = () => entCache.clear();
+
 /** What this workspace may use: its plan's limits plus any add-ons. The original install is unlimited. */
 export async function entitlementsFor(t: Pick<Tenant, "id" | "isLegacy" | "planKey">): Promise<Entitlements> {
   if (t.isLegacy) return { ...UNLIMITED, planKey: t.planKey };

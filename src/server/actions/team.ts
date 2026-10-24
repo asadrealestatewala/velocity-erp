@@ -8,6 +8,7 @@ import { can, isCentral, managedDealershipIds, requireUser } from "@/server/auth
 import { audit } from "@/server/audit";
 import { AppError, forbidden, notFound, runAction } from "@/server/errors";
 import { notify } from "@/server/services/notifications";
+import { assertWithinPlan } from "@/server/platform/guard";
 import { userPhoneFields } from "@/server/user-phone";
 
 type Actor = Awaited<ReturnType<typeof requireUser>>;
@@ -60,6 +61,7 @@ export async function addTeamMemberAction(input: z.input<typeof addSchema>) {
         // Appointing someone as a manager upgrades a sales rep — but never downgrades a Dealerships Head.
         if (membershipRole === "MANAGER" && existing.role.key !== "DEALER_MANAGER" && existing.role.key !== "DEALERSHIP_HEAD") await tx.user.update({ where: { id: userId }, data: { roleId: role.id } });
       } else {
+        await assertWithinPlan("maxUsers", 1);
         password = tempPassword();
         const phoneFields = await userPhoneFields(v.phone, { tx });
         const u = await tx.user.create({ data: { email: v.email, name: v.name, ...phoneFields, passwordHash: await hashPassword(password), roleId: role.id, mustChangePassword: true } });

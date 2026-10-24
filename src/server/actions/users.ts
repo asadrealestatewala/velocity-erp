@@ -7,6 +7,7 @@ import { isSuperAdmin, requireUser } from "@/server/authz";
 import { audit } from "@/server/audit";
 import { AppError, forbidden, notFound, runAction } from "@/server/errors";
 import { ALL_PERMISSIONS, type PermissionKey } from "@/lib/permissions";
+import { assertWithinPlan } from "@/server/platform/guard";
 import { userPhoneFields } from "@/server/user-phone";
 
 const tempPassword = () => `Yd-${randomBytes(6).toString("base64url")}-${Math.floor(10 + Math.random() * 89)}`;
@@ -38,6 +39,7 @@ export async function saveUserAction(id: string | null, input: z.input<typeof us
       if (before.role.scope !== "CENTRAL") throw new AppError("Manage dealership accounts from the dealership's Team panel.");
       if (id === me.id && (v.roleId !== before.roleId || !v.isActive)) throw forbidden("You can't change your own role or deactivate yourself.");
       if (before.role.key === "SUPER_ADMIN" && !isSuperAdmin(me)) throw forbidden("Only a Super Administrator can modify a Super Administrator.");
+      if (v.isActive && !before.isActive) await assertWithinPlan("maxUsers", 1);
       await db.$transaction(async (tx) => {
         await tx.user.update({ where: { id }, data: { ...v, ...(await userPhoneFields(v.phone, { excludeUserId: id, tx })), departmentId: v.departmentId || null } });
         if (!v.isActive) await tx.session.deleteMany({ where: { userId: id } });
@@ -45,6 +47,7 @@ export async function saveUserAction(id: string | null, input: z.input<typeof us
       });
       return { ok: true as const, data: { tempPassword: null as string | null }, message: "User saved." };
     }
+    await assertWithinPlan("maxUsers", 1);
     const pw = tempPassword();
     const u = await db.user.create({ data: { ...v, ...(await userPhoneFields(v.phone)), departmentId: v.departmentId || null, passwordHash: await hashPassword(pw), mustChangePassword: true } });
     await audit({ userId: me.id, action: "user.created", entityType: "User", entityId: u.id, changes: { role: role.key } });

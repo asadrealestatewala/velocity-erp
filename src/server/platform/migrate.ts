@@ -96,8 +96,13 @@ export async function pendingMigrations(schema: string, opts: { connectionString
   const files = listMigrations();
   return withClient(opts.connectionString, async (c) => {
     const t = await c.query(`SELECT to_regclass($1) AS t`, [`${q(schema)}."_tenant_migrations"`]);
-    if (!t.rows[0].t) return files.map((f) => f.name);
-    const done = new Set((await c.query(`SELECT name FROM ${q(schema)}."_tenant_migrations"`)).rows.map((r) => r.name as string));
+    const done = new Set<string>();
+    if (t.rows[0].t) for (const r of (await c.query(`SELECT name FROM ${q(schema)}."_tenant_migrations"`)).rows) done.add(r.name as string);
+    // Same adoption rule as applyMigrations: until a schema has its own history, Prisma's history of the original install counts.
+    if (done.size === 0) {
+      const p = await c.query(`SELECT to_regclass($1) AS t`, [`${q(schema)}."_prisma_migrations"`]);
+      if (p.rows[0].t) for (const r of (await c.query(`SELECT migration_name FROM ${q(schema)}."_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL`)).rows) done.add(r.migration_name as string);
+    }
     return files.filter((f) => !done.has(f.name)).map((f) => f.name);
   });
 }

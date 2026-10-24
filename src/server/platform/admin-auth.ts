@@ -2,12 +2,12 @@ import "server-only";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import bcrypt from "bcryptjs";
 import type { PlatformAdmin, PlatformRole } from "@/generated/platform";
 import { AppError } from "@/server/errors";
 import { verifyTotp } from "@/lib/totp";
 import { platformDb } from "./client";
 import { decryptSecret, newToken, sha256 } from "./crypto";
+export { ensureFirstAdmin } from "./admin-bootstrap";
 
 export const ADMIN_COOKIE = "yadea_platform";
 const SESSION_HOURS = 8;
@@ -21,17 +21,6 @@ export const ROLE_PERMS = {
 } as const satisfies Record<PlatformRole, readonly string[]>;
 export type PlatformPerm = (typeof ROLE_PERMS)["OWNER"][number];
 export const adminCan = (role: PlatformRole, perm: PlatformPerm) => (ROLE_PERMS[role] as readonly string[]).includes(perm);
-
-/** Creates the very first OWNER from PLATFORM_ADMIN_EMAIL / PLATFORM_ADMIN_PASSWORD, only when no admin exists yet. */
-export async function ensureFirstAdmin(): Promise<boolean> {
-  const email = process.env.PLATFORM_ADMIN_EMAIL?.trim().toLowerCase();
-  const password = process.env.PLATFORM_ADMIN_PASSWORD;
-  if (!email || !password || password.length < 10) return false;
-  const db = platformDb();
-  if ((await db.platformAdmin.count()) > 0) return false;
-  await db.platformAdmin.create({ data: { email, name: "Platform owner", passwordHash: await bcrypt.hash(password, 12), role: "OWNER" } });
-  return true;
-}
 
 export async function platformAudit(entry: { admin?: Pick<PlatformAdmin, "id" | "email"> | null; action: string; targetType?: string; targetId?: string; reason?: string; detail?: object }) {
   let ip: string | null = null;

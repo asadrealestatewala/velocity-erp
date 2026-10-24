@@ -1,8 +1,9 @@
-import { Building2, TrendingUp, Percent, UserMinus, Repeat, Banknote, Scale, UserPlus } from "lucide-react";
+import { Building2, Eye, TrendingUp, Percent, UserMinus, Repeat, Banknote, Scale, UserPlus } from "lucide-react";
 import { Card, CardHeader, PageHeader, StatCard } from "@/components/ui/misc";
 import { adminCan, requireAdminPage } from "@/server/platform/admin-auth";
 import { getMetrics, type ByCurrency } from "@/server/platform/metrics";
 import { fmtMoney } from "@/lib/utils";
+import { platformDb } from "@/server/platform/client";
 
 export const metadata = { title: "Overview" };
 
@@ -17,6 +18,8 @@ export default async function Overview({ searchParams }: { searchParams: Promise
   const from = new Date(to.getTime() - days * 86_400_000);
   const m = await getMetrics(from, to);
   const showMoney = adminCan(admin.role, "reports");
+  const visits = await platformDb().pageView.groupBy({ by: ["path"], where: { day: { gte: new Date(from.toISOString().slice(0, 10)) } }, _sum: { count: true } });
+  const totalVisits = visits.reduce((n, v) => n + (v._sum.count ?? 0), 0);
   return (
     <>
       <PageHeader title="Overview" description={`Real figures from the last ${days} days. The original workspace is not counted as a customer.`} />
@@ -31,6 +34,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
         <StatCard label="New signups" icon={UserPlus} value={String(m.signups)} />
         <StatCard label="Trial conversion" icon={Percent} value={m.trial.rate === null ? "—" : `${m.trial.rate}%`} />
         <StatCard label="Churned" icon={UserMinus} tone="red" value={String(m.churned)} />
+        <StatCard label="Website visits" icon={Eye} hint="Aggregate, no tracking" value={String(totalVisits)} />
         {showMoney && <StatCard label="MRR" icon={Repeat} value={<span className="text-xl">{money(m.mrr)}</span>} />}
         {showMoney && <StatCard label="ARR run-rate" icon={TrendingUp} value={<span className="text-xl">{money(m.arr)}</span>} />}
         {showMoney && <StatCard label="Collected" icon={Banknote} value={<span className="text-xl">{money(m.collected)}</span>} />}

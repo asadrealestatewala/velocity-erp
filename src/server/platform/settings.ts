@@ -1,0 +1,51 @@
+import "server-only";
+import { platformDb } from "./client";
+
+/** Platform-wide settings, edited in the platform console. Defaults apply until a value is saved. */
+export type PlatformSettings = {
+  trialDays: number;
+  trialPlanKey: string;
+  reminderDays: number[];
+  graceDays: number;
+  oneTrialPerOwner: boolean;
+  maintenance: { on: boolean; message: string };
+  support: { email: string; phone: string };
+  billing: {
+    stripeMode: "test" | "live";
+    stripeSecretKeyEnc: string | null;
+    stripeWebhookSecretEnc: string | null;
+    stripePublishableKey: string;
+    /** Stripe price ids keyed `<planKey>_<MONTH|YEAR>` and `<planKey>_setup`. */
+    stripePrices: Record<string, string>;
+    operatorEmail: string;
+  };
+};
+
+export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
+  trialDays: 7,
+  trialPlanKey: "growth",
+  reminderDays: [3, 1, 0],
+  graceDays: 7,
+  oneTrialPerOwner: true,
+  maintenance: { on: false, message: "We are doing scheduled maintenance. Please try again shortly." },
+  support: { email: "", phone: "" },
+  billing: { stripeMode: "test", stripeSecretKeyEnc: null, stripeWebhookSecretEnc: null, stripePublishableKey: "", stripePrices: {}, operatorEmail: "" },
+};
+
+export async function getPlatformSettings(): Promise<PlatformSettings> {
+  const row = await platformDb().siteSetting.findUnique({ where: { key: "platform" } });
+  const v = (row?.value ?? {}) as Partial<PlatformSettings>;
+  return {
+    ...DEFAULT_PLATFORM_SETTINGS,
+    ...v,
+    maintenance: { ...DEFAULT_PLATFORM_SETTINGS.maintenance, ...(v.maintenance ?? {}) },
+    support: { ...DEFAULT_PLATFORM_SETTINGS.support, ...(v.support ?? {}) },
+    billing: { ...DEFAULT_PLATFORM_SETTINGS.billing, ...(v.billing ?? {}) },
+  };
+}
+
+export async function savePlatformSettings(patch: Partial<PlatformSettings>) {
+  const next = { ...(await getPlatformSettings()), ...patch };
+  await platformDb().siteSetting.upsert({ where: { key: "platform" }, create: { key: "platform", value: next as object }, update: { value: next as object } });
+  return next;
+}

@@ -96,10 +96,10 @@ export async function setDealershipModelsAction(id: string, modelIds: string[]) 
     const user = await requireUser("dealerships.manage");
     const ids = z.array(z.string()).max(200).parse(modelIds);
     const valid = await db.bikeModel.findMany({ where: { id: { in: ids } }, select: { id: true } });
-    await db.$transaction([
-      db.dealershipBikeModel.deleteMany({ where: { dealershipId: id } }),
-      db.dealershipBikeModel.createMany({ data: valid.map((m) => ({ dealershipId: id, bikeModelId: m.id })) }),
-    ]);
+    await db.$transaction(async (tx) => {
+      await tx.dealershipBikeModel.deleteMany({ where: { dealershipId: id } });
+      await tx.dealershipBikeModel.createMany({ data: valid.map((m) => ({ dealershipId: id, bikeModelId: m.id })) });
+    });
     await audit({ userId: user.id, action: "dealership.models_updated", entityType: "Dealership", entityId: id, changes: { models: valid.length } });
     return { ok: true as const, message: "Eligible models updated." };
   });

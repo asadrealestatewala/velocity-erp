@@ -48,10 +48,10 @@ export async function moveStageAction(id: string, dir: -1 | 1) {
     const j = i + dir;
     if (i < 0 || j < 0 || j >= stages.length) return { ok: true as const };
     const [a, b] = [stages[i]!, stages[j]!];
-    await db.$transaction([
-      db.leadStage.update({ where: { id: a.id }, data: { sortOrder: b.sortOrder } }),
-      db.leadStage.update({ where: { id: b.id }, data: { sortOrder: a.sortOrder } }),
-    ]);
+    await db.$transaction(async (tx) => {
+      await tx.leadStage.update({ where: { id: a.id }, data: { sortOrder: b.sortOrder } });
+      await tx.leadStage.update({ where: { id: b.id }, data: { sortOrder: a.sortOrder } });
+    });
     return { ok: true as const };
   });
 }

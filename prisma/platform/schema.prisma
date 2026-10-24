@@ -1,0 +1,398 @@
+// YADEA CRM — PLATFORM (control-plane) schema.
+// One platform database lists every company (tenant) and runs billing, platform staff and the audit trail.
+// Each company's own CRM data lives in its own PostgreSQL schema, described by ../schema.prisma.
+
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../../src/generated/platform"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("PLATFORM_DATABASE_URL")
+}
+
+enum TenantStatus {
+  PROVISIONING
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  PENDING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+  SUSPENDED
+}
+
+enum BillingInterval {
+  MONTH
+  YEAR
+}
+
+enum PaymentMethod {
+  STRIPE
+  BANK_TRANSFER
+  RAAST
+  EASYPAISA
+  JAZZCASH
+  SADAPAY
+  NAYAPAY
+  MANUAL
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  FAILED
+}
+
+enum InvoiceStatus {
+  PAID
+  OPEN
+  VOID
+}
+
+enum PlatformRole {
+  OWNER
+  BILLING
+  SUPPORT
+  ANALYTICS
+}
+
+/// A company (workspace). `dbSchema` + optional encrypted `dbUrlEnc` say where its CRM data lives.
+model Tenant {
+  id                   String             @id @default(cuid())
+  slug                 String             @unique
+  name                 String
+  status               TenantStatus       @default(PROVISIONING)
+  isLegacy             Boolean            @default(false)
+  dbSchema             String             @default("public")
+  /// AES-GCM encrypted full connection string; null = same server as DATABASE_URL with `dbSchema`.
+  dbUrlEnc             String?
+  ownerName            String?
+  ownerEmail           String?
+  ownerEmailHash       String?
+  timezone             String             @default("Asia/Karachi")
+  currency             String             @default("PKR")
+  countryCode          String             @default("92")
+  emailConfirmedAt     DateTime?
+  confirmTokenHash     String?
+  confirmExpiresAt     DateTime?
+  notes                String?
+  // subscription state
+  subStatus            SubscriptionStatus @default(PENDING)
+  planKey              String?
+  interval             BillingInterval    @default(MONTH)
+  priceAmount          Int                @default(0)
+  priceCurrency        String             @default("PKR")
+  trialStartedAt       DateTime?
+  trialEndsAt          DateTime?
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  graceUntil           DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  couponCode           String?
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  provisionedAt        DateTime?
+  lastSeenAt           DateTime?
+  schemaVersion        Int                @default(0)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  history  SubscriptionHistory[]
+  invoices Invoice[]
+  payments Payment[]
+  addOns   TenantAddOn[]
+
+  @@index([status])
+  @@index([subStatus])
+}
+
+model Plan {
+  id             String   @id @default(cuid())
+  key            String   @unique
+  name           String
+  description    String?
+  isVisible      Boolean  @default(true)
+  isRecommended  Boolean  @default(false)
+  trialEligible  Boolean  @default(true)
+  sortOrder      Int      @default(0)
+  maxUsers       Int      @default(5)
+  maxDealerships Int      @default(3)
+  maxContacts    Int      @default(2000)
+  maxStorageMb   Int      @default(1024)
+  apiAccess      Boolean  @default(false)
+  procurement    Boolean  @default(false)
+  assistant      Boolean  @default(true)
+  graceDays      Int      @default(7)
+  features       Json     @default("[]")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  prices PlanPrice[]
+}
+
+/// Prices are versioned: a change creates a new row and deactivates the old one; invoices keep what was charged.
+model PlanPrice {
+  id        String          @id @default(cuid())
+  planId    String
+  currency  String
+  interval  BillingInterval
+  /// Whole units of the currency (PKR rupees / USD dollars).
+  amount    Int
+  setupFee  Int             @default(0)
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  plan      Plan            @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId, currency, interval, isActive])
+}
+
+model AddOn {
+  id               String   @id @default(cuid())
+  key              String   @unique
+  name             String
+  extraUsers       Int      @default(0)
+  extraDealerships Int      @default(0)
+  extraContacts    Int      @default(0)
+  extraStorageMb   Int      @default(0)
+  giveApiAccess    Boolean  @default(false)
+  priceMonthPkr    Int      @default(0)
+  priceMonthUsd    Int      @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  tenants TenantAddOn[]
+}
+
+model TenantAddOn {
+  tenantId  String
+  addOnId   String
+  quantity  Int      @default(1)
+  grantedBy String?
+  reason    String?
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  addOn     AddOn    @relation(fields: [addOnId], references: [id], onDelete: Cascade)
+
+  @@id([tenantId, addOnId])
+}
+
+model Coupon {
+  id               String           @id @default(cuid())
+  code             String           @unique
+  percentOff       Int?
+  amountOff        Int?
+  currency         String?
+  planKey          String?
+  interval         BillingInterval?
+  maxUses          Int?
+  uses             Int              @default(0)
+  validFrom        DateTime?
+  validTo          DateTime?
+  firstPaymentOnly Boolean          @default(true)
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+}
+
+model SubscriptionHistory {
+  id         String              @id @default(cuid())
+  tenantId   String
+  at         DateTime            @default(now())
+  fromStatus SubscriptionStatus?
+  toStatus   SubscriptionStatus
+  planKey    String?
+  source     String
+  actor      String?
+  reason     String?
+  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, at])
+}
+
+model Invoice {
+  id          String          @id @default(cuid())
+  number      Int             @unique @default(autoincrement())
+  tenantId    String
+  planKey     String
+  interval    BillingInterval
+  amount      Int
+  setupFee    Int             @default(0)
+  currency    String
+  status      InvoiceStatus   @default(PAID)
+  method      PaymentMethod
+  reference   String?
+  couponCode  String?
+  periodStart DateTime
+  periodEnd   DateTime
+  issuedAt    DateTime        @default(now())
+  paidAt      DateTime?
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  refunds     Refund[]
+
+  @@index([tenantId, issuedAt])
+}
+
+model Refund {
+  id        String   @id @default(cuid())
+  invoiceId String
+  amount    Int
+  currency  String
+  reason    String
+  method    String?
+  reference String?
+  actor     String?
+  at        DateTime @default(now())
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+/// A payment a customer says they made (bank/wallet) or a provider reported. References are single-use per method.
+model Payment {
+  id           String          @id @default(cuid())
+  tenantId     String
+  method       PaymentMethod
+  reference    String
+  amount       Int
+  currency     String
+  planKey      String
+  interval     BillingInterval
+  couponCode   String?
+  addOnKeys    Json            @default("[]")
+  status       PaymentStatus   @default(PENDING)
+  note         String?
+  submittedAt  DateTime        @default(now())
+  decidedAt    DateTime?
+  decidedBy    String?
+  rejectReason String?
+  invoiceId    String?
+  tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([method, reference])
+  @@index([status, submittedAt])
+  @@index([tenantId])
+}
+
+model BillingEvent {
+  id          String   @id @default(cuid())
+  provider    String
+  eventId     String
+  type        String
+  payload     Json
+  processedAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+}
+
+/// Local payment accounts shown to customers (Raast, Easypaisa, JazzCash, bank).
+model PaymentAccount {
+  id           String        @id @default(cuid())
+  method       PaymentMethod
+  title        String
+  accountName  String?
+  accountNo    String
+  bankName     String?
+  instructions String?
+  isActive     Boolean       @default(true)
+  sortOrder    Int           @default(0)
+}
+
+model PlatformAdmin {
+  id            String            @id @default(cuid())
+  email         String            @unique
+  name          String
+  passwordHash  String
+  role          PlatformRole      @default(SUPPORT)
+  isActive      Boolean           @default(true)
+  totpSecretEnc String?
+  totpEnabled   Boolean           @default(false)
+  recoveryCodes Json              @default("[]")
+  tokenVersion  Int               @default(0)
+  lastLoginAt   DateTime?
+  createdAt     DateTime          @default(now())
+  sessions      PlatformSession[]
+}
+
+model PlatformSession {
+  id        String        @id
+  adminId   String
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime      @default(now())
+  admin     PlatformAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+}
+
+/// Append-only.
+model PlatformAudit {
+  id         String   @id @default(cuid())
+  at         DateTime @default(now())
+  adminId    String?
+  adminEmail String?
+  action     String
+  targetType String?
+  targetId   String?
+  reason     String?
+  detail     Json     @default("{}")
+  ipAddress  String?
+  userAgent  String?
+
+  @@index([at])
+  @@index([targetType, targetId])
+}
+
+model TrialClaim {
+  ownerEmailHash String   @id
+  tenantId       String
+  claimedAt      DateTime @default(now())
+}
+
+model LifecycleNotice {
+  id       String   @id @default(cuid())
+  tenantId String
+  key      String
+  sentAt   DateTime @default(now())
+
+  @@unique([tenantId, key])
+}
+
+model DemoRequest {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  company   String?
+  message   String?
+  createdAt DateTime @default(now())
+}
+
+model SiteSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model PageView {
+  id    String   @id @default(cuid())
+  day   DateTime @db.Date
+  path  String
+  count Int      @default(1)
+
+  @@unique([day, path])
+}
+
+model RateLimitBucket {
+  key         String   @id
+  count       Int
+  windowStart DateTime
+}

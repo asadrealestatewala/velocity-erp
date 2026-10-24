@@ -1,7 +1,7 @@
 export class AppError extends Error {
   constructor(
     message: string,
-    public code: "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "VALIDATION" | "CONFLICT" | "RATE_LIMITED" = "VALIDATION",
+    public code: "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "VALIDATION" | "CONFLICT" | "RATE_LIMITED" | "BILLING_LOCKED" | "PLAN_LIMIT" = "VALIDATION",
     public fieldErrors?: Record<string, string>,
   ) {
     super(message);

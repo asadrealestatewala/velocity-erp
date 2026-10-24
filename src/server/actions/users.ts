@@ -89,10 +89,10 @@ export async function setRolePermissionsAction(roleId: string, keys: string[]) {
     }
     const perms = await db.permission.findMany({ where: { key: { in: wanted } } });
     const before = await db.rolePermission.findMany({ where: { roleId }, include: { permission: true } });
-    await db.$transaction([
-      db.rolePermission.deleteMany({ where: { roleId } }),
-      db.rolePermission.createMany({ data: perms.map((p) => ({ roleId, permissionId: p.id })) }),
-    ]);
+    await db.$transaction(async (tx) => {
+      await tx.rolePermission.deleteMany({ where: { roleId } });
+      await tx.rolePermission.createMany({ data: perms.map((p) => ({ roleId, permissionId: p.id })) });
+    });
     await audit({ userId: me.id, action: "role.permissions_changed", entityType: "Role", entityId: roleId, changes: { from: before.map((b) => b.permission.key), to: wanted } });
     return { ok: true as const, message: `Permissions for ${role.name} saved.` };
   });

@@ -29,6 +29,7 @@ model Role {
   updatedAt   DateTime         @updatedAt
   permissions RolePermission[]
   users       User[]
+  invitations UserInvitation[]
 }
 
 model Permission {
@@ -68,6 +69,10 @@ model User {
   isActive           Boolean   @default(true)
   avatarFileId       String?
   mustChangePassword Boolean   @default(false)
+  // Optional two-factor sign-in (authenticator app, RFC 6238). The secret is stored encrypted.
+  totpSecretEnc      String?
+  totpEnabled        Boolean   @default(false)
+  recoveryCodes      Json      @default("[]")
   notificationPrefs  Json      @default("{}")
   lastLoginAt        DateTime?
   createdAt          DateTime  @default(now())
@@ -77,6 +82,7 @@ model User {
   department  Department?            @relation(fields: [departmentId], references: [id])
   sessions    Session[]
   memberships DealershipMembership[]
+  passwordResets PasswordResetToken[]
 
   ownedContacts         Contact[]                  @relation("ContactOwner")
   createdContacts       Contact[]                  @relation("ContactCreatedBy")
@@ -1740,4 +1746,37 @@ model KnowledgeEntry {
   updatedAt   DateTime @updatedAt
 
   createdBy User? @relation("KnowledgeAuthor", fields: [createdById], references: [id])
+}
+
+
+// ───────────────────────────── Accounts: invitations and password reset ─────────────────────────────
+
+/// One-time invitation link. Only the SHA-256 of the token is stored; a newer invite to the same address replaces the older one.
+model UserInvitation {
+  id           String    @id @default(cuid())
+  email        String
+  name         String?
+  roleId       String
+  tokenHash    String    @unique
+  expiresAt    DateTime
+  invitedById  String?
+  acceptedAt   DateTime?
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  role         Role      @relation(fields: [roleId], references: [id])
+
+  @@index([email])
+}
+
+/// Single-use reset link (valid 2 hours). Only the token hash is stored.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

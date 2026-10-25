@@ -11,7 +11,8 @@ import { getPlatformSettings } from "@/server/platform/settings";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
-  title: "The CRM for dealer networks",
+  title: { absolute: "Velocity — the CRM for dealer networks" },
+  icons: { icon: "/brand/velocity-app-icon.png" },
   description: "Capture every lead, route test drives to the right showroom, run procurement and dealer ledgers. A private workspace for your company, free for the first days.",
   robots: { index: true, follow: true },
 };

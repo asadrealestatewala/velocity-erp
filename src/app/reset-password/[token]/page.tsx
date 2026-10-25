@@ -12,7 +12,7 @@ export default async function ResetPasswordPage({ params }: { params: Promise<{ 
   const row = await db.passwordResetToken.findUnique({ where: { tokenHash: sha256(token) } });
   const valid = !!row && !row.usedAt && row.expiresAt > new Date();
   return (
-    <AuthLayout
+    <AuthLayout brand="velocity"
       variant="crm"
       title={valid ? "Choose a new password" : "Link unavailable"}
       subtitle={valid ? "Pick a strong password. You will be signed out everywhere and asked to sign in again." : "This reset link is invalid, already used, or has expired."}

@@ -11,7 +11,7 @@ export default async function ConfirmEmailPage({ params }: { params: Promise<{ t
   const { token } = await params;
   const tenant = await confirmWorkspaceEmail(token);
   return (
-    <AuthLayout
+    <AuthLayout brand="velocity"
       variant="crm"
       title={tenant ? "Email confirmed" : "Link unavailable"}
       subtitle={tenant ? "Thanks. You can now invite your team." : "This confirmation link is invalid, already used, or has expired. Sign in and request a new one from Settings."}

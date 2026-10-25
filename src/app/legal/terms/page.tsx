@@ -1,6 +1,6 @@
 import { SiteShell } from "@/components/marketing/site-shell";
 
-export const metadata = { title: "Terms of service", robots: { index: true, follow: true } };
+export const metadata = { title: { absolute: "Terms of service · Velocity" }, icons: { icon: "/brand/velocity-app-icon.png" }, robots: { index: true, follow: true } };
 
 // TEMPLATE ONLY: have these terms reviewed by a lawyer and edit the bracketed items before accepting real customers.
 export default function TermsPage() {

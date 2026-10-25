@@ -2,7 +2,7 @@ import { SiteShell } from "@/components/marketing/site-shell";
 import { Pricing } from "@/components/marketing/pricing";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Pricing", description: "Plans for dealer networks of every size. Start free, pay by card, bank transfer or wallet.", robots: { index: true, follow: true } };
+export const metadata = { title: { absolute: "Pricing · Velocity" }, icons: { icon: "/brand/velocity-app-icon.png" }, description: "Plans for dealer networks of every size. Start free, pay by card, bank transfer or wallet.", robots: { index: true, follow: true } };
 
 export default async function PricingPage({ searchParams }: { searchParams: Promise<{ currency?: string; interval?: string }> }) {
   const sp = await searchParams;

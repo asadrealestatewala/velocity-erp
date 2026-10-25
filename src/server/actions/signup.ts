@@ -57,7 +57,7 @@ export async function signupAction(_: SignupState, formData: FormData): Promise<
   const settings = await getPlatformSettings();
   const confirmUrl = `${appBaseUrl()}/confirm-email/${created.confirmToken}`;
   const mail = renderMail({
-    heading: `Welcome to ${process.env.PLATFORM_NAME || "YADEA CRM"}, ${v.ownerName.split(" ")[0]}!`,
+    heading: `Welcome to ${process.env.PLATFORM_NAME || "Velocity"}, ${v.ownerName.split(" ")[0]}!`,
     paragraphs: [
       `Your workspace "${v.companyName}" is ready${created.trial ? ` and your ${settings.trialDays}-day free trial has started` : ""}.`,
       `Sign in any time with your workspace code "${v.slug}" at ${workspaceUrl(v.slug, "/login")}.`,

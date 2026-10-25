@@ -407,7 +407,7 @@ export async function beginTotpAction() {
     const a = await requireAdminAction("dashboard");
     const secret = newTotpSecret();
     await platformDb().platformAdmin.update({ where: { id: a.id }, data: { totpSecretEnc: encryptSecret(secret), totpEnabled: false } });
-    return { ok: true as const, data: { secret, url: otpauthUrl(secret, a.email, process.env.PLATFORM_NAME || "YADEA CRM Platform") } };
+    return { ok: true as const, data: { secret, url: otpauthUrl(secret, a.email, process.env.PLATFORM_NAME || "Velocity Platform") } };
   });
 }
 

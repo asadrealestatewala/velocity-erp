@@ -20,7 +20,7 @@ export async function beginTwoFactorAction() {
     const secret = newTotpSecret();
     await db.user.update({ where: { id: u.id }, data: { totpSecretEnc: encryptSecret(secret), totpEnabled: false } });
     const workspace = await currentTenant();
-    return { ok: true as const, data: { secret, url: otpauthUrl(secret, u.email, `${process.env.PLATFORM_NAME || "YADEA CRM"} (${workspace.slug})`) } };
+    return { ok: true as const, data: { secret, url: otpauthUrl(secret, u.email, `${process.env.PLATFORM_NAME || "Velocity"} (${workspace.slug})`) } };
   });
 }
 

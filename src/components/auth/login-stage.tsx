@@ -17,7 +17,7 @@ const STATUS: Record<ScenePhase, string> = {
  * streaks and a light sweep. Independent wheel rotation or true 3D would need layered/3D source assets.
  * All keyframes live in globals.css (.scene-*) and honour prefers-reduced-motion.
  */
-export function LoginStage({ eyebrow, children }: { eyebrow: string; children: React.ReactNode }) {
+export function LoginStage({ eyebrow, children, velocity = false }: { eyebrow: string; children: React.ReactNode; velocity?: boolean }) {
   const { phase } = useScene();
   return (
     <section
@@ -28,8 +28,12 @@ export function LoginStage({ eyebrow, children }: { eyebrow: string; children: R
       <div aria-hidden className="absolute inset-0 -z-10 opacity-[0.06] [background-image:linear-gradient(rgba(255,255,255,.7)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.7)_1px,transparent_1px)] [background-size:56px_56px] [mask-image:radial-gradient(ellipse_at_50%_100%,black,transparent_75%)]" />
 
       <div className="relative z-10 flex items-start justify-between p-5 sm:p-7 lg:p-12 lg:pb-0">
-        <Link href="/" aria-label="YADEA home" className="rounded focus-visible:outline-offset-4">
-          <Image src="/brand/yadea-logo-light.png" alt="YADEA" width={167} height={36} priority className="scene-rise h-7 w-auto max-w-none object-contain sm:h-8 lg:h-9" />
+        <Link href="/" aria-label={velocity ? "Velocity home" : "YADEA home"} className="rounded focus-visible:outline-offset-4">
+          {velocity ? (
+            <Image src="/brand/velocity-logo-white.png" alt="Velocity" width={900} height={262} priority className="scene-rise h-9 w-auto max-w-none object-contain sm:h-10 lg:h-12" />
+          ) : (
+            <Image src="/brand/yadea-logo-light.png" alt="YADEA" width={167} height={36} priority className="scene-rise h-7 w-auto max-w-none object-contain sm:h-8 lg:h-9" />
+          )}
         </Link>
         <span className="scene-rise rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold tracking-wider uppercase ring-1 ring-white/15 backdrop-blur [animation-delay:120ms] lg:hidden">{eyebrow}</span>
       </div>

@@ -7,7 +7,7 @@ import { SignupForm } from "@/components/auth/signup-form";
 import { getPlatformSettings } from "@/server/platform/settings";
 import { appBaseUrl } from "@/server/platform/mail";
 
-export const metadata = { title: "Create your workspace", description: "Start a free trial: your own private CRM workspace for your dealer network.", robots: { index: true, follow: true } };
+export const metadata = { title: { absolute: "Create your workspace · Velocity" }, icons: { icon: "/brand/velocity-app-icon.png" }, description: "Start a free trial: your own private CRM workspace for your dealer network.", robots: { index: true, follow: true } };
 export const dynamic = "force-dynamic";
 
 export default async function SignupPage() {
@@ -15,7 +15,7 @@ export default async function SignupPage() {
   if (user) redirect(homePathFor(user.scope, user.permissions));
   const settings = await getPlatformSettings();
   return (
-    <AuthLayout
+    <AuthLayout brand="velocity"
       variant="crm"
       title="Create your workspace"
       subtitle={settings.trialDays > 0 ? `Free for ${settings.trialDays} days. No card needed.` : "Set up your company's CRM in minutes."}

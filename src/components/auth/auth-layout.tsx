@@ -15,20 +15,24 @@ const COPY = {
   portal: "Your assigned and walk-in leads, test drives, stock and orders, ledger and team goals — all in one place.",
 } as const;
 
-export function AuthLayout({ title, subtitle, children, footer, variant }: { title: string; subtitle: string; children: React.ReactNode; footer: React.ReactNode; variant: "crm" | "portal" | "procurement" }) {
+export function AuthLayout({ title, subtitle, children, footer, variant, brand = "yadea" }: { title: string; subtitle: string; children: React.ReactNode; footer: React.ReactNode; variant: "crm" | "portal" | "procurement"; brand?: "yadea" | "velocity" }) {
   return (
     <AuthSceneProvider>
       <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)]">
         {/* The stage is pinned to the window height on desktop; on phones it is a compact banner above the form so the bike never covers it. */}
-        <LoginStage eyebrow={EYEBROW[variant]}>
+        <LoginStage eyebrow={brand === "velocity" ? "Velocity" : EYEBROW[variant]} velocity={brand === "velocity"}>
           <h2 className="scene-rise max-w-md text-[2.5rem] leading-[1.1] font-bold tracking-tight [animation-delay:240ms] xl:text-5xl">{HEADLINE[variant]}</h2>
           <p className="scene-rise mt-4 max-w-md text-[15px] leading-relaxed text-white/65 [animation-delay:320ms]">{COPY[variant]}</p>
         </LoginStage>
 
         <div className="relative flex min-w-0 items-center justify-center overflow-hidden bg-[radial-gradient(90%_60%_at_100%_0%,rgb(238_108_0/0.07),transparent),radial-gradient(70%_50%_at_0%_100%,rgb(14_174_207/0.06),transparent)] px-4 py-10 sm:px-8 lg:py-12">
           <div className="scene-rise w-full max-w-[26rem] [animation-delay:200ms]">
-            <Link href="/" className="mb-6 hidden lg:inline-block" aria-label="YADEA home">
-              <Image src="/brand/yadea-logo-dark.png" alt="YADEA" width={149} height={32} className="h-7 w-auto max-w-none object-contain" priority />
+            <Link href="/" className="mb-6 hidden lg:inline-block" aria-label={brand === "velocity" ? "Velocity home" : "YADEA home"}>
+              {brand === "velocity" ? (
+                <Image src="/brand/velocity-logo.png" alt="Velocity" width={900} height={262} className="h-10 w-auto max-w-none object-contain" priority />
+              ) : (
+                <Image src="/brand/yadea-logo-dark.png" alt="YADEA" width={149} height={32} className="h-7 w-auto max-w-none object-contain" priority />
+              )}
             </Link>
             <h1 className="text-[28px] leading-tight font-bold tracking-tight text-ink-900">{title}</h1>
             <p className="mt-1.5 mb-8 text-[15px] text-ink-500">{subtitle}</p>

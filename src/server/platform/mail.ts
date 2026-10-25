@@ -15,11 +15,11 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 
 /** One branded, accessible layout for every system email (plain-text alternative always included). */
 export function renderMail(opts: { heading: string; paragraphs: string[]; cta?: { label: string; url: string }; footer?: string }) {
-  const brand = process.env.PLATFORM_NAME || "YADEA CRM";
+  const brand = process.env.PLATFORM_NAME || "Velocity";
   const html = `<!doctype html><html><body style="margin:0;background:#f6f4f1;font-family:Inter,Segoe UI,Arial,sans-serif;color:#1a1411">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
 <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e8e1da">
-<tr><td style="padding:20px 28px;background:#150f0d;color:#fff;font-weight:700;font-size:18px">${esc(brand)}</td></tr>
+<tr><td style="padding:18px 28px;background:#150f0d;color:#fff;font-weight:700;font-size:18px"><img src="${esc(appBaseUrl())}/brand/velocity-logo-white.png" alt="${esc(brand)}" height="34" style="display:block;height:34px;width:auto;border:0" /></td></tr>
 <tr><td style="padding:28px">
 <h1 style="margin:0 0 14px;font-size:20px">${esc(opts.heading)}</h1>
 ${opts.paragraphs.map((p) => `<p style="margin:0 0 12px;line-height:1.55;font-size:15px">${esc(p)}</p>`).join("")}

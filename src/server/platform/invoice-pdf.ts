@@ -8,7 +8,7 @@ const fmt = (n: number, c: string) => `${c} ${n.toLocaleString("en-US")}`;
 
 /** A simple, branded subscription invoice (one page). Taxes are not split out: prices are treated as tax-inclusive. */
 export async function renderInvoicePdf(inv: Invoice & { refunds?: Refund[] }, t: Pick<Tenant, "name" | "slug" | "ownerEmail" | "ownerName">): Promise<Buffer> {
-  const brand = process.env.PLATFORM_NAME || "YADEA CRM";
+  const brand = process.env.PLATFORM_NAME || "Velocity";
   const doc = new PDFDocument({ size: "A4", margin: 48, info: { Title: pdfText(`${invoiceNumber(inv.number)} — ${t.name}`), Author: brand } });
   const chunks: Buffer[] = [];
   doc.on("data", (c: Buffer) => chunks.push(c));

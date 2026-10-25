@@ -5,7 +5,7 @@ import { platformLogoutAction } from "@/server/actions/platform";
 import { adminCan, requireAdminPage, type PlatformPerm } from "@/server/platform/admin-auth";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: { default: "Platform console", template: "%s · Platform console" }, robots: { index: false, follow: false } };
+export const metadata = { title: { default: "Velocity console", template: "%s · Velocity console" }, icons: { icon: "/brand/velocity-app-icon.png" }, robots: { index: false, follow: false } };
 
 const NAV: (RailItem & { perm: PlatformPerm })[] = [
   { href: "/platform", label: "Overview", icon: "overview", perm: "dashboard" },
@@ -28,7 +28,7 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
       <div className="mx-auto flex min-h-[calc(100dvh-1rem)] max-w-[1560px] overflow-hidden rounded-[2rem] bg-[#efedea] shadow-2xl shadow-black/15 sm:min-h-[calc(100dvh-2.5rem)]">
         <aside className="flex w-[4.75rem] shrink-0 flex-col items-center bg-[#0f1220] py-5">
           <div className="mb-7 flex size-11 items-center justify-center rounded-2xl bg-white">
-            <Image src="/brand/yadea-mark.png" alt="YADEA platform" width={28} height={28} className="size-7 object-contain" />
+            <Image src="/brand/velocity-mark.png" alt="Velocity platform" width={28} height={28} className="size-7 object-contain" />
           </div>
           <Rail items={items} />
           <div className="mt-4 flex flex-col items-center gap-3">

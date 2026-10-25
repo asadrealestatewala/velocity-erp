@@ -13,7 +13,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
   const [ws, inv] = await Promise.all([currentTenant(), db.userInvitation.findUnique({ where: { tokenHash: sha256(token) }, include: { role: true } })]);
   const valid = !!inv && !inv.acceptedAt && !inv.revokedAt && inv.expiresAt > new Date();
   return (
-    <AuthLayout
+    <AuthLayout brand="velocity"
       variant="crm"
       title={valid ? `Join ${ws.name}` : "Invitation unavailable"}
       subtitle={valid ? `You have been invited as ${inv!.role.name}. Choose a password to get started.` : "This invitation link is invalid, already used, or has expired."}

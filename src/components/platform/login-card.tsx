@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { useActionState } from "react";
 import { ArrowRight, KeyRound, Lock, Mail } from "lucide-react";
@@ -42,6 +43,7 @@ export function PlatformLoginCard() {
 
         {/* Form */}
         <div className="flex flex-col justify-center px-7 py-10 sm:px-12">
+          <Image src="/brand/velocity-logo.png" alt="Velocity" width={900} height={262} priority className="mx-auto mb-5 h-12 w-auto" />
           <h1 className="text-center text-2xl font-bold text-neutral-900">Platform Login</h1>
           <form action={action} className="mt-7 space-y-3">
             <div className="relative">

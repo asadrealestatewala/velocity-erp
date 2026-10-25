@@ -324,3 +324,14 @@
   .scene[data-phase="success"] .scene-bike { animation: none; opacity: 1; transform: none; filter: none; }
   .scene[data-phase="submitting"] .scene-bike, .scene[data-phase="error"] .scene-bike { animation: none; }
 }
+
+/* Platform console skin: warm canvas, soft rounded cards, pill buttons. Scoped to .pf so the CRM is unaffected. */
+.pf .card { border-radius: 1.75rem; border-color: transparent; background: #f6f4f2; box-shadow: none; }
+.pf .card-hover:hover { box-shadow: 0 12px 28px -14px rgb(15 18 32 / 0.25); }
+.pf h1 { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.02em; }
+.pf main button[class*="inline-flex"], .pf main a[class*="inline-flex"] { border-radius: 9999px; }
+.pf main .input { border-radius: 9999px; background: #e9e6e3; border-color: transparent; }
+.pf main textarea.input { border-radius: 1.25rem; }
+.pf main table thead { background: transparent; }
+.pf main tbody tr:hover { background: rgb(15 18 32 / 0.03); }
+.pf main .card > div > h2, .pf main .card h2 { letter-spacing: 0.02em; }

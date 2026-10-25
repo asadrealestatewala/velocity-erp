@@ -1,0 +1,75 @@
+"use client";
+import Link from "next/link";
+import { useActionState } from "react";
+import { ArrowRight, KeyRound, Lock, Mail } from "lucide-react";
+import { useFormStatus } from "react-dom";
+import { platformLoginAction, type PlatformLoginState } from "@/server/actions/platform";
+
+function Submit({ label }: { label: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="h-11 w-full rounded-full bg-gradient-to-r from-orange-400 via-pink-500 to-purple-700 text-sm font-bold tracking-wide text-white uppercase shadow-lg shadow-pink-500/30 transition hover:brightness-105 active:scale-[0.98] disabled:opacity-70"
+    >
+      {pending ? "Signing in…" : label}
+    </button>
+  );
+}
+
+const pill = "peer h-11 w-full rounded-full bg-neutral-200/80 pr-4 pl-11 text-sm text-neutral-800 placeholder:text-neutral-500 transition focus:bg-white focus:ring-2 focus:ring-pink-500 focus:outline-none";
+const icon = "pointer-events-none absolute top-1/2 left-4 size-[18px] -translate-y-1/2 text-neutral-600 peer-focus:text-pink-600";
+
+/** Platform operator sign-in: a centred card on a coral → pink → violet backdrop, soft shapes on the left, the form on the right. */
+export function PlatformLoginCard() {
+  const [state, action] = useActionState<PlatformLoginState, FormData>(platformLoginAction, undefined);
+  return (
+    <main className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-gradient-to-br from-orange-300 via-pink-500 to-purple-700 p-4">
+      <div className="grid w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl shadow-purple-900/30 md:grid-cols-2">
+        {/* Decorative panel */}
+        <div aria-hidden className="relative hidden min-h-[26rem] overflow-hidden bg-white md:block">
+          <div className="absolute -top-24 -left-24 size-[26rem] rounded-full bg-gradient-to-br from-pink-500 to-purple-700" />
+          <div className="absolute -top-10 left-8 size-[26rem] rounded-full border-[26px] border-pink-200/70" />
+          <div className="absolute -top-16 -right-10 size-40 rounded-b-full bg-gradient-to-br from-pink-400 to-purple-500" />
+          <div className="absolute -bottom-14 left-24 size-48 rounded-full bg-gradient-to-tr from-orange-300 to-pink-400" />
+          <div className="absolute bottom-24 -left-10 size-28 rounded-full bg-gradient-to-br from-pink-400 to-purple-500" />
+          <div className="absolute top-14 left-9 max-w-[13rem] text-white">
+            <p className="text-xs font-semibold tracking-widest uppercase opacity-90">Platform console</p>
+            <p className="mt-1 text-xl leading-snug font-bold">Run every workspace, plan and payment.</p>
+          </div>
+        </div>
+
+        {/* Form */}
+        <div className="flex flex-col justify-center px-7 py-10 sm:px-12">
+          <h1 className="text-center text-2xl font-bold text-neutral-900">Platform Login</h1>
+          <form action={action} className="mt-7 space-y-3">
+            <div className="relative">
+              <label htmlFor="pf-email" className="sr-only">Email</label>
+              <input id="pf-email" name="email" type="email" required autoComplete="username" placeholder="Email" className={pill} />
+              <Mail className={icon} aria-hidden />
+            </div>
+            <div className="relative">
+              <label htmlFor="pf-pass" className="sr-only">Password</label>
+              <input id="pf-pass" name="password" type="password" required autoComplete="current-password" placeholder="Password" className={pill} />
+              <Lock className={icon} aria-hidden />
+            </div>
+            {state?.needsCode && (
+              <div className="relative">
+                <label htmlFor="pf-code" className="sr-only">Authenticator code or recovery code</label>
+                <input id="pf-code" name="code" autoFocus autoComplete="one-time-code" placeholder="Authenticator or recovery code" className={pill} />
+                <KeyRound className={icon} aria-hidden />
+              </div>
+            )}
+            {state?.error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-2 text-center text-sm text-red-700">{state.error}</p>}
+            <div className="pt-2"><Submit label={state?.needsCode ? "Verify" : "Login"} /></div>
+          </form>
+          <p className="mt-5 text-center text-xs text-neutral-500">For platform operators only.</p>
+          <Link href="/login" className="mt-8 flex items-center justify-center gap-1.5 text-xs font-medium text-neutral-500 hover:text-pink-600">
+            Company staff sign in here <ArrowRight className="size-3.5" aria-hidden />
+          </Link>
+        </div>
+      </div>
+    </main>
+  );
+}

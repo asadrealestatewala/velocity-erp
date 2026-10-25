@@ -1,11 +1,10 @@
 "use client";
-import { useActionState, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Checkbox, Field, FormError, Input, Select, SubmitButton, Textarea } from "@/components/ui/form";
-import { platformLoginAction, type PlatformLoginState } from "@/server/actions/platform";
 
 type Result = { ok: true; message?: string; data?: unknown } | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
@@ -171,18 +170,5 @@ export function RunButton({ label, action, variant = "secondary", size = "sm", r
     <Button variant={variant} size={size} loading={pending} onClick={() => start(async () => { const r = await action(); if (r.ok) { toast.success(r.message ?? "Done", { duration: 8000 }); if (reload) router.refresh(); } else toast.error(r.error); })}>
       {label}
     </Button>
-  );
-}
-
-export function PlatformLoginForm() {
-  const [state, formAction] = useActionState<PlatformLoginState, FormData>(platformLoginAction, undefined);
-  return (
-    <form action={formAction} className="space-y-4">
-      <Field label="Email">{(a) => <Input {...a} name="email" type="email" required autoComplete="username" />}</Field>
-      <Field label="Password">{(a) => <Input {...a} name="password" type="password" required autoComplete="current-password" />}</Field>
-      {state?.needsCode && <Field label="Authenticator code or recovery code">{(a) => <Input {...a} name="code" autoComplete="one-time-code" autoFocus />}</Field>}
-      <FormError error={state?.error} />
-      <SubmitButton className="w-full">{state?.needsCode ? "Verify and sign in" : "Sign in"}</SubmitButton>
-    </form>
   );
 }

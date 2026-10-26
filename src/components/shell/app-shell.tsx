@@ -143,29 +143,43 @@ export function AppShell({
       </div>
 
       <div className={cn("space-y-3 pt-4", rail ? "px-2" : "px-4")}>
-        <Menu
-          align="start"
-          trigger={
-            <button
-              className={cn("flex w-full items-center gap-3 rounded-xl border border-white/10 bg-navy-800/70 text-left transition hover:bg-navy-700/70", rail ? "justify-center p-1.5" : "px-3 py-2.5")}
-              aria-label="Workspace and account menu"
-              title={rail ? user.name : undefined}
-            >
-              <Avatar name={user.name} size={rail ? 36 : 38} className="ring-navy-900" />
-              {!rail && (
-                <>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-semibold text-white">{user.name}</span>
-                    <span className="block truncate text-[13px] text-slate-400">{subtitle ?? user.roleName}</span>
-                  </span>
-                  <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
-                </>
-              )}
-            </button>
-          }
-        >
-          {accountMenu}
-        </Menu>
+        {/* Profile card: stacked layout with a colour-edge layer peeking out underneath. The rail keeps just the avatar. */}
+        <div className={cn("relative", !rail && "pb-1.5")}>
+          {!rail && <span aria-hidden className="absolute inset-x-3 -bottom-0 h-6 rounded-b-2xl bg-gradient-brand opacity-90" />}
+          <Menu
+            align="start"
+            trigger={
+              <button
+                className={cn(
+                  "relative z-10 w-full overflow-hidden border border-white/10 text-left transition",
+                  rail ? "flex items-center justify-center rounded-xl bg-navy-800/70 p-1.5 hover:bg-navy-700/70" : "rounded-2xl bg-gradient-to-b from-navy-700 to-navy-800 px-4 pt-4 pb-3.5 shadow-[0_10px_24px_-14px_rgb(0_0_0/0.8)] hover:from-navy-600 hover:to-navy-700",
+                )}
+                aria-label="Workspace and account menu"
+                title={rail ? user.name : undefined}
+              >
+                {rail ? (
+                  <Avatar name={user.name} size={36} className="ring-navy-900" />
+                ) : (
+                  <>
+                    <span aria-hidden className="pointer-events-none absolute -right-2 -bottom-6 text-[96px] leading-none font-black text-white/[0.05] select-none">{user.name.trim().charAt(0).toUpperCase()}</span>
+                    <ChevronDown className="absolute top-3 right-3 h-4 w-4 text-slate-400" aria-hidden />
+                    <span className="relative flex flex-col items-center text-center">
+                      <span className="relative rounded-full bg-gradient-brand p-[3px] shadow-[0_6px_16px_-6px_rgb(226_61_131/0.8)]">
+                        <Avatar name={user.name} size={52} className="ring-2 ring-navy-800" />
+                        <span aria-hidden title="Signed in" className="absolute right-0.5 bottom-0.5 size-3 rounded-full bg-emerald-400 ring-2 ring-navy-800" />
+                      </span>
+                      <span className="mt-2.5 block max-w-full truncate text-[16px] leading-tight font-semibold text-white">{user.name}</span>
+                      <span className="mt-1 inline-block max-w-full truncate rounded-full bg-white/10 px-2.5 py-0.5 text-[10.5px] font-semibold tracking-wider text-slate-200 uppercase">{subtitle ?? user.roleName}</span>
+                      <span className="mt-2.5 block w-full truncate rounded-lg bg-black/25 px-2.5 py-1.5 text-[12px] text-slate-300 ring-1 ring-white/5">{user.email}</span>
+                    </span>
+                  </>
+                )}
+              </button>
+            }
+          >
+            {accountMenu}
+          </Menu>
+        </div>
 
         {rail ? (
           <button

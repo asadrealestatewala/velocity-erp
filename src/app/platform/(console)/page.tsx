@@ -5,7 +5,7 @@ import { getMetrics, type ByCurrency } from "@/server/platform/metrics";
 import { platformDb } from "@/server/platform/client";
 import { fmtMoney } from "@/lib/utils";
 
-export const metadata = { title: "Overview" };
+export const metadata = { title: { absolute: "Overview · Velocity console" } };
 
 const money = (m: ByCurrency) => (Object.keys(m).length ? Object.entries(m).map(([c, v]) => fmtMoney(v, c)).join(" · ") : "—");
 const RANGES = { "7": 7, "30": 30, "90": 90, "365": 365 } as const;
@@ -26,10 +26,13 @@ export default async function Overview({ searchParams }: { searchParams: Promise
   const days = RANGES[(sp.range ?? "30") as keyof typeof RANGES] ?? 30;
   const to = new Date();
   const from = new Date(to.getTime() - days * 86_400_000);
-  const m = await getMetrics(from, to);
+  // Independent queries run together; the metrics function itself runs its own queries in parallel too.
+  const [m, visits] = await Promise.all([
+    getMetrics(from, to),
+    platformDb().pageView.aggregate({ where: { day: { gte: new Date(from.toISOString().slice(0, 10)) } }, _sum: { count: true } }),
+  ]);
   const showMoney = adminCan(admin.role, "reports");
-  const visits = await platformDb().pageView.groupBy({ by: ["path"], where: { day: { gte: new Date(from.toISOString().slice(0, 10)) } }, _sum: { count: true } });
-  const totalVisits = visits.reduce((n, v) => n + (v._sum.count ?? 0), 0);
+  const totalVisits = visits._sum.count ?? 0;
 
   // Last up-to-14 days of signups, zero-filled, for the bar chart.
   const span = Math.min(days, 14);

@@ -33,7 +33,7 @@ export type Metrics = {
  */
 export async function getMetrics(from: Date, to: Date): Promise<Metrics> {
   const db = platformDb();
-  const tenants = await db.tenant.findMany({ where: { isLegacy: false } });
+  const tenants = await db.tenant.findMany({ where: { isLegacy: false }, select: { subStatus: true, status: true, interval: true, priceAmount: true, priceCurrency: true } });
   const bySubscription: Record<string, number> = {};
   const byStatus: Record<string, number> = {};
   const mrr: ByCurrency = {};

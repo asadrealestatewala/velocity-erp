@@ -23,7 +23,7 @@ export function LoginStage({ eyebrow, children, velocity = false }: { eyebrow: s
     <section
       aria-label="YADEA"
       data-phase={phase}
-      className="scene surface-graphite relative isolate flex h-[236px] flex-col overflow-hidden text-white sm:h-[270px] lg:sticky lg:top-0 lg:h-dvh lg:self-start"
+      className="scene surface-graphite relative isolate flex h-[236px] flex-col overflow-hidden text-white sm:h-[270px] lg:sticky lg:top-0 lg:h-dvh lg:min-h-[640px] lg:self-start"
     >
       <div aria-hidden className="absolute inset-0 -z-10 opacity-[0.06] [background-image:linear-gradient(rgba(255,255,255,.7)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.7)_1px,transparent_1px)] [background-size:56px_56px] [mask-image:radial-gradient(ellipse_at_50%_100%,black,transparent_75%)]" />
 
@@ -47,7 +47,9 @@ export function LoginStage({ eyebrow, children, velocity = false }: { eyebrow: s
       </div>
 
       {/* Stage: floor, light, bike. Absolutely positioned so it never pushes the layout (no CLS, no horizontal scroll). */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[56%] lg:bottom-10 lg:h-[58%]">
+      {/* On lg it is a flex child below the headline copy (not overlaid on it), so the bike/cards can never collide with the text at any viewport height. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[56%] lg:relative lg:mb-10 lg:min-h-[220px] lg:flex-1">
+      <div aria-hidden className="absolute inset-0">
         <div className="scene-glow absolute inset-x-[8%] bottom-[10%] h-[55%] rounded-[50%] bg-[radial-gradient(closest-side,rgb(249_100_75/0.42),rgb(139_92_246/0.24)_60%,transparent)] blur-2xl" />
         <div className="absolute inset-x-0 bottom-[12%] h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-[12%] bg-gradient-to-b from-white/[0.05] to-transparent" />
@@ -56,8 +58,8 @@ export function LoginStage({ eyebrow, children, velocity = false }: { eyebrow: s
         <span className="scene-streak" style={{ bottom: "34%", right: "2%", width: "46%", animationDelay: "0.15s" }} />
         <span className="scene-streak" style={{ bottom: "22%", right: "9%", width: "30%", animationDelay: "0.25s" }} />
 
-        <div className="absolute inset-x-0 bottom-[12%] flex justify-center">
-          <div className="scene-bike relative aspect-[1400/886] h-[118px] sm:h-[150px] lg:h-[clamp(200px,40dvh,540px)] max-w-[88%]">
+        <div className="absolute inset-x-0 bottom-[12%] flex justify-center lg:top-2 lg:items-end">
+          <div className="scene-bike relative aspect-[1400/886] h-[118px] sm:h-[150px] lg:h-full max-w-[88%]">
             <div className="scene-shadow absolute inset-x-[6%] -bottom-[3%] h-[7%] rounded-[50%] bg-black/70 blur-md" />
             <Image src="/brand/yadea-g5s.webp" alt="" width={1400} height={886} priority sizes="(min-width: 1024px) 52vw, 90vw" className="relative h-full w-full object-contain drop-shadow-[0_18px_28px_rgba(0,0,0,0.45)]" />
             {/* Reflection of the same photo on the studio floor. */}
@@ -67,19 +69,21 @@ export function LoginStage({ eyebrow, children, velocity = false }: { eyebrow: s
         </div>
         <span className="scene-sweep" />
       </div>
-
-      {/* Floating cards (desktop): the product name and the live sign-in state. */}
-      <div className="float-y absolute top-[47%] right-6 z-10 hidden items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-3 shadow-[0_18px_40px_-18px_rgba(0,0,0,0.6)] backdrop-blur-md lg:flex xl:right-10">
+      <div className="absolute top-5 right-6 z-10 hidden flex-col items-end gap-3 lg:flex xl:right-10">
+      <div className="float-y z-10 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-3 shadow-[0_18px_40px_-18px_rgba(0,0,0,0.6)] backdrop-blur-md ">
         <span className="bg-gradient-brand flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold text-white">G5S</span>
         <span className="leading-tight">
           <span className="block text-sm font-semibold text-white">YADEA G5S</span>
           <span className="block text-xs text-white/60">Electric scooter</span>
         </span>
       </div>
-      <p role="status" aria-live="polite" className="float-y-slow absolute top-[58%] right-10 z-10 hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-4 py-2 text-xs font-medium text-white/85 shadow-[0_14px_30px_-16px_rgba(0,0,0,0.6)] backdrop-blur-md lg:flex xl:right-16">
+      <p role="status" aria-live="polite" className="float-y-slow z-10 mr-4 flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-4 py-2 text-xs font-medium text-white/85 shadow-[0_14px_30px_-16px_rgba(0,0,0,0.6)] backdrop-blur-md ">
         <span aria-hidden className="scene-dot h-1.5 w-1.5 rounded-full" />
         {STATUS[phase]}
       </p>
+      </div>
+      </div>
+
       <div aria-hidden className="absolute inset-x-0 bottom-0 z-10 hidden h-10 overflow-hidden border-t border-white/10 bg-black/25 backdrop-blur-sm lg:block">
         <div className="marquee h-full items-center text-[12px] font-medium tracking-wide text-white/55">
           {[0, 1].map((n) => (

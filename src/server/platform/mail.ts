@@ -36,7 +36,7 @@ ${opts.footer ? `<p style="margin:18px 0 0;font-size:12px;color:#6f645c">${esc(o
  * pretending it was sent.
  */
 export async function sendSystemMail(msg: { to: string; subject: string; text: string; html?: string }): Promise<MailResult> {
-  const from = process.env.MAIL_FROM || process.env.EMAIL_FROM || "YADEA CRM <no-reply@example.com>";
+  const from = process.env.MAIL_FROM || process.env.EMAIL_FROM || "Velocity ERP <no-reply@example.com>";
   try {
     if (process.env.RESEND_API_KEY) {
       const r = await fetch("https://api.resend.com/emails", {

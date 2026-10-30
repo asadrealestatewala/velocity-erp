@@ -1,4 +1,4 @@
-# YADEA CRM & Dealership Management Platform
+# Velocity ERP — Dealership Management Platform
 
 A full-stack CRM for YADEA's central team, a secure per-dealership portal and a procurement & accounts portal. It captures leads from configurable public forms, routes test-drive requests to the outlet the customer selects, tracks every lead through a configurable pipeline, manages dealership applications from submission to onboarding, measures network performance with dashboards and light gamification — and runs the dealership operations side: showroom inventory (bikes and spare parts), customer orders that deduct stock, stock orders to YADEA procurement with delivery tracking, a dealer ledger with payment verification and Excel/PDF export, expense vouchers for tax records, shared documents and achievement certificates, per-dealership audit logs, a WhatsApp/email chat on every contact and an AI assistant with a knowledge base of the whole system.
 

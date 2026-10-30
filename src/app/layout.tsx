@@ -6,7 +6,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "YADEA CRM", template: "%s · YADEA CRM" },
+  title: { default: "Velocity ERP", template: "%s · Velocity ERP" },
   description: "YADEA customer, lead and dealership management platform",
   icons: { icon: "/brand/yadea-mark.png" },
   // The CRM, portals and sign-in pages are internal; only published public forms (which set their own robots) are indexable.

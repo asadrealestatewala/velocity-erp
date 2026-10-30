@@ -128,11 +128,11 @@ export function AppShell({
   const renderSidebar = (rail: boolean) => (
     <div className="flex h-full flex-col bg-navy-900 text-slate-300">
       <div className={cn("flex h-[72px] shrink-0 items-center gap-2 border-b border-white/5 bg-navy-950", rail ? "justify-center px-2" : "px-5")}>
-        <Link href={`${base}/dashboard`} className="flex items-center" aria-label="YADEA home">
+        <Link href={`${base}/dashboard`} className="flex items-center" aria-label="Velocity home">
           {rail ? (
-            <Image src="/brand/yadea-mark.png" alt="YADEA" width={32} height={32} priority className="h-8 w-8 object-contain" />
+            <Image src="/brand/velocity-mark.png" alt="Velocity" width={32} height={32} priority className="h-8 w-8 object-contain" />
           ) : (
-            <Image src="/brand/yadea-logo-light.png" alt="YADEA" width={134} height={29} priority className="h-[29px] w-auto max-w-none" />
+            <Image src="/brand/velocity-logo-white.png" alt="Velocity" width={134} height={39} priority className="h-[34px] w-auto max-w-none" />
           )}
         </Link>
         {!rail && (
@@ -310,13 +310,13 @@ export function AppShell({
             <button
               type="button"
               onClick={() => setAssistantOpen((o) => !o)}
-              aria-label="Open the YADEA assistant"
+              aria-label="Open the Velocity assistant"
               aria-haspopup="dialog"
               aria-expanded={assistantOpen}
               className={buttonClass("outlineBrand", "md", "max-sm:!px-2.5")}
             >
               <Sparkles className="h-4 w-4" />
-              <span className="hidden sm:inline">Ask YADEA AI</span>
+              <span className="hidden sm:inline">Ask Velocity AI</span>
             </button>
           )}
           <Link

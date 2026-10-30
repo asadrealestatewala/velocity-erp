@@ -1,4 +1,4 @@
-// YADEA CRM — PLATFORM (control-plane) schema.
+// Velocity ERP — PLATFORM (control-plane) schema.
 // One platform database lists every company (tenant) and runs billing, platform staff and the audit trail.
 // Each company's own CRM data lives in its own PostgreSQL schema, described by ../schema.prisma.
 

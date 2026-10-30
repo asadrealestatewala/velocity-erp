@@ -81,7 +81,7 @@ export async function notify(tx: Tx, input: NotifyInput) {
       await tx.outboxMessage.create({
         data: {
           to: u.email,
-          subject: `[YADEA CRM] ${input.title}`,
+          subject: `[Velocity ERP] ${input.title}`,
           body: `${input.body ?? input.title}${link ? `\n\nOpen: ${env.appUrl}${link}` : ""}`,
         },
       });

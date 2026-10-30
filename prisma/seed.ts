@@ -40,7 +40,7 @@ async function main() {
   if (process.env.NODE_ENV === "production" && process.env.ALLOW_PROD_SEED !== "1") {
     throw new Error("Refusing to seed demo data in production.");
   }
-  console.log("Seeding YADEA CRM demo data…");
+  console.log("Seeding Velocity ERP demo data…");
 
   await db.setting.upsert({ where: { key: "system" }, create: { key: "system", value: DEFAULT_SETTINGS }, update: {} });
 

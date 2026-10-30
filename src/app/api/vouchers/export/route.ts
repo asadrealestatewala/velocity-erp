@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
   });
 
   const wb = new ExcelJS.Workbook();
-  wb.creator = "YADEA CRM";
+  wb.creator = "Velocity ERP";
   const ws = wb.addWorksheet("Vouchers", { views: [{ state: "frozen", ySplit: 3 }] });
   ws.addRow(["YADEA - expense vouchers for tax records"]).font = { bold: true, size: 14 };
   ws.addRow([`Generated ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC - ${rows.length} voucher${rows.length === 1 ? "" : "s"}`]);

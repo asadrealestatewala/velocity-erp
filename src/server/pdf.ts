@@ -27,7 +27,7 @@ export function pdfText(s: string | null | undefined) {
 const MARGIN = 40;
 
 export async function renderPdf(opts: { title: string; subtitle?: string; meta?: [string, string][] }, build: (doc: PDFKit.PDFDocument) => void): Promise<Buffer> {
-  const doc = new PDFDocument({ size: "A4", margin: MARGIN, bufferPages: true, info: { Title: pdfText(opts.title), Author: "YADEA CRM" } });
+  const doc = new PDFDocument({ size: "A4", margin: MARGIN, bufferPages: true, info: { Title: pdfText(opts.title), Author: "Velocity ERP" } });
   const chunks: Buffer[] = [];
   doc.on("data", (c: Buffer) => chunks.push(c));
   const done = new Promise<Buffer>((resolve, reject) => {
@@ -73,7 +73,7 @@ export async function renderPdf(opts: { title: string; subtitle?: string; meta?:
     doc.switchToPage(i);
     const y = doc.page.height - MARGIN + 8;
     doc.font("Helvetica").fontSize(8).fillColor(PDF_COLORS.muted);
-    doc.text(`Generated ${fmtDateTime(new Date())} - YADEA CRM`, MARGIN, y, { lineBreak: false });
+    doc.text(`Generated ${fmtDateTime(new Date())} - Velocity ERP`, MARGIN, y, { lineBreak: false });
     doc.text(`Page ${i - range.start + 1} of ${range.count}`, MARGIN, y, { align: "right", width: doc.page.width - MARGIN * 2, lineBreak: false });
   }
   doc.end();

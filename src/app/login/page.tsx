@@ -17,7 +17,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <AuthLayout
       variant="crm"
-      title="Sign in to YADEA CRM"
+      title="Sign in to Velocity ERP"
       subtitle="Central team access for sales, CRM and management."
       footer={
         <div className="space-y-1.5">

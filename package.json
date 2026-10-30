@@ -1,8 +1,8 @@
 {
-  "name": "yadea-crm",
+  "name": "velocity-erp",
   "version": "1.0.0",
   "private": true,
-  "description": "YADEA CRM & Dealership Management Platform",
+  "description": "Velocity ERP — Dealership Management Platform",
   "scripts": {
     "dev": "next dev --turbopack -p 3000",
     "dev:webpack": "next dev -p 3000",

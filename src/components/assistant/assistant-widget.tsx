@@ -146,11 +146,11 @@ export function AssistantWidget({ config, open, onOpenChange }: { config: Assist
   return (
     <>
       {open && (
-        <section role="dialog" aria-label="YADEA assistant" className="fixed inset-x-2 bottom-2 z-50 flex h-[min(680px,calc(100dvh-1rem))] animate-pop-in flex-col overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-[var(--shadow-pop)] sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[430px]">
+        <section role="dialog" aria-label="Velocity assistant" className="fixed inset-x-2 bottom-2 z-50 flex h-[min(680px,calc(100dvh-1rem))] animate-pop-in flex-col overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-[var(--shadow-pop)] sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[430px]">
           <header className="flex shrink-0 items-center gap-3 bg-navy-900 px-4 py-3 text-white">
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500"><Bot className="h-5 w-5" /></span>
             <div className="min-w-0 flex-1">
-              <h2 className="text-[15px] leading-tight font-semibold">YADEA assistant</h2>
+              <h2 className="text-[15px] leading-tight font-semibold">Velocity assistant</h2>
               <p className="flex items-center gap-1.5 text-xs text-slate-300"><span className={cn("h-1.5 w-1.5 rounded-full", config.aiConnected ? "bg-emerald-400" : "bg-amber-400")} />{config.aiConnected ? "AI connected" : "Built-in guide — AI not connected"}</p>
             </div>
             <button onClick={clear} className="rounded-md p-1.5 text-slate-300 hover:bg-white/10 hover:text-white" aria-label="Clear conversation" title="Clear conversation"><Trash2 className="h-4 w-4" /></button>
@@ -161,7 +161,7 @@ export function AssistantWidget({ config, open, onOpenChange }: { config: Assist
             {msgs.length === 0 && (
               <div className="space-y-3">
                 <p className="rounded-xl bg-white p-3.5 text-sm text-ink-700 ring-1 ring-ink-200">
-                  Hi! Ask me anything about YADEA CRM — what a screen contains, where to find something, how to do a task step by step, or for live numbers you&apos;re allowed to see{config.aiConnected && config.canWrite ? ". I can also prepare a change for you to confirm" : ""}.
+                  Hi! Ask me anything about Velocity ERP — what a screen contains, where to find something, how to do a task step by step, or for live numbers you&apos;re allowed to see{config.aiConnected && config.canWrite ? ". I can also prepare a change for you to confirm" : ""}.
                   {!config.aiConnected && <span className="mt-1.5 block text-xs text-amber-800">I&apos;m running in built-in guide mode: I know the whole platform and can look up live numbers, but I can&apos;t make changes or answer free-form questions until an administrator connects the AI key.</span>}
                 </p>
                 <div className="flex flex-wrap gap-2">

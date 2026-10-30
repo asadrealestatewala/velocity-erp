@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     if (!isCentral(user) || !can(user, "ledger.view") || format !== "xlsx") return notFound();
     const [dealers, balances] = await Promise.all([db.dealership.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, code: true, city: { select: { name: true } } } }), balancesByDealership()]);
     const wb = new ExcelJS.Workbook();
-    wb.creator = "YADEA CRM";
+    wb.creator = "Velocity ERP";
     const ws = wb.addWorksheet("Dealer balances", { views: [{ state: "frozen", ySplit: 3 }] });
     ws.addRow(["YADEA - dealer account balances"]).font = { bold: true, size: 14 };
     ws.addRow([`Generated ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC`]);
@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
   }
 
   const wb = new ExcelJS.Workbook();
-  wb.creator = "YADEA CRM";
+  wb.creator = "Velocity ERP";
   const ws = wb.addWorksheet("Ledger", { views: [{ state: "frozen", ySplit: 6 }] });
   ws.addRow([`YADEA - account statement: ${dealer.name} (${dealer.code})`]).font = { bold: true, size: 14 };
   ws.addRow([`Period: ${period}`]);

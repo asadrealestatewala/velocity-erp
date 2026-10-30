@@ -1,4 +1,4 @@
-// YADEA CRM — relational schema
+// Velocity ERP — relational schema
 // Conventions: cuid ids, createdAt/updatedAt on mutable entities, soft-deletion via
 // isArchived/deletedAt where history must be preserved, explicit indexes for list filters.
 

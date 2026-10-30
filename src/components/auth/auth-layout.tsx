@@ -15,7 +15,7 @@ const COPY = {
   portal: "Your assigned and walk-in leads, test drives, stock and orders, ledger and team goals — all in one place.",
 } as const;
 
-export function AuthLayout({ title, subtitle, children, footer, variant, brand = "yadea" }: { title: string; subtitle: string; children: React.ReactNode; footer: React.ReactNode; variant: "crm" | "portal" | "procurement"; brand?: "yadea" | "velocity" }) {
+export function AuthLayout({ title, subtitle, children, footer, variant, brand = "velocity" }: { title: string; subtitle: string; children: React.ReactNode; footer: React.ReactNode; variant: "crm" | "portal" | "procurement"; brand?: "yadea" | "velocity" }) {
   return (
     <AuthSceneProvider>
       <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)]">

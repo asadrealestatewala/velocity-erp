@@ -15,7 +15,7 @@ export const GUIDE: GuideSection[] = [
     id: "overview",
     title: "What this platform is",
     audience: ALL,
-    body: `The YADEA CRM & Dealership Management Platform has three workspaces that share one database:
+    body: `The Velocity ERP — Dealership Management Platform has three workspaces that share one database:
 - **Central CRM** (/crm) for YADEA head-office staff: contacts and leads, pipeline, public forms, test drives, dealership network, dealership applications, bike models, reports, users and permissions, audit log and settings.
 - **Dealer Portal** (/portal) for each dealership: its own leads, walk-ins, pipeline, test drives, tasks, team, showroom inventory, customer orders, stock orders to YADEA, account ledger, expense vouchers, documents and audit log.
 - **Procurement Portal** (/procurement) for YADEA's procurement & accounts team: dealership stock orders, dispatch and delivery, product catalogue and dealer prices, dealer stock, ledgers and payment verification, expense vouchers and dealership documents/certificates.

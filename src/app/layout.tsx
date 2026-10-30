@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "sw
 export const metadata: Metadata = {
   title: { default: "Velocity ERP", template: "%s · Velocity ERP" },
   description: "YADEA customer, lead and dealership management platform",
-  icons: { icon: "/brand/yadea-mark.png" },
+  icons: { icon: "/brand/velocity-app-icon.png", apple: "/brand/velocity-app-icon.png" },
   // The CRM, portals and sign-in pages are internal; only published public forms (which set their own robots) are indexable.
   robots: { index: false, follow: false },
 };

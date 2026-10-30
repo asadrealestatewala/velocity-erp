@@ -35,6 +35,8 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://postgres:ci_only_password@localhost:5432/yadea_crm_test?schema=public
+      # Platform (control-plane) schema lives in the same throw-away database, in its own "platform" schema.
+      PLATFORM_DATABASE_URL: postgresql://postgres:ci_only_password@localhost:5432/yadea_crm_test?schema=platform
       APP_URL: http://localhost:3000
       APP_TIMEZONE: Asia/Karachi
       NEXT_PUBLIC_APP_TIMEZONE: Asia/Karachi
@@ -58,6 +60,7 @@ jobs:
         run: |
           {
             echo "DATABASE_URL=$DATABASE_URL"
+            echo "PLATFORM_DATABASE_URL=$PLATFORM_DATABASE_URL"
             echo "APP_URL=$APP_URL"
             echo "APP_SECRET=$(openssl rand -hex 32)"
             echo "CRON_SECRET=$(openssl rand -hex 16)"

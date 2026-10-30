@@ -1,0 +1,46 @@
+name: Deploy to Contabo
+
+# Runs every time code lands on main. SSHes into the Contabo server, pulls
+# the latest code, rebuilds, and restarts the app with pm2.
+on:
+  push:
+    branches: [main]
+
+# Only one deploy at a time; a newer push waits for the current one to finish
+# instead of two deploys racing each other.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to production server
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script_stop: true
+          script: |
+            cd /var/www/velocity-erp
+
+            # Get the exact code that was just pushed to main
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Install dependencies (this also generates the Prisma clients, see postinstall)
+            npm ci
+
+            # Apply any new database migrations (safe to run even when there are none)
+            npm run db:deploy
+            npm run platform:deploy
+
+            # Rebuild the production app
+            npm run build
+
+            # Restart the running app with zero downtime
+            pm2 reload velocity-erp --update-env

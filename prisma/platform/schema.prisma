@@ -344,6 +344,8 @@ model PlatformSession {
   ipAddress String?
   userAgent String?
   createdAt DateTime      @default(now())
+  /// Updated at most every few minutes while the session is in use.
+  lastSeenAt DateTime?
   admin     PlatformAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
   @@index([adminId])

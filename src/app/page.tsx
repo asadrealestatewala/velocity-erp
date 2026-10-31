@@ -1,10 +1,10 @@
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import { BarChart3, Bike, Building2, ShieldCheck, Trophy, Truck } from "lucide-react";
 import { getCurrentUser } from "@/server/auth/session";
 import { homePathFor } from "@/lib/home";
 import { ButtonLink } from "@/components/ui/button";
 import { SiteShell } from "@/components/marketing/site-shell";
+import { HeroScene } from "@/components/marketing/hero-scene";
 import { Pricing } from "@/components/marketing/pricing";
 import { DemoForm, WorkspaceFinder } from "@/components/marketing/forms";
 import { getPlatformSettings } from "@/server/platform/settings";
@@ -48,7 +48,7 @@ export default async function Home() {
       <section className="relative overflow-hidden bg-[radial-gradient(80%_60%_at_80%_0%,rgb(238_108_0/0.10),transparent),radial-gradient(60%_50%_at_0%_100%,rgb(14_174_207/0.08),transparent)]">
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:py-24">
           <div>
-            <p className="mb-3 inline-block rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">For e-mobility brands and dealer networks</p>
+            <p className="mb-3 inline-block rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">ERP for bike and car dealer networks</p>
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Every lead, every dealership, one view.</h1>
             <p className="mt-4 max-w-xl text-lg text-ink-600">Capture inquiries from every channel, route test drives to the right showroom, and run orders and ledgers with your dealers. Your own private workspace, ready in minutes.</p>
             <div className="mt-7 flex flex-wrap gap-3">
@@ -57,9 +57,7 @@ export default async function Home() {
             </div>
             <p className="mt-3 text-sm text-ink-500">No card needed to start.</p>
           </div>
-          <div className="relative mx-auto w-full max-w-md">
-            <Image src="/brand/yadea-g5s.webp" alt="Electric scooter" width={640} height={480} className="h-auto w-full drop-shadow-2xl" priority />
-          </div>
+          <HeroScene />
         </div>
       </section>
 

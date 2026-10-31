@@ -321,6 +321,20 @@ model PlatformAdmin {
   lastLoginAt   DateTime?
   createdAt     DateTime          @default(now())
   sessions      PlatformSession[]
+  resets        PlatformPasswordReset[]
+}
+
+/// Single-use password-reset links for platform operators (only the SHA-256 of the token is stored).
+model PlatformPasswordReset {
+  id        String        @id @default(cuid())
+  adminId   String
+  tokenHash String        @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+  admin     PlatformAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
 }
 
 model PlatformSession {

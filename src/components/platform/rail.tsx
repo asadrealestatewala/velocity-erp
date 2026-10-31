@@ -1,9 +1,9 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Building2, Flag, Layers, LayoutDashboard, LifeBuoy, Mail, Megaphone, ScrollText, Settings, ShieldCheck, UserCog, Wallet } from "lucide-react";
+import { Activity, Building2, Flag, Layers, LayoutDashboard, LifeBuoy, Mail, Megaphone, ScrollText, Settings, ShieldCheck, TrendingUp, UserCog, Wallet } from "lucide-react";
 
-const ICONS = { overview: LayoutDashboard, workspaces: Building2, payments: Wallet, plans: Layers, settings: Settings, staff: ShieldCheck, audit: ScrollText, system: Activity, account: UserCog, mail: Mail, announcements: Megaphone, support: LifeBuoy, flags: Flag } as const;
+const ICONS = { overview: LayoutDashboard, workspaces: Building2, payments: Wallet, plans: Layers, settings: Settings, staff: ShieldCheck, audit: ScrollText, system: Activity, account: UserCog, mail: Mail, announcements: Megaphone, support: LifeBuoy, flags: Flag, growth: TrendingUp } as const;
 export type RailIcon = keyof typeof ICONS;
 export type RailItem = { href: string; label: string; icon: RailIcon };
 

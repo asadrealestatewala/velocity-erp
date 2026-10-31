@@ -10,6 +10,7 @@ import { billingState } from "@/server/platform/billing-state";
 import { PERMISSIONS, type PermissionKey } from "@/lib/permissions";
 import { entitlementsCached } from "@/server/platform/plans";
 import { currentViewAs } from "@/server/platform/impersonation";
+import { touchActivity } from "@/server/platform/growth";
 
 export const SESSION_COOKIE = "yadea_session";
 /** Permission groups that belong to the paid "Procurement & dealer operations" module. */
@@ -147,5 +148,6 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   if (session.expiresAt.getTime() - Date.now() < ttl / 2) {
     await db.session.update({ where: { id: session.id }, data: { expiresAt: new Date(Date.now() + ttl) } }).catch(() => {});
   }
+  void touchActivity(await currentTenant());
   return loadUser(session.userId);
 });

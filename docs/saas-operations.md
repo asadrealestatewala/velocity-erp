@@ -98,6 +98,12 @@ Uploaded files are not part of the dump: they live in the storage bucket (or `LO
 
 **Restore one company.** Restore its `.dump` into a scratch schema first, check it, then restore over the live schema in a quiet period.
 
+## 8b. Growth and email campaigns
+
+* **Growth** (`/platform/growth`, anyone with reports access): sign-up funnel (home → sign-up page → workspace → confirmed → came back → paid), weekly retention by sign-up cohort, and the demo-request inbox with *Mark handled*. Page views are counted for the public pages only and skip Do Not Track visitors, so the first two steps are indicative, not exact.
+* **Usage tracking**: a workspace counts as active on a day when someone signs in to use it (one row per workspace per day). Retention is therefore empty before this release and fills in from deploy day onwards.
+* **Campaigns** (`/platform/growth/campaigns`, owner only): save a draft, check the audience count, then send. Audiences: paying, on trial, trial ending within 7 days, payment overdue, inactive 30 days. Each email has a signed unsubscribe link; the link opens a confirmation page (so mail scanners cannot unsubscribe anyone). Unsubscribed workspaces are skipped from then on. Account, security and billing emails are never affected. Sending is claimed atomically, so a double click cannot send twice. Sends happen inside the request, so keep audiences to a few hundred; larger lists need a queue.
+
 ## 9. Known limits
 
 * Placeholder plan limits and prices; no real tax handling; invoices are simple PDFs.

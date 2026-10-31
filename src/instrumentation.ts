@@ -15,3 +15,10 @@ export async function register() {
     }
   }
 }
+
+/** Next.js calls this for every unhandled server error (render, route handler, server action). Recorded for System → Logs; never throws. */
+export async function onRequestError(err: unknown, request: { path: string; method: string }, context: { routePath?: string; routeType?: string }) {
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  const { logError } = await import("@/server/platform/ops-log");
+  await logError("request", err, { path: `${request.method} ${request.path}`, detail: { route: context.routePath, type: context.routeType } });
+}

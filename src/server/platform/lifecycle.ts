@@ -5,6 +5,7 @@ import { addDays, changeSubscription } from "./subscriptions";
 import { renderMail, sendSystemMail, workspaceUrl } from "./mail";
 import { sendTemplate } from "./mail-send";
 import { getPlatformSettings } from "./settings";
+import { pruneOpsLogs, recordJob } from "./ops-log";
 
 export type LifecycleSummary = { checked: number; trialsExpired: number; pastDue: number; expired: number; remindersSent: number };
 
@@ -30,7 +31,9 @@ async function email(t: Tenant, subject: string, heading: string, lines: string[
  *  grace over / cancelled period over → EXPIRED
  * plus trial and renewal reminders. Nothing is ever deleted.
  */
-export async function runLifecycle(now = new Date()): Promise<LifecycleSummary> {
+export const runLifecycle = (now = new Date()): Promise<LifecycleSummary> => recordJob("lifecycle", () => runLifecycleOnce(now));
+
+async function runLifecycleOnce(now: Date): Promise<LifecycleSummary> {
   const db = platformDb();
   const settings = await getPlatformSettings();
   const out: LifecycleSummary = { checked: 0, trialsExpired: 0, pastDue: 0, expired: 0, remindersSent: 0 };
@@ -87,5 +90,6 @@ export async function runLifecycle(now = new Date()): Promise<LifecycleSummary> 
       out.expired++;
     }
   }
+  await pruneOpsLogs(now).catch(() => {});
   return out;
 }

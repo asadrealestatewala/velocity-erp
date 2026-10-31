@@ -111,6 +111,7 @@ model Tenant {
   invoices Invoice[]
   payments Payment[]
   addOns   TenantAddOn[]
+  flagOverrides TenantFlagOverride[]
 
   @@index([status])
   @@index([subStatus])
@@ -347,6 +348,37 @@ model PlatformSession {
   admin     PlatformAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
   @@index([adminId])
+}
+
+/// A switch for a beta or optional feature. A workspace's setting is decided in this order: its own override, the plans listed in `planKeys`,
+/// the percentage rollout (stable per workspace), then `enabled` (on for everyone).
+model FeatureFlag {
+  key            String               @id
+  name           String
+  description    String               @default("")
+  enabled        Boolean              @default(false)
+  planKeys       Json                 @default("[]")
+  rolloutPercent Int                  @default(0)
+  isArchived     Boolean              @default(false)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  overrides      TenantFlagOverride[]
+}
+
+/// An exception for one workspace: forced on (beta access, a promise to a customer) or forced off.
+model TenantFlagOverride {
+  id       String      @id @default(cuid())
+  tenantId String
+  flagKey  String
+  enabled  Boolean
+  reason   String
+  setBy    String?
+  at       DateTime    @default(now())
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  flag     FeatureFlag @relation(fields: [flagKey], references: [key], onDelete: Cascade)
+
+  @@unique([tenantId, flagKey])
+  @@index([flagKey])
 }
 
 /// Append-only.

@@ -6,6 +6,7 @@ import { renderMail, sendSystemMail, workspaceUrl } from "./mail";
 import { sendTemplate } from "./mail-send";
 import { getPlatformSettings } from "./settings";
 import { purgeDueWorkspaces } from "./purge";
+import { pruneOpsLogs, recordJob } from "./ops-log";
 
 export type LifecycleSummary = { checked: number; trialsExpired: number; pastDue: number; expired: number; remindersSent: number; purged: number };
 
@@ -32,7 +33,9 @@ async function email(t: Tenant, subject: string, heading: string, lines: string[
  * plus trial and renewal reminders. Data is only ever erased for workspaces whose scheduled deletion (a deliberate, audited,
  * owner-only action with a retention window) has come due.
  */
-export async function runLifecycle(now = new Date()): Promise<LifecycleSummary> {
+export const runLifecycle = (now = new Date()): Promise<LifecycleSummary> => recordJob("lifecycle", () => runLifecycleOnce(now));
+
+async function runLifecycleOnce(now: Date): Promise<LifecycleSummary> {
   const db = platformDb();
   const settings = await getPlatformSettings();
   const out: LifecycleSummary = { checked: 0, trialsExpired: 0, pastDue: 0, expired: 0, remindersSent: 0, purged: 0 };
@@ -90,5 +93,6 @@ export async function runLifecycle(now = new Date()): Promise<LifecycleSummary> 
     }
   }
   out.purged = (await purgeDueWorkspaces(now)).length;
+  await pruneOpsLogs(now).catch(() => {});
   return out;
 }

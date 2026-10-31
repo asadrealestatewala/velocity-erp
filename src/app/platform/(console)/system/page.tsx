@@ -1,6 +1,9 @@
 import { Card, CardHeader, PageHeader } from "@/components/ui/misc";
 import { ActionForm, RunButton } from "@/components/platform/console";
 import { migrateAllAction, runLifecycleAction, setMaintenanceAction } from "@/server/actions/platform";
+import Link from "next/link";
+import { jobHealth } from "@/server/platform/ops-log";
+import { fmtDateTime } from "@/lib/utils";
 import { requireAdminPage } from "@/server/platform/admin-auth";
 import { platformDb } from "@/server/platform/client";
 import { pendingMigrations } from "@/server/platform/migrate";
@@ -14,7 +17,13 @@ export const metadata = { title: "System" };
 export default async function SystemPage() {
   await requireAdminPage("system.manage");
   const db = platformDb();
-  const [tenants, s, stripe] = await Promise.all([db.tenant.findMany({ where: { status: { in: ["ACTIVE", "SUSPENDED"] } }, orderBy: { createdAt: "asc" } }), getPlatformSettings(), stripeConfigured()]);
+  const week = new Date(Date.now() - 7 * 86_400_000);
+  const day = new Date(Date.now() - 86_400_000);
+  const [jobs, errors24h, mailFailed, tenants, s, stripe] = await Promise.all([
+    jobHealth(),
+    db.errorLog.count({ where: { at: { gt: day } } }),
+    db.mailMessage.count({ where: { direction: "OUTBOUND", delivery: { in: ["BOUNCED", "FAILED", "COMPLAINED"] }, createdAt: { gt: week } } }),
+db.tenant.findMany({ where: { status: { in: ["ACTIVE", "SUSPENDED"] } }, orderBy: { createdAt: "asc" } }), getPlatformSettings(), stripeConfigured()]);
   const rows = await Promise.all(
     tenants.map(async (t) => {
       try {
@@ -35,6 +44,10 @@ export default async function SystemPage() {
             <li>Workspace databases up to date: <strong>{rows.length - behind.length} / {rows.length}</strong></li>
             <li>Email delivery: <strong>{mailConfigured() ? "configured" : "not configured (emails are only logged)"}</strong></li>
             <li>Card payments: <strong>{stripe ? "configured" : "not configured"}</strong></li>
+            {jobs.map((j) => (
+              <li key={j.job}>Job <code>{j.job}</code>: <strong className={j.stale || j.lastOk === false ? "text-red-700" : "text-emerald-700"}>{!j.lastRun ? "never ran: check the scheduler" : `${j.lastOk ? "ok" : "failed"} · last ${fmtDateTime(j.lastRun)}${j.stale ? " · overdue" : ""}`}</strong></li>
+            ))}
+            <li>Server errors in the last 24 h: <strong className={errors24h ? "text-red-700" : ""}>{errors24h}</strong> · Failed or bounced emails (7 days): <strong className={mailFailed ? "text-red-700" : ""}>{mailFailed}</strong> · <Link className="underline" href="/platform/system/logs">Open logs</Link></li>
             <li>Scheduled job secret: <strong>{process.env.CRON_SECRET ? "set" : "not set"}</strong></li>
           </ul>
           <div className="flex flex-wrap gap-2 px-5 pb-5">

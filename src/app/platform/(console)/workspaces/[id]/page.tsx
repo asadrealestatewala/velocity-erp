@@ -1,8 +1,13 @@
 import { notFound } from "next/navigation";
+import { buttonClass } from "@/components/ui/button";
 import { Badge, Card, CardHeader, PageHeader, DescriptionList } from "@/components/ui/misc";
-import { ActionForm, ReasonButton } from "@/components/platform/console";
+import { ActionForm, ReasonButton, RunButton } from "@/components/platform/console";
+import { db as tenantDb } from "@/lib/db";
+import { startViewAsAction } from "@/server/actions/impersonation";
+import { cancelDeletionAction, scheduleDeletionAction } from "@/server/actions/platform";
 import { changePlanAction, grantAddOnAction, recordPaymentAction, saveNotesAction, setWorkspaceStatusAction, trialAction } from "@/server/actions/platform";
 import { adminCan, requireAdminPage } from "@/server/platform/admin-auth";
+import { deletionBlocker } from "@/server/platform/purge";
 import { invoiceNumber, METHOD_LABEL } from "@/server/platform/billing";
 import { platformDb } from "@/server/platform/client";
 import { currentUsage } from "@/server/platform/guard";
@@ -19,6 +24,9 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
   const db = platformDb();
   const t = await db.tenant.findUnique({ where: { id }, include: { history: { orderBy: { at: "desc" }, take: 15 }, invoices: { orderBy: { issuedAt: "desc" }, take: 10 }, addOns: { include: { addOn: true } } } });
   if (!t) notFound();
+  const viewable = adminCan(admin.role, "tenants.impersonate") && t.status !== "CANCELLED"
+    ? await runInTenant(t.slug, () => tenantDb.user.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, take: 100, select: { id: true, name: true, email: true, role: { select: { name: true } } } })).catch(() => [])
+    : [];
   const [plans, addOns, ent, usage] = await Promise.all([
     listPlans(),
     db.addOn.findMany({ orderBy: { key: "asc" } }),
@@ -48,6 +56,19 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
               { label: "Database", value: `${t.dbSchema}${t.dbUrlEnc ? " (own connection)" : ""} · migrations v${t.schemaVersion}` },
               { label: "Coupon", value: t.couponCode ?? "—" },
             ]} />
+            {viewable.length > 0 && (
+              <div className="mt-4">
+                <ReasonButton
+                  label="View as user (read-only)"
+                  title="View this workspace as one of its users"
+                  description="Opens the workspace exactly as that person sees it, for 30 minutes. Nothing can be changed. Your reason is saved in the platform audit log and in the company's own audit log."
+                  variant="secondary"
+                  confirmLabel="Start read-only view"
+                  action={startViewAsAction.bind(null, t.id)}
+                  extra={[{ name: "userId", label: "View as", type: "select", options: viewable.map((u) => ({ value: u.id, label: `${u.name} · ${u.role.name} · ${u.email}` })), defaultValue: viewable[0]!.id }]}
+                />
+              </div>
+            )}
             {!t.isLegacy && can("tenants.manage") && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {t.status === "SUSPENDED" ? (
@@ -73,6 +94,47 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
           </ul>
         </Card>
       </div>
+
+      {!t.isLegacy && (can("tenants.export") || can("tenants.delete")) && (
+        <Card className="mt-4">
+          <CardHeader title="Data export and deletion" description="For customer requests and offboarding. Both are owner-only and recorded in the audit log with your reason." />
+          <div className="space-y-4 p-5 text-sm">
+            {t.dataPurgedAt ? (
+              <p>All data of this workspace was erased on {fmtDateTime(t.dataPurgedAt)}. Invoices and payments are kept for accounting.</p>
+            ) : (
+              <>
+                {can("tenants.export") && (
+                  <form method="post" action={`/api/platform/workspaces/${t.id}/export`} className="flex flex-wrap items-end gap-3">
+                    <label className="flex min-w-64 flex-1 flex-col gap-1 text-xs font-medium text-ink-600">Reason for the export
+                      <input name="reason" required minLength={3} maxLength={300} className="input" placeholder="e.g. Customer data request, ticket 123" />
+                    </label>
+                    <button type="submit" className={buttonClass("secondary", "sm")}>Download full export (.zip)</button>
+                  </form>
+                )}
+                <p className="text-xs text-ink-500">The export has one JSON-lines file per table plus every uploaded file. Password hashes, two-factor secrets and sign-in sessions are never included.</p>
+                {can("tenants.delete") && (t.deletionScheduledFor ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-red-50 px-4 py-3 text-red-900">
+                    <span>Deletion is scheduled: all data is erased after <strong>{fmtDateTime(t.deletionScheduledFor)}</strong>{t.deletionReason ? ` (${t.deletionReason})` : ""}.</span>
+                    <RunButton label="Cancel deletion" action={cancelDeletionAction.bind(null, t.id)} />
+                  </div>
+                ) : deletionBlocker(t) ? (
+                  <p className="text-ink-500">{deletionBlocker(t)}</p>
+                ) : (
+                  <ReasonButton
+                    label="Schedule deletion"
+                    title="Schedule deletion of this workspace?"
+                    description={`All data and uploaded files will be permanently erased after the retention window, unless you cancel. Reactivating the workspace also cancels it. Invoices and payments are kept. Download an export first if the customer wants a copy.`}
+                    variant="danger"
+                    confirmLabel="Schedule deletion"
+                    action={scheduleDeletionAction.bind(null, t.id)}
+                    extra={[{ name: "confirmSlug", label: `Type the workspace code (${t.slug}) to confirm`, placeholder: t.slug }]}
+                  />
+                ))}
+              </>
+            )}
+          </div>
+        </Card>
+      )}
 
       {!t.isLegacy && (
         <div className="mt-4 grid gap-4 lg:grid-cols-2">

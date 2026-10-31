@@ -1,6 +1,6 @@
 import { Card, CardHeader, PageHeader } from "@/components/ui/misc";
 import { ActionForm, RunButton } from "@/components/platform/console";
-import { deleteAccountAction, saveAccountAction, saveSettingsAction, saveStripeAction, testStripeAction } from "@/server/actions/platform";
+import { deleteAccountAction, saveAccountAction, saveSettingsAction, saveStripeAction, setStaff2faAction, testStripeAction } from "@/server/actions/platform";
 import { requireAdminPage } from "@/server/platform/admin-auth";
 import { METHOD_LABEL } from "@/server/platform/billing";
 import { platformDb } from "@/server/platform/client";
@@ -30,12 +30,23 @@ export default async function SettingsPage() {
                 { name: "trialDays", label: "Free trial length (days, 0 = no trial)", type: "number", defaultValue: s.trialDays },
                 { name: "trialPlanKey", label: "Plan used during the trial", type: "select", options: planOptions, defaultValue: s.trialPlanKey },
                 { name: "graceDays", label: "Default grace days after a missed renewal", type: "number", defaultValue: s.graceDays },
+                { name: "deletionRetentionDays", label: "Days to keep a workspace's data after deletion is scheduled", type: "number", defaultValue: s.deletionRetentionDays },
                 { name: "reminderDays", label: "Email reminders (days before expiry, comma separated)", defaultValue: s.reminderDays.join(", ") },
                 { name: "oneTrialPerOwner", label: "Only one free trial per owner email", type: "checkbox", defaultValue: s.oneTrialPerOwner },
                 { name: "supportEmail", label: "Support email", defaultValue: s.support.email },
                 { name: "supportPhone", label: "Support phone / WhatsApp", defaultValue: s.support.phone },
                 { name: "operatorEmail", label: "Email that receives payment notifications", defaultValue: s.billing.operatorEmail },
               ]}
+            />
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader title="Staff two-factor sign-in" description="Staff who don't have it yet are taken to a set-up page the next time they open the console; they can't skip it, and nobody is locked out." />
+          <div className="p-5">
+            <ActionForm
+              action={setStaff2faAction}
+              fields={[{ name: "mode", label: "Require two-factor for", type: "select", options: [{ value: "all", label: "All platform staff (recommended; enrol yourself first)" }, { value: "privileged", label: "Owners and billing staff only" }, { value: "off", label: "Nobody (optional per person)" }], defaultValue: s.staff2fa }]}
             />
           </div>
         </Card>

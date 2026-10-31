@@ -7,6 +7,7 @@ import { AppError } from "@/server/errors";
 import { verifyTotp } from "@/lib/totp";
 import { platformDb } from "./client";
 import { decryptSecret, newToken, sha256 } from "./crypto";
+import { getPlatformSettings, type Staff2faMode } from "./settings";
 export { ensureFirstAdmin } from "./admin-bootstrap";
 
 export const ADMIN_COOKIE = "yadea_platform";
@@ -14,9 +15,9 @@ const SESSION_HOURS = 8;
 
 /** What each platform role may do. OWNER can do everything; the others are deliberately narrow. */
 export const ROLE_PERMS = {
-  OWNER: ["dashboard", "reports", "tenants.view", "tenants.manage", "trials.manage", "payments.manage", "refunds.manage", "plans.manage", "coupons.manage", "settings.manage", "admins.manage", "audit.view", "system.manage", "mail.manage", "mail.settings"],
+  OWNER: ["dashboard", "reports", "tenants.view", "tenants.manage", "tenants.impersonate", "tenants.export", "tenants.delete", "trials.manage", "payments.manage", "refunds.manage", "plans.manage", "coupons.manage", "settings.manage", "admins.manage", "audit.view", "system.manage", "mail.manage", "mail.settings"],
   BILLING: ["dashboard", "reports", "tenants.view", "payments.manage", "refunds.manage", "coupons.manage", "audit.view", "mail.manage"],
-  SUPPORT: ["dashboard", "tenants.view", "tenants.manage", "trials.manage", "audit.view", "mail.manage"],
+  SUPPORT: ["dashboard", "tenants.view", "tenants.manage", "tenants.impersonate", "trials.manage", "audit.view", "mail.manage"],
   ANALYTICS: ["dashboard", "reports", "tenants.view"],
 } as const satisfies Record<PlatformRole, readonly string[]>;
 export type PlatformPerm = (typeof ROLE_PERMS)["OWNER"][number];
@@ -52,27 +53,48 @@ export async function endAdminSession() {
   jar.delete({ name: ADMIN_COOKIE, path: "/platform" });
 }
 
+/** Id of the session behind the current cookie (the hash of the token), or null. */
+export async function currentSessionId(): Promise<string | null> {
+  const token = (await cookies()).get(ADMIN_COOKIE)?.value;
+  return token ? sha256(token) : null;
+}
+
 /** The signed-in platform admin (or null). */
 export const getAdmin = cache(async (): Promise<PlatformAdmin | null> => {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
   if (!token) return null;
   const s = await platformDb().platformSession.findUnique({ where: { id: sha256(token) }, include: { admin: true } });
   if (!s || s.expiresAt < new Date() || !s.admin.isActive) return null;
+  // Record activity at most every 5 minutes so the sessions page can show "last active" without a write per request.
+  if (!s.lastSeenAt || Date.now() - s.lastSeenAt.getTime() > 5 * 60_000) await platformDb().platformSession.update({ where: { id: s.id }, data: { lastSeenAt: new Date() } }).catch(() => {});
   return s.admin;
 });
 
-/** For pages: redirects to sign-in, or back to the dashboard when the role lacks the permission. */
+/** Whether the platform's two-factor policy applies to a staff role. */
+export function twoFactorRequired(mode: Staff2faMode, role: PlatformRole): boolean {
+  return mode === "all" || (mode === "privileged" && (role === "OWNER" || role === "BILLING"));
+}
+
+/** True when this admin must turn on two-factor before using the console. They can still sign in (so nobody is locked out) but only reach the enrolment page. */
+export async function mustEnrolTwoFactor(admin: PlatformAdmin): Promise<boolean> {
+  if (admin.totpEnabled) return false;
+  return twoFactorRequired((await getPlatformSettings()).staff2fa, admin.role);
+}
+
+/** For pages: redirects to sign-in, to two-factor enrolment when the policy requires it, or back to the dashboard when the role lacks the permission. */
 export async function requireAdminPage(perm?: PlatformPerm): Promise<PlatformAdmin> {
   const a = await getAdmin();
   if (!a) redirect("/platform/login");
+  if (await mustEnrolTwoFactor(a)) redirect("/platform/enrol");
   if (perm && !adminCan(a.role, perm)) redirect("/platform?denied=1");
   return a;
 }
 
 /** For server actions: throws instead of redirecting. */
-export async function requireAdminAction(perm: PlatformPerm): Promise<PlatformAdmin> {
+export async function requireAdminAction(perm: PlatformPerm, opts: { allowUnenrolled?: boolean } = {}): Promise<PlatformAdmin> {
   const a = await getAdmin();
   if (!a) throw new AppError("Your session has expired. Please sign in again.", "UNAUTHENTICATED");
+  if (!opts.allowUnenrolled && (await mustEnrolTwoFactor(a))) throw new AppError("Turn on two-factor sign-in first (My account) before using the console.", "FORBIDDEN");
   if (!adminCan(a.role, perm)) throw new AppError("Your platform role does not allow this action.", "FORBIDDEN");
   return a;
 }

@@ -40,7 +40,7 @@ export function ddlConnectionString() {
 
 export const schemaNameFor = (slug: string) => `t_${slug.replace(/-/g, "_")}`.slice(0, 63);
 
-async function withClient<T>(connectionString: string | undefined, fn: (c: Client) => Promise<T>): Promise<T> {
+export async function withClient<T>(connectionString: string | undefined, fn: (c: Client) => Promise<T>): Promise<T> {
   const c = new Client({ connectionString: connectionString ?? ddlConnectionString(), ssl: process.env.PGSSL === "disable" ? undefined : /localhost|127\.0\.0\.1/.test(connectionString ?? ddlConnectionString()) ? undefined : { rejectUnauthorized: false } });
   await c.connect();
   try {

@@ -9,6 +9,7 @@ import { currentTenant, TENANT_COOKIE } from "@/server/platform/runtime";
 import { billingState } from "@/server/platform/billing-state";
 import { PERMISSIONS, type PermissionKey } from "@/lib/permissions";
 import { entitlementsCached } from "@/server/platform/plans";
+import { currentViewAs } from "@/server/platform/impersonation";
 
 export const SESSION_COOKIE = "yadea_session";
 /** Permission groups that belong to the paid "Procurement & dealer operations" module. */
@@ -32,6 +33,8 @@ export type CurrentUser = {
   permissions: Set<PermissionKey>;
   memberships: Membership[];
   mustChangePassword: boolean;
+  /** Set when a platform operator is viewing as this user (read-only). */
+  impersonation?: { adminEmail: string; reason: string; expiresAt: Date };
 };
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -119,6 +122,16 @@ export async function loadUser(userId: string): Promise<CurrentUser | null> {
 
 /** Resolve the current user from the session cookie. Cached per request. */
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
+  // A platform operator's read-only "view as" takes precedence over any normal session in this browser.
+  const view = await currentViewAs();
+  if (view) {
+    const tenant = await currentTenant();
+    if (view.tenantId === tenant.id) {
+      if (billingState(tenant).blocked) return null;
+      const u = await loadUser(view.userId);
+      return u ? { ...u, mustChangePassword: false, impersonation: { adminEmail: view.adminEmail, reason: view.reason, expiresAt: view.expiresAt } } : null;
+    }
+  }
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;

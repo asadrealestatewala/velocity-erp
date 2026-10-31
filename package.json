@@ -28,6 +28,7 @@
     "postinstall": "node scripts/embed-migrations.mjs && prisma generate && prisma generate --schema prisma/platform/schema.prisma",
     "platform:deploy": "prisma migrate deploy --schema prisma/platform/schema.prisma",
     "platform:lifecycle": "tsx --conditions=react-server scripts/run-lifecycle.ts",
+    "tenants:export": "tsx --conditions=react-server scripts/export-workspace.ts",
     "tenants:migrate": "tsx --conditions=react-server scripts/migrate-tenants.ts",
     "platform:bootstrap": "tsx --conditions=react-server scripts/platform-bootstrap.ts",
     "platform:backup": "tsx --conditions=react-server scripts/backup-platform.ts"
@@ -48,6 +49,7 @@
     "clsx": "2.1.1",
     "date-fns": "4.1.0",
     "exceljs": "4.4.0",
+    "fflate": "0.8.3",
     "lucide-react": "0.577.0",
     "next": "15.5.28",
     "nodemailer": "7.0.13",

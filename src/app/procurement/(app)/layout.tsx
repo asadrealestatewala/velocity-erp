@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { ViewAsBanner } from "@/components/shell/view-as-banner";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { PROCUREMENT_ENTRY_PERMISSIONS, can, requireProcurementPage } from "@/server/authz";
@@ -17,6 +18,7 @@ export default async function ProcurementLayout({ children }: { children: React.
   const nav = PROCUREMENT_NAV.filter((n) => !n.perm || can(user, n.perm));
   return (
     <Suspense>
+      <ViewAsBanner view={user.impersonation} />
       <AppShell
         variant="procurement"
         nav={nav}

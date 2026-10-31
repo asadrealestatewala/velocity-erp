@@ -33,7 +33,7 @@ function legacyFallback(): Tenant {
     ownerName: null, ownerEmail: null, ownerEmailHash: null, timezone: process.env.APP_TIMEZONE || "Asia/Karachi", currency: "PKR", countryCode: "92",
     emailConfirmedAt: now, confirmTokenHash: null, confirmExpiresAt: null, notes: null, subStatus: "ACTIVE", planKey: null, interval: "MONTH", priceAmount: 0,
     priceCurrency: "PKR", trialStartedAt: null, trialEndsAt: null, currentPeriodStart: null, currentPeriodEnd: null, graceUntil: null, cancelAtPeriodEnd: false,
-    couponCode: null, stripeCustomerId: null, stripeSubscriptionId: null, provisionedAt: now, lastSeenAt: null, schemaVersion: 0, createdAt: now, updatedAt: now,
+    couponCode: null, stripeCustomerId: null, stripeSubscriptionId: null, provisionedAt: now, lastSeenAt: null, schemaVersion: 0, deletionRequestedAt: null, deletionScheduledFor: null, deletionReason: null, dataPurgedAt: null, createdAt: now, updatedAt: now,
   };
 }
 

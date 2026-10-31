@@ -5,8 +5,9 @@ import { addDays, changeSubscription } from "./subscriptions";
 import { renderMail, sendSystemMail, workspaceUrl } from "./mail";
 import { sendTemplate } from "./mail-send";
 import { getPlatformSettings } from "./settings";
+import { purgeDueWorkspaces } from "./purge";
 
-export type LifecycleSummary = { checked: number; trialsExpired: number; pastDue: number; expired: number; remindersSent: number };
+export type LifecycleSummary = { checked: number; trialsExpired: number; pastDue: number; expired: number; remindersSent: number; purged: number };
 
 const DAY = 86_400_000;
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
@@ -28,12 +29,13 @@ async function email(t: Tenant, subject: string, heading: string, lines: string[
  *  trial ended            → EXPIRED (read-only)
  *  paid period ended      → PAST_DUE with a grace period
  *  grace over / cancelled period over → EXPIRED
- * plus trial and renewal reminders. Nothing is ever deleted.
+ * plus trial and renewal reminders. Data is only ever erased for workspaces whose scheduled deletion (a deliberate, audited,
+ * owner-only action with a retention window) has come due.
  */
 export async function runLifecycle(now = new Date()): Promise<LifecycleSummary> {
   const db = platformDb();
   const settings = await getPlatformSettings();
-  const out: LifecycleSummary = { checked: 0, trialsExpired: 0, pastDue: 0, expired: 0, remindersSent: 0 };
+  const out: LifecycleSummary = { checked: 0, trialsExpired: 0, pastDue: 0, expired: 0, remindersSent: 0, purged: 0 };
   const tenants = await db.tenant.findMany({ where: { isLegacy: false, status: "ACTIVE", subStatus: { in: ["TRIALING", "ACTIVE", "PAST_DUE", "CANCELED"] } } });
   out.checked = tenants.length;
   const plans = new Map((await db.plan.findMany()).map((p) => [p.key, p]));
@@ -87,5 +89,6 @@ export async function runLifecycle(now = new Date()): Promise<LifecycleSummary> 
       out.expired++;
     }
   }
+  out.purged = (await purgeDueWorkspaces(now)).length;
   return out;
 }

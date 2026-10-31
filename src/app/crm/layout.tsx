@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { ViewAsBanner } from "@/components/shell/view-as-banner";
 import { db } from "@/lib/db";
 import { requireCentralPage, can, leadScope } from "@/server/authz";
 import { AppShell, type QuickAction } from "@/components/shell/app-shell";
@@ -20,6 +21,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
   if (canAssign) actions.push({ label: "Assign leads", href: "/crm/contacts?assigned=no", variant: "outline", icon: "share", badge: unassigned });
   return (
     <Suspense>
+      <ViewAsBanner view={user.impersonation} />
       <AppShell variant="crm" nav={nav} user={{ name: user.name, email: user.email, roleName: user.roleName }} unread={unread} actions={actions} assistant={chrome.assistantAllowed ? assistantConfigFor(user) : null} banner={chrome.banner} workspaceName={chrome.workspaceName}>
         {children}
       </AppShell>

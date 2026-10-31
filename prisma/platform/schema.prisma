@@ -104,6 +104,12 @@ model Tenant {
   provisionedAt        DateTime?
   lastSeenAt           DateTime?
   schemaVersion        Int                @default(0)
+  /// Offboarding: set when deletion is scheduled; the lifecycle job erases the workspace's data once the retention window has passed.
+  deletionRequestedAt  DateTime?
+  deletionScheduledFor DateTime?
+  deletionReason       String?
+  /// Set once the workspace's data has been erased. The tenant row and its invoices are kept for accounting.
+  dataPurgedAt         DateTime?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
@@ -114,6 +120,7 @@ model Tenant {
 
   @@index([status])
   @@index([subStatus])
+  @@index([deletionScheduledFor])
 }
 
 model Plan {
@@ -344,9 +351,31 @@ model PlatformSession {
   ipAddress String?
   userAgent String?
   createdAt DateTime      @default(now())
+  /// Updated at most every few minutes while the session is in use.
+  lastSeenAt DateTime?
   admin     PlatformAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
   @@index([adminId])
+}
+
+/// A time-boxed, read-only "view as" session of a platform operator inside a tenant workspace. `id` is the SHA-256 of the cookie token.
+/// Kept as history (no foreign keys) so records outlive deleted staff or workspaces.
+model PlatformImpersonation {
+  id         String    @id
+  adminId    String
+  adminEmail String
+  tenantId   String
+  tenantSlug String
+  userId     String
+  userName   String
+  userEmail  String
+  reason     String
+  startedAt  DateTime  @default(now())
+  expiresAt  DateTime
+  endedAt    DateTime?
+
+  @@index([adminId])
+  @@index([tenantId, startedAt])
 }
 
 /// Append-only.

@@ -8,8 +8,10 @@ import { Field, FormError, Input } from "@/components/ui/form";
 type Result = { ok: true; message?: string; data?: unknown } | { ok: false; error: string };
 
 /** Two-factor enrolment on the account page. */
-export function TotpSetup({ enabled, begin, confirm, disable }: {
+export function TotpSetup({ enabled, begin, confirm, disable, required = false }: {
   enabled: boolean;
+  /** When two-factor is mandatory the turn-off option is hidden. */
+  required?: boolean;
   begin: () => Promise<Result>;
   confirm: (code: string) => Promise<Result>;
   disable: (password: string) => Promise<Result>;
@@ -29,6 +31,7 @@ export function TotpSetup({ enabled, begin, confirm, disable }: {
         <Button onClick={() => { setCodes(null); router.refresh(); }}>I have saved them</Button>
       </div>
     );
+  if (enabled && required) return <p className="text-sm text-emerald-700">Two-factor sign-in is on and required for your role.</p>;
   if (enabled)
     return (
       <div className="space-y-3">

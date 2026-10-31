@@ -1,6 +1,9 @@
 import Link from "next/link";
-import { Badge, Card, CardHeader, PageHeader } from "@/components/ui/misc";
+import { LifeBuoy } from "lucide-react";
+import { Badge, Card, CardHeader, EmptyState, PageHeader } from "@/components/ui/misc";
 import { TableWrap } from "@/components/ui/table";
+import { FilterTabs, SearchBox } from "@/components/platform/list";
+import { SavedViews } from "@/components/platform/saved-views";
 import { ActionForm } from "@/components/platform/console";
 import { createTicketAction } from "@/server/actions/platform-support";
 import { requireAdminPage } from "@/server/platform/admin-auth";
@@ -13,23 +16,32 @@ export const metadata = { title: "Support tickets" };
 
 const VIEWS = [{ key: "open", label: "Open" }, { key: "mine", label: "Assigned to me" }, { key: "unassigned", label: "Unassigned" }, { key: "overdue", label: "Overdue" }, { key: "done", label: "Resolved & closed" }];
 
-export default async function SupportPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+export default async function SupportPage({ searchParams }: { searchParams: Promise<{ view?: string; q?: string }> }) {
   const me = await requireAdminPage("support.manage");
-  const view = (await searchParams).view ?? "open";
+  const sp = await searchParams;
+  const view = VIEWS.some((v) => v.key === sp.view) ? sp.view! : "open";
+  const q = sp.q?.trim() || undefined;
   const now = new Date();
-  const where =
-    view === "mine" ? { status: { in: TICKET_OPEN }, assigneeId: me.id }
-    : view === "unassigned" ? { status: { in: TICKET_OPEN }, assigneeId: null }
-    : view === "overdue" ? { status: { in: TICKET_OPEN }, firstResponseAt: null, firstResponseDueAt: { lt: now } }
-    : view === "done" ? { status: { in: ["RESOLVED", "CLOSED"] as ("RESOLVED" | "CLOSED")[] } }
+  const num = q && /^#?\d+$/.test(q) ? Number(q.replace("#", "")) : null;
+  const search = q ? { OR: [{ subject: { contains: q, mode: "insensitive" as const } }, { requesterEmail: { contains: q, mode: "insensitive" as const } }, { tenant: { is: { name: { contains: q, mode: "insensitive" as const } } } }, ...(num !== null ? [{ number: num }] : [])] } : {};
+  const whereFor = (v: string) =>
+    v === "mine" ? { status: { in: TICKET_OPEN }, assigneeId: me.id }
+    : v === "unassigned" ? { status: { in: TICKET_OPEN }, assigneeId: null }
+    : v === "overdue" ? { status: { in: TICKET_OPEN }, firstResponseAt: null, firstResponseDueAt: { lt: now } }
+    : v === "done" ? { status: { in: ["RESOLVED", "CLOSED"] as ("RESOLVED" | "CLOSED")[] } }
     : { status: { in: TICKET_OPEN } };
-  const tickets = await platformDb().supportTicket.findMany({ where, orderBy: view === "done" ? { updatedAt: "desc" } : [{ firstResponseDueAt: "asc" }], take: 100, include: { tenant: { select: { name: true, slug: true } } } });
+  const db = platformDb();
+  const [tickets, counts] = await Promise.all([
+    db.supportTicket.findMany({ where: { ...whereFor(view), ...search }, orderBy: view === "done" ? { updatedAt: "desc" } : [{ firstResponseDueAt: "asc" }], take: 100, include: { tenant: { select: { name: true, slug: true } } } }),
+    Promise.all(VIEWS.map((v) => db.supportTicket.count({ where: { ...whereFor(v.key), ...search } }))),
+  ]);
+  const href = (v: string) => `/platform/support?${new URLSearchParams({ view: v, ...(q ? { q } : {}) })}`;
   return (
     <>
       <PageHeader title="Support tickets" description="Customer problems with an owner and a first-reply deadline (urgent 4 h, high 8 h, normal 24 h, low 72 h)." />
-      <nav className="mb-4 flex flex-wrap gap-2 text-sm" aria-label="Ticket views">
-        {VIEWS.map((v) => <Link key={v.key} href={`/platform/support?view=${v.key}`} className={`rounded-full px-3 py-1 ${view === v.key ? "bg-ink-900 text-white" : "bg-white text-ink-700 ring-1 ring-ink-200 hover:bg-ink-50"}`}>{v.label}</Link>)}
-      </nav>
+      <FilterTabs label="Ticket views" active={view} tabs={VIEWS.map((v, i) => ({ key: v.key, label: v.label, count: counts[i], href: href(v.key) }))} />
+      <SearchBox id="ticket-q" label="Search" action="/platform/support" q={q} placeholder="Subject, customer, email or ticket number" keep={{ view }} clearHref={href(view)} />
+      <SavedViews storageKey="support" />
       <TableWrap>
         <thead><tr className="text-left text-xs font-semibold uppercase text-ink-500"><th className="px-4 py-2.5">#</th><th className="px-4 py-2.5">Subject</th><th className="px-4 py-2.5">Customer</th><th className="px-4 py-2.5">Priority</th><th className="px-4 py-2.5">Status</th><th className="px-4 py-2.5">First reply</th><th className="px-4 py-2.5">Owner</th></tr></thead>
         <tbody className="divide-y divide-ink-100 text-sm">
@@ -47,7 +59,7 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
               </tr>
             );
           })}
-          {!tickets.length && <tr><td colSpan={7} className="px-4 py-8 text-center text-ink-500">No tickets here.</td></tr>}
+          {!tickets.length && <tr><td colSpan={7}><EmptyState icon={LifeBuoy} title={q ? "No tickets match this search" : "No tickets here"} description={q ? "Try a different word or check another view." : view === "open" ? "Every customer question has been answered. New tickets appear here." : "Nothing in this view right now."} action={q ? <Link href={href(view)} className="link text-sm">Clear search</Link> : undefined} /></td></tr>}
         </tbody>
       </TableWrap>
       <Card className="mt-6">

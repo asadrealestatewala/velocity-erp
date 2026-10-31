@@ -388,7 +388,8 @@ html[data-pf-theme="dark"] .text-slate-600 { color: var(--pf-muted); }
 .pf main .input:focus { box-shadow: none; border-color: var(--pf-ring); outline: 2px solid var(--pf-ring); outline-offset: 0; }
 .pf main textarea.input { border-radius: 0.5rem; }
 .pf main :is(button, a)[class*="inline-flex"] { border-radius: 0.5rem; box-shadow: none; }
-.pf main [class*="bg-gradient"], html[data-pf] [class*="bg-gradient-action"] { background-image: none; background-color: var(--pf-accent); }
+.pf main [class*="bg-gradient-action"], html[data-pf] [class*="bg-gradient-action"] { background-image: none; background-color: var(--pf-accent); }
+.pf main [class*="bg-gradient-to-"] { background-image: none; background-color: var(--pf-accent-soft); }
 .pf main [class*="bg-gradient-action"] { color: #fff; }
 .pf main :is(button, a)[class*="bg-gradient-action"]:hover { filter: brightness(0.94); }
 .pf main table thead { background: var(--pf-sunken); }

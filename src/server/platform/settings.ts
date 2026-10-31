@@ -16,6 +16,8 @@ export type PlatformSettings = {
   deletionRetentionDays: number;
   maintenance: { on: boolean; message: string };
   support: { email: string; phone: string };
+  /** Addresses or CIDR ranges allowed to use the console. Empty = anywhere. */
+  staffIpAllowlist: string[];
   billing: {
     stripeMode: "test" | "live";
     stripeSecretKeyEnc: string | null;
@@ -38,6 +40,7 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   deletionRetentionDays: 30,
   maintenance: { on: false, message: "We are doing scheduled maintenance. Please try again shortly." },
   support: { email: "", phone: "" },
+  staffIpAllowlist: [],
   billing: { stripeMode: "test", stripeSecretKeyEnc: null, stripeWebhookSecretEnc: null, stripePublishableKey: "", stripePrices: {}, operatorEmail: "" },
 };
 
@@ -69,7 +72,23 @@ export async function maintenanceActive(): Promise<boolean> {
 
 export async function savePlatformSettings(patch: Partial<PlatformSettings>) {
   maintenanceCache = null;
+  allowCache = null;
   const next = { ...(await getPlatformSettings()), ...patch };
   await platformDb().siteSetting.upsert({ where: { key: "platform" }, create: { key: "platform", value: next as object }, update: { value: next as object } });
   return next;
+}
+
+let allowCache: { list: string[]; at: number } | null = null;
+export const clearAllowlistCache = () => { allowCache = null; };
+
+/** Cached for 10 s. Fails open: a settings outage must not lock every staff member out (the break-glass env switch exists for the opposite problem). */
+export async function staffAllowlist(): Promise<string[]> {
+  if (allowCache && Date.now() - allowCache.at < 10_000) return allowCache.list;
+  try {
+    const list = (await getPlatformSettings()).staffIpAllowlist ?? [];
+    allowCache = { list, at: Date.now() };
+    return list;
+  } catch {
+    return [];
+  }
 }

@@ -110,15 +110,18 @@ model Tenant {
   deletionReason       String?
   /// Set once the workspace's data has been erased. The tenant row and its invoices are kept for accounting.
   dataPurgedAt         DateTime?
+  /// Set when the owner unsubscribes from product/marketing emails (account and billing emails still go out).
+  marketingOptOutAt    DateTime?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
-  history  SubscriptionHistory[]
-  invoices Invoice[]
-  payments Payment[]
-  addOns   TenantAddOn[]
-  tickets  SupportTicket[]
+  history       SubscriptionHistory[]
+  invoices      Invoice[]
+  payments      Payment[]
+  addOns        TenantAddOn[]
+  tickets       SupportTicket[]
   flagOverrides TenantFlagOverride[]
+  activity      TenantActivity[]
 
   @@index([status])
   @@index([subStatus])
@@ -318,19 +321,19 @@ model PaymentAccount {
 }
 
 model PlatformAdmin {
-  id            String            @id @default(cuid())
-  email         String            @unique
+  id            String                  @id @default(cuid())
+  email         String                  @unique
   name          String
   passwordHash  String
-  role          PlatformRole      @default(SUPPORT)
-  isActive      Boolean           @default(true)
+  role          PlatformRole            @default(SUPPORT)
+  isActive      Boolean                 @default(true)
   totpSecretEnc String?
-  totpEnabled   Boolean           @default(false)
-  recoveryCodes Json              @default("[]")
-  lastTotpStep  Int               @default(0)
-  tokenVersion  Int               @default(0)
+  totpEnabled   Boolean                 @default(false)
+  recoveryCodes Json                    @default("[]")
+  lastTotpStep  Int                     @default(0)
+  tokenVersion  Int                     @default(0)
   lastLoginAt   DateTime?
-  createdAt     DateTime          @default(now())
+  createdAt     DateTime                @default(now())
   sessions      PlatformSession[]
   resets        PlatformPasswordReset[]
 }
@@ -349,15 +352,15 @@ model PlatformPasswordReset {
 }
 
 model PlatformSession {
-  id        String        @id
-  adminId   String
-  expiresAt DateTime
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime      @default(now())
+  id         String        @id
+  adminId    String
+  expiresAt  DateTime
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime      @default(now())
   /// Updated at most every few minutes while the session is in use.
   lastSeenAt DateTime?
-  admin     PlatformAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  admin      PlatformAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
   @@index([adminId])
 }
@@ -380,6 +383,31 @@ model PlatformImpersonation {
 
   @@index([adminId])
   @@index([tenantId, startedAt])
+}
+
+/// One row per workspace per day on which someone used it: the basis for retention and "came back" in the growth funnel.
+model TenantActivity {
+  tenantId String
+  day      DateTime @db.Date
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@id([tenantId, day])
+  @@index([day])
+}
+
+/// An email to workspace owners in a segment. `body` is paragraphs separated by blank lines.
+model Campaign {
+  id         String    @id @default(cuid())
+  name       String
+  subject    String
+  body       String    @db.Text
+  segment    String
+  createdBy  String?
+  createdAt  DateTime  @default(now())
+  sentAt     DateTime?
+  recipients Int       @default(0)
+  delivered  Int       @default(0)
+  failed     Int       @default(0)
 }
 
 /// Append-only.
@@ -416,12 +444,14 @@ model LifecycleNotice {
 }
 
 model DemoRequest {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
   email     String
   company   String?
   message   String?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  handledAt DateTime?
+  handledBy String?
 }
 
 model SiteSetting {
@@ -497,29 +527,29 @@ model MailTemplate {
 
 /// Every email the platform sent or received (the console's inbox and sent log).
 model MailMessage {
-  id             String           @id @default(cuid())
-  direction      MailDirection
-  mailboxKey     String
-  category       String?
-  templateKey    String?
-  fromAddress    String
-  fromName       String?
-  toAddress      String
-  subject        String
-  bodyText       String           @default("") @db.Text
-  bodyHtml       String?          @db.Text
-  providerId     String?
+  id              String           @id @default(cuid())
+  direction       MailDirection
+  mailboxKey      String
+  category        String?
+  templateKey     String?
+  fromAddress     String
+  fromName        String?
+  toAddress       String
+  subject         String
+  bodyText        String           @default("") @db.Text
+  bodyHtml        String?          @db.Text
+  providerId      String?
   messageIdHeader String?
-  inReplyTo      String?
-  threadKey      String
-  tenantId       String?
-  delivery       MailDelivery?
-  deliveryDetail String?
-  inboxStatus    MailInboxStatus?
-  readAt         DateTime?
-  sentByEmail    String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  inReplyTo       String?
+  threadKey       String
+  tenantId        String?
+  delivery        MailDelivery?
+  deliveryDetail  String?
+  inboxStatus     MailInboxStatus?
+  readAt          DateTime?
+  sentByEmail     String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@unique([direction, providerId])
   @@index([direction, mailboxKey, createdAt])
@@ -683,4 +713,18 @@ model TenantFlagOverride {
 
   @@unique([tenantId, flagKey])
   @@index([flagKey])
+}
+
+/// A public notice on /status: something customers should know is broken or degraded. Written by staff; resolved when fixed.
+model StatusIncident {
+  id         String    @id @default(cuid())
+  title      String
+  body       String
+  /// minor | major
+  impact     String    @default("minor")
+  startedAt  DateTime  @default(now())
+  resolvedAt DateTime?
+  createdBy  String?
+
+  @@index([startedAt])
 }

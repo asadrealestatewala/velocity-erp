@@ -61,6 +61,7 @@ Migrations must be additive (new tables/columns, nullable or defaulted) so a hal
 * Feature flags: *Feature flags* (OWNER, SUPPORT) switches a beta or optional feature on for everyone, for listed plans, for a stable percentage of workspaces, or per workspace (a reason-stamped exception on the workspace page, which always wins). Code checks a flag with `await isFeatureOn("key")` or `assertFeature("key")` from `server/platform/flags`; unknown or archived flags are off. Changes apply within about 15 seconds.
 * Tokens (email confirmation, invitation, password reset) are stored hashed, expire, and are single use. Password reset answers are identical whether or not the email exists.
 * Headers: `nosniff`, frame protection, strict referrer, HSTS in production; console and billing endpoints are `no-store` and `noindex`.
+* **Network allowlist** (Settings → Where staff can sign in from): when set, sign-in and every console request from other addresses is refused. The list cannot be saved without your own current address. Break-glass: set `PLATFORM_IP_ALLOWLIST_OFF=1`, sign in, fix the list, remove the variable. The address is read from `x-forwarded-for`, which is only trustworthy behind your host's proxy (Vercel sets it).
 * **Not done**: a Content-Security-Policy (needs testing against every page), per-company encryption keys, SSO/SAML.
 
 ## 7. Backups and restore
@@ -97,6 +98,20 @@ Uploaded files are not part of the dump: they live in the storage bucket (or `LO
 **Maintenance.** *System → Maintenance mode* makes every company read-only (sign-in still works). Turn it off when done.
 
 **Restore one company.** Restore its `.dump` into a scratch schema first, check it, then restore over the live schema in a quiet period.
+
+## 8b. Growth and email campaigns
+
+* **Growth** (`/platform/growth`, anyone with reports access): sign-up funnel (home → sign-up page → workspace → confirmed → came back → paid), weekly retention by sign-up cohort, and the demo-request inbox with *Mark handled*. Page views are counted for the public pages only and skip Do Not Track visitors, so the first two steps are indicative, not exact.
+* **Usage tracking**: a workspace counts as active on a day when someone signs in to use it (one row per workspace per day). Retention is therefore empty before this release and fills in from deploy day onwards.
+* **Campaigns** (`/platform/growth/campaigns`, owner only): save a draft, check the audience count, then send. Audiences: paying, on trial, trial ending within 7 days, payment overdue, inactive 30 days. Each email has a signed unsubscribe link; the link opens a confirmation page (so mail scanners cannot unsubscribe anyone). Unsubscribed workspaces are skipped from then on. Account, security and billing emails are never affected. Sending is claimed atomically, so a double click cannot send twice. Sends happen inside the request, so keep audiences to a few hundred; larger lists need a queue.
+
+## 8c. Public status page
+
+`/status` is public and needs no sign-in. It shows what the platform can verify itself (database reachable, maintenance mode) plus incidents staff post under *Status page* in the console (owner and support). It does not check Stripe, email delivery or any third party, and it cannot report on an outage that takes the whole site down, so host it elsewhere if you need that.
+
+## 8d. Workspace list: CSV and bulk actions
+
+*Workspaces* has **Download CSV** (owner only, follows the current search and status filter, up to 5,000 rows, audited because it contains owner emails) and **Extend trials for ticked** (owner and support). Only workspaces on a trial have a tick box; at most 50 at once, a written reason is required, each owner is emailed, and every workspace gets its own history and audit entry.
 
 ## 9. Known limits
 

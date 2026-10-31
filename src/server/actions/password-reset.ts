@@ -8,7 +8,8 @@ import { clientIp } from "@/server/request";
 import { hashIdentifier } from "@/server/rate-limit";
 import { newToken, sha256 } from "@/server/platform/crypto";
 import { platformRateLimit } from "@/server/platform/guard";
-import { renderMail, sendSystemMail, workspaceUrl } from "@/server/platform/mail";
+import { workspaceUrl } from "@/server/platform/mail";
+import { sendTemplate } from "@/server/platform/mail-send";
 import { runInTenant } from "@/server/platform/runtime";
 import { DEFAULT_SLUG, getTenant, isValidSlug } from "@/server/platform/tenants";
 import { passwordSchema } from "@/lib/password-policy";
@@ -37,13 +38,7 @@ export async function requestPasswordResetAction(_: ForgotState, formData: FormD
       const token = newToken();
       await db.passwordResetToken.create({ data: { userId: user.id, tokenHash: sha256(token), expiresAt: new Date(Date.now() + RESET_HOURS * 3_600_000) } });
       const url = workspaceUrl(slug, `/reset-password/${token}`);
-      const mail = renderMail({
-        heading: "Reset your password",
-        paragraphs: [`Someone asked to reset the password for ${email} in the ${tenant.name} workspace.`, `The link works once and expires in ${RESET_HOURS} hours. Using it signs you out everywhere.`],
-        cta: { label: "Choose a new password", url },
-        footer: "If you didn't ask for this, you can ignore this email — your password stays the same.",
-      });
-      await sendSystemMail({ to: email, subject: "Reset your password", text: mail.text, html: mail.html });
+      await sendTemplate("password-reset", email, { email, workspaceName: tenant.name, resetUrl: url, expiryHours: RESET_HOURS }, { tenantId: tenant.id });
       await audit({ userId: user.id, action: "auth.password_reset_requested", entityType: "User", entityId: user.id });
     }).catch((e) => console.error("[reset] failed", (e as Error).message));
   }

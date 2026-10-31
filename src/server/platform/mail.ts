@@ -1,4 +1,8 @@
 import "server-only";
+import { platformDb } from "./client";
+import { loadMailConfig, senderFor } from "./mail-config";
+import { DEFAULT_BRAND, layoutMail, type MailContent } from "./mail-layout";
+import type { MailCategory, MailTemplateKey } from "./mail-templates";
 import { DEFAULT_SLUG } from "./tenants";
 
 /** Public base URL of the platform (no trailing slash). */
@@ -9,43 +13,86 @@ export const workspaceUrl = (slug: string, path = "/") => `${appBaseUrl()}${slug
 
 export const mailConfigured = () => Boolean(process.env.RESEND_API_KEY || process.env.SMTP_HOST);
 
-export type MailResult = { delivered: boolean; via: "resend" | "smtp" | "log" };
+export type MailResult = { delivered: boolean; via: "resend" | "smtp" | "log"; providerId?: string | null; messageId?: string | null };
 
-const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+/** One branded, accessible layout for every system email (plain-text alternative always included). Branding comes from Mail → Branding in the console. */
+export async function renderMail(opts: MailContent) {
+  let brand = DEFAULT_BRAND;
+  try {
+    brand = (await loadMailConfig()).brand;
+  } catch (e) {
+    console.error("[mail] using default branding:", (e as Error).message);
+  }
+  return layoutMail(brand, appBaseUrl(), opts);
+}
 
-/** One branded, accessible layout for every system email (plain-text alternative always included). */
-export function renderMail(opts: { heading: string; paragraphs: string[]; cta?: { label: string; url: string }; footer?: string }) {
-  const brand = process.env.PLATFORM_NAME || "Velocity";
-  const html = `<!doctype html><html><body style="margin:0;background:#f6f4f1;font-family:Inter,Segoe UI,Arial,sans-serif;color:#1a1411">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
-<table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e8e1da">
-<tr><td style="padding:18px 28px;background:#150f0d;color:#fff;font-weight:700;font-size:18px"><img src="${esc(appBaseUrl())}/brand/velocity-logo-white.png" alt="${esc(brand)}" height="34" style="display:block;height:34px;width:auto;border:0" /></td></tr>
-<tr><td style="padding:28px">
-<h1 style="margin:0 0 14px;font-size:20px">${esc(opts.heading)}</h1>
-${opts.paragraphs.map((p) => `<p style="margin:0 0 12px;line-height:1.55;font-size:15px">${esc(p)}</p>`).join("")}
-${opts.cta ? `<p style="margin:22px 0"><a href="${esc(opts.cta.url)}" style="background:#d6307a;color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:600;display:inline-block">${esc(opts.cta.label)}</a></p><p style="margin:0 0 8px;font-size:12px;color:#6f645c">If the button does not work, paste this link into your browser:<br>${esc(opts.cta.url)}</p>` : ""}
-${opts.footer ? `<p style="margin:18px 0 0;font-size:12px;color:#6f645c">${esc(opts.footer)}</p>` : ""}
-</td></tr></table></td></tr></table></body></html>`;
-  const text = [opts.heading, "", ...opts.paragraphs, ...(opts.cta ? ["", `${opts.cta.label}: ${opts.cta.url}`] : []), ...(opts.footer ? ["", opts.footer] : [])].join("\n");
-  return { html, text };
+export type OutgoingMail = {
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+  /** Picks the sender identity (billing@, support@, no-reply@) from the routing set in the console. Default "system". */
+  category?: MailCategory;
+  /** Force one mailbox (used for replies written from the inbox). */
+  mailbox?: string;
+  templateKey?: MailTemplateKey | string;
+  tenantId?: string | null;
+  sentByEmail?: string | null;
+  /** RFC 5322 threading headers for replies. */
+  inReplyTo?: string | null;
+  references?: string | null;
+  threadKey?: string;
+  /** Contains a one-time link or code: the sent log keeps the subject and status but not the body. Always true for the "auth" category. */
+  sensitive?: boolean;
+};
+
+const HIDDEN_BODY = "[Content not stored: this message contains a one-time link.]";
+
+const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
+
+/** Writes the sent-mail log row. Never throws: logging a message must not break sending it. */
+async function logOutgoing(m: OutgoingMail, sender: { mailboxKey: string; address: string; from: string }, r: { delivery: "SENT" | "NOT_SENT" | "FAILED"; detail?: string; providerId?: string | null }): Promise<string | null> {
+  const hide = Boolean(m.sensitive) || m.category === "auth";
+  try {
+    const name = sender.from.match(/^(.*)<[^>]+>$/)?.[1]?.trim() || null;
+    const row = await platformDb().mailMessage.create({
+      data: {
+        direction: "OUTBOUND", mailboxKey: sender.mailboxKey, category: m.category ?? "system", templateKey: m.templateKey ?? null,
+        fromAddress: sender.address, fromName: name, toAddress: m.to.trim().toLowerCase(), subject: clip(m.subject, 300), bodyText: hide ? HIDDEN_BODY : clip(m.text, 50_000), bodyHtml: !hide && m.html ? clip(m.html, 200_000) : null,
+        providerId: r.providerId ?? null, inReplyTo: m.inReplyTo ?? null, threadKey: m.threadKey ?? `out:${r.providerId ?? Math.random().toString(36).slice(2)}`,
+        tenantId: m.tenantId ?? null, delivery: r.delivery, deliveryDetail: r.detail ?? null, sentByEmail: m.sentByEmail ?? null,
+      },
+    });
+    return row.id;
+  } catch (e) {
+    console.error("[mail] could not log message:", (e as Error).message);
+    return null;
+  }
 }
 
 /**
- * Sends a system email through Resend (RESEND_API_KEY) or SMTP (SMTP_HOST). With neither configured the message is
- * written to the server log and `delivered:false` is returned, so callers can show the link to an admin instead of
- * pretending it was sent.
+ * Sends a system email through Resend (RESEND_API_KEY) or SMTP (SMTP_HOST) from the identity chosen for its category,
+ * and records it in the console's sent log. With neither provider configured the message is written to the server log
+ * and `delivered:false` is returned, so callers can show the link to an admin instead of pretending it was sent.
  */
-export async function sendSystemMail(msg: { to: string; subject: string; text: string; html?: string }): Promise<MailResult> {
-  const from = process.env.MAIL_FROM || process.env.EMAIL_FROM || "Velocity ERP <no-reply@example.com>";
+export async function sendSystemMail(msg: OutgoingMail): Promise<MailResult> {
+  const sender = await senderFor(msg.category ?? "system", msg.mailbox);
+  const headers: Record<string, string> = {};
+  if (msg.inReplyTo) headers["In-Reply-To"] = msg.inReplyTo;
+  if (msg.references) headers["References"] = msg.references;
+  let failure: string | undefined;
   try {
     if (process.env.RESEND_API_KEY) {
       const r = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from, to: [msg.to], subject: msg.subject, text: msg.text, html: msg.html }),
+        body: JSON.stringify({ from: sender.from, to: [msg.to], subject: msg.subject, text: msg.text, html: msg.html, ...(sender.replyTo ? { reply_to: sender.replyTo } : {}), ...(Object.keys(headers).length ? { headers } : {}) }),
       });
-      if (!r.ok) throw new Error(`Resend ${r.status}`);
-      return { delivered: true, via: "resend" };
+      const body = (await r.json().catch(() => ({}))) as { id?: string; message?: string };
+      if (!r.ok) throw new Error(`Resend ${r.status}${body.message ? `: ${clip(String(body.message), 160)}` : ""}`);
+      const providerId = body.id ?? null;
+      const messageId = await logOutgoing(msg, sender, { delivery: "SENT", providerId });
+      return { delivered: true, via: "resend", providerId, messageId };
     }
     if (process.env.SMTP_HOST) {
       const nodemailer = await import("nodemailer");
@@ -55,12 +102,15 @@ export async function sendSystemMail(msg: { to: string; subject: string; text: s
         secure: process.env.SMTP_SECURE === "true",
         auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD } : undefined,
       });
-      await transport.sendMail({ from, to: msg.to, subject: msg.subject, text: msg.text, html: msg.html });
-      return { delivered: true, via: "smtp" };
+      const info = await transport.sendMail({ from: sender.from, to: msg.to, subject: msg.subject, text: msg.text, html: msg.html, replyTo: sender.replyTo ?? undefined, headers });
+      const messageId = await logOutgoing(msg, sender, { delivery: "SENT", providerId: info?.messageId ? String(info.messageId) : null });
+      return { delivered: true, via: "smtp", messageId };
     }
   } catch (e) {
-    console.error("[mail] delivery failed:", (e as Error).message);
+    failure = (e as Error).message;
+    console.error("[mail] delivery failed:", failure);
   }
-  if (process.env.NODE_ENV !== "test") console.log(`[mail:not-sent] to=${msg.to} subject="${msg.subject}"\n${msg.text}`);
-  return { delivered: false, via: "log" };
+  if (!failure && process.env.NODE_ENV !== "test") console.log(`[mail:not-sent] to=${msg.to} subject="${msg.subject}"\n${msg.text}`);
+  const messageId = await logOutgoing(msg, sender, failure ? { delivery: "FAILED", detail: clip(failure, 300) } : { delivery: "NOT_SENT", detail: "No mail provider is configured (set RESEND_API_KEY)." });
+  return { delivered: false, via: "log", messageId };
 }

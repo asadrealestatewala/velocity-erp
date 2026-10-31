@@ -9,7 +9,8 @@ import { audit } from "@/server/audit";
 import { createSession, loadUser } from "@/server/auth/session";
 import { newToken, sha256 } from "@/server/platform/crypto";
 import { assertWithinPlan } from "@/server/platform/guard";
-import { renderMail, sendSystemMail, workspaceUrl } from "@/server/platform/mail";
+import { workspaceUrl } from "@/server/platform/mail";
+import { sendTemplate } from "@/server/platform/mail-send";
 import { currentTenant } from "@/server/platform/runtime";
 import { passwordSchema } from "@/lib/password-policy";
 import { homePathFor } from "@/lib/home";
@@ -44,13 +45,7 @@ export async function inviteUserAction(input: z.input<typeof inviteSchema>) {
       data: { email: v.email, name: v.name || null, roleId: role.id, tokenHash: sha256(token), expiresAt: new Date(Date.now() + INVITE_DAYS * 86_400_000), invitedById: me.id },
     });
     const url = workspaceUrl(ws.slug, `/invite/${token}`);
-    const mail = renderMail({
-      heading: `${me.name} invited you to ${ws.name}`,
-      paragraphs: [`You've been invited to join the ${ws.name} workspace as ${role.name}.`, `Choose your password to get started. The link is valid for ${INVITE_DAYS} days.`],
-      cta: { label: "Accept the invitation", url },
-      footer: `Workspace code: ${ws.slug}`,
-    });
-    const sent = await sendSystemMail({ to: v.email, subject: `You're invited to ${ws.name}`, text: mail.text, html: mail.html });
+    const sent = await sendTemplate("invite", v.email, { inviterName: me.name, workspaceName: ws.name, workspaceCode: ws.slug, roleName: role.name, inviteUrl: url, expiryDays: INVITE_DAYS }, { tenantId: ws.id, sentByEmail: me.email });
     await audit({ userId: me.id, action: "user.invited", entityType: "UserInvitation", entityId: inv.id, changes: { email: v.email, role: role.key, emailed: sent.delivered } });
     return {
       ok: true as const,

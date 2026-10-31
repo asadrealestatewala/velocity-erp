@@ -3,6 +3,7 @@ import type { Tenant } from "@yadea/platform-client";
 import { platformDb } from "./client";
 import { addDays, changeSubscription } from "./subscriptions";
 import { renderMail, sendSystemMail, workspaceUrl } from "./mail";
+import { sendTemplate } from "./mail-send";
 import { getPlatformSettings } from "./settings";
 
 export type LifecycleSummary = { checked: number; trialsExpired: number; pastDue: number; expired: number; remindersSent: number };
@@ -18,8 +19,8 @@ async function once(tenantId: string, key: string): Promise<boolean> {
 
 async function email(t: Tenant, subject: string, heading: string, lines: string[], cta = "Open Plan & billing") {
   if (!t.ownerEmail) return;
-  const mail = renderMail({ heading, paragraphs: lines, cta: { label: cta, url: workspaceUrl(t.slug, "/crm/billing") }, footer: `Workspace: ${t.name} (${t.slug})` });
-  await sendSystemMail({ to: t.ownerEmail, subject, text: mail.text, html: mail.html });
+  const mail = await renderMail({ heading, paragraphs: lines, cta: { label: cta, url: workspaceUrl(t.slug, "/crm/billing") }, footer: `Workspace: ${t.name} (${t.slug})` });
+  await sendSystemMail({ to: t.ownerEmail, subject, category: "billing", tenantId: t.id, text: mail.text, html: mail.html });
 }
 
 /**
@@ -50,7 +51,8 @@ export async function runLifecycle(now = new Date()): Promise<LifecycleSummary> 
       }
       const daysLeft = Math.ceil((t.trialEndsAt.getTime() - now.getTime()) / DAY);
       if (settings.reminderDays.includes(daysLeft) && (await once(t.id, `trial:${daysLeft}:${ymd(t.trialEndsAt)}`))) {
-        await email(t, daysLeft <= 1 ? "Your free trial ends soon" : `Your free trial ends in ${daysLeft} days`, "Your free trial is ending", [`Your trial of ${t.name} ends on ${ymd(t.trialEndsAt)}.`, "Choose a plan before then to keep working without interruption."], "Choose a plan");
+        const when = daysLeft <= 0 ? "today" : daysLeft === 1 ? "tomorrow" : `in ${daysLeft} days`;
+        if (t.ownerEmail) await sendTemplate("trial-ending", t.ownerEmail, { name: (t.ownerName ?? "there").split(" ")[0], workspaceName: t.name, when, trialEndsAt: ymd(t.trialEndsAt), billingUrl: workspaceUrl(t.slug, "/crm/billing") }, { tenantId: t.id });
         out.remindersSent++;
       }
       continue;

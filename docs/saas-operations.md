@@ -62,11 +62,23 @@ Migrations must be additive (new tables/columns, nullable or defaulted) so a hal
 ## 7. Backups and restore
 
 ```
-npm run platform:backup            # needs pg_dump on PATH; writes backups/<timestamp>/<schema>.dump
-pg_restore --clean --if-exists --no-owner -d "<connection string>" backups/<ts>/t_acme.dump
+npm run platform:backup            # needs pg_dump and pg_restore on PATH; writes backups/<timestamp>/<schema>.dump
 ```
 
-Also enable your database provider's point-in-time backups (Supabase: Pro plan). Test a restore into a scratch database before relying on any of this. `platform:backup` has **not been run in this environment** (no `pg_dump` installed here).
+Schedule it at least daily. Each dump is checked with `pg_restore --list`, and the run is recorded: **System → Backups** shows the last good backup (red after 36 h or when none exists), workspaces missing from it, and the recent runs. If you rely on your provider's snapshots or an off-site copy, use *Record a backup taken elsewhere* so the page stays truthful. Also enable your database provider's point-in-time backups (Supabase: Pro plan).
+
+**Restore one workspace** (do this on a scratch database first, and rehearse it before you need it):
+
+1. Pick the newest good `backups/<ts>/<schema>.dump` (`t_<code>.dump` for a workspace, `platform.dump` for the control plane).
+2. Put the workspace in *Maintenance mode* (System) so nobody writes during the restore.
+3. Restore into a scratch schema and check row counts: `pg_restore --no-owner --schema=<schema> -d "<scratch connection string>" <file>`.
+4. Restore over the live schema in a quiet period: `pg_restore --clean --if-exists --no-owner -d "<connection string>" <file>`.
+5. Run *Apply pending migrations to all workspaces* (System) in case the dump is older than the code.
+6. Turn maintenance mode off and open the workspace to confirm.
+
+Uploaded files are not part of the dump: they live in the storage bucket (or `LOCAL_STORAGE_DIR`); enable versioning or back that up separately.
+
+`platform:backup` has **not been run in this environment** against production data; test a restore before relying on it.
 
 ## 8. Runbooks
 

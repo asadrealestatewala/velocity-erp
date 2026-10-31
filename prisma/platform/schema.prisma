@@ -549,3 +549,19 @@ model ErrorLog {
   @@index([at])
   @@index([source, at])
 }
+
+/// One backup of the platform and its workspaces. `kind` is SCRIPT (npm run platform:backup) or MANUAL (an operator recorded a provider/off-site backup).
+model BackupRun {
+  id         String    @id @default(cuid())
+  kind       String
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  ok         Boolean   @default(false)
+  location   String?
+  note       String?
+  /// SCRIPT runs: [{ schema, label, ok, bytes, verified, error? }]
+  items      Json      @default("[]")
+  recordedBy String?
+
+  @@index([startedAt])
+}

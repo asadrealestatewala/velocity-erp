@@ -16,6 +16,7 @@ import { decryptSecret, encryptSecret, sha256 } from "@/server/platform/crypto";
 import { platformRateLimit } from "@/server/platform/guard";
 import { runLifecycle } from "@/server/platform/lifecycle";
 import { deletionBlocker } from "@/server/platform/purge";
+import { recordManualBackup } from "@/server/platform/backups";
 import { sendPlanEmail } from "@/server/platform/plan-mail";
 import { migrateAllTenants } from "@/server/platform/migrate-all";
 import { clearEntitlementCache } from "@/server/platform/plans";
@@ -523,6 +524,17 @@ export async function runLifecycleAction() {
     const r = await runLifecycle();
     await platformAudit({ admin: a, action: "system.lifecycle_run", detail: r });
     return { ok: true as const, message: `Checked ${r.checked} workspaces · ${r.trialsExpired} trials ended · ${r.pastDue} past due · ${r.expired} expired · ${r.remindersSent} emails.` };
+  });
+}
+
+/** For backups taken outside the script (provider snapshot, off-site copy), so the System page reflects reality. */
+export async function recordBackupAction(input: { note: string }) {
+  return runAction(async () => {
+    const a = await requireAdminAction("system.manage");
+    const note = z.string().trim().min(3, "Say what was backed up and where").max(300).parse(input.note);
+    await recordManualBackup(note, a.email);
+    await platformAudit({ admin: a, action: "system.backup_recorded", detail: { note } });
+    return { ok: true as const, message: "Backup recorded." };
   });
 }
 

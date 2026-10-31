@@ -5,6 +5,8 @@ import { ActionForm, ReasonButton, RunButton } from "@/components/platform/conso
 import { db as tenantDb } from "@/lib/db";
 import { startViewAsAction } from "@/server/actions/impersonation";
 import { cancelDeletionAction, scheduleDeletionAction } from "@/server/actions/platform";
+import { setFlagOverrideAction } from "@/server/actions/platform";
+import { flagsFor } from "@/server/platform/flags";
 import { changePlanAction, grantAddOnAction, recordPaymentAction, saveNotesAction, setWorkspaceStatusAction, trialAction } from "@/server/actions/platform";
 import { adminCan, requireAdminPage } from "@/server/platform/admin-auth";
 import { deletionBlocker } from "@/server/platform/purge";
@@ -34,6 +36,7 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
     runInTenant(t.slug, () => currentUsage()).catch(() => null),
   ]);
   const can = (p: Parameters<typeof adminCan>[1]) => adminCan(admin.role, p);
+  const [flagList, flagState, overrides] = can("flags.manage") ? await Promise.all([db.featureFlag.findMany({ where: { isArchived: false }, orderBy: { key: "asc" } }), flagsFor(t), db.tenantFlagOverride.findMany({ where: { tenantId: t.id } })]) : [[], {} as Awaited<ReturnType<typeof flagsFor>>, []];
   const planOptions = plans.map((p) => ({ value: p.key, label: p.name }));
   const interval = [{ value: "MONTH", label: "Monthly" }, { value: "YEAR", label: "Yearly" }];
   const fmt = (n: number | null) => (n === null ? "unlimited" : n.toLocaleString("en-US"));
@@ -235,6 +238,28 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
           </ul>
         </Card>
       </div>
+
+      {can("flags.manage") && flagList.length > 0 && (
+        <Card className="mt-4">
+          <CardHeader title="Feature flags" description="Each flag shows what this workspace gets by default. An exception forces it on or off for this workspace only." />
+          <ul className="divide-y divide-ink-100 text-sm">
+            {flagList.map((f) => {
+              const ov = overrides.find((o) => o.flagKey === f.key);
+              const d = flagState[f.key];
+              return (
+                <li key={f.key} className="flex flex-wrap items-center justify-between gap-3 px-5 py-2.5">
+                  <span><code>{f.key}</code> · {f.name} <Badge tone={d?.on ? "green" : "gray"}>{d?.on ? "on" : "off"}{d ? ` (${d.why})` : ""}</Badge>{ov ? <span className="ml-2 text-xs text-ink-500">exception by {ov.setBy ?? "?"}: {ov.reason}</span> : null}</span>
+                  <span className="flex gap-2">
+                    {(!ov || !ov.enabled) && <ReasonButton label="Force on" title={`Turn ${f.key} on for ${t.name}`} action={setFlagOverrideAction.bind(null, t.id)} fixed={{ flagKey: f.key, enabled: true }} />}
+                    {(!ov || ov.enabled) && <ReasonButton label="Force off" title={`Turn ${f.key} off for ${t.name}`} variant="ghost" action={setFlagOverrideAction.bind(null, t.id)} fixed={{ flagKey: f.key, enabled: false }} />}
+                    {ov && <RunButton label="Use default" variant="ghost" action={setFlagOverrideAction.bind(null, t.id, { flagKey: f.key, enabled: null })} />}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
 
       {can("tenants.manage") && (
         <Card className="mt-4">

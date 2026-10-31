@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  BarChart3, Bell, BookOpen, Bike, Boxes, Building2, CheckSquare, ChevronDown, ClipboardList, FileCheck2, FileText, Folder, Footprints, History, Inbox, KanbanSquare,
+  BarChart3, Bell, BookOpen, Bike, Boxes, Building2, CheckSquare, ChevronDown, ClipboardList, FileCheck2, FileText, Folder, Footprints, History, Inbox, KanbanSquare, LifeBuoy,
   LayoutDashboard, List, LogOut, Menu as MenuIcon, Package, PanelLeftClose, PanelLeftOpen, Plus, Receipt, Search, Settings, Share2, Shield, Sparkles, Store, Trophy, Truck, UserCheck, Users, UsersRound, Wallet, X, Zap, KeyRound, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ import { Avatar } from "@/components/ui/misc";
 import { Menu, MenuItem, MenuLabel, MenuLink, MenuSeparator } from "@/components/ui/menu";
 import { buttonClass } from "@/components/ui/button";
 import type { NavItem } from "./nav";
+import { AnnouncementBar, type AnnouncementItem } from "./announcement-bar";
 import { AssistantWidget, type AssistantConfig } from "@/components/assistant/assistant-widget";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -20,7 +21,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   store: Store, "file-check": FileCheck2, zap: Zap, "check-square": CheckSquare, "bar-chart": BarChart3, bell: Bell, shield: Shield,
   settings: Settings, history: History, trophy: Trophy, "user-check": UserCheck, list: List, building: Building2, footprints: Footprints,
   "users-round": UsersRound, boxes: Boxes, "clipboard-list": ClipboardList, truck: Truck, wallet: Wallet, receipt: Receipt, folder: Folder, package: Package,
-  "book-open": BookOpen,
+  "book-open": BookOpen, "life-buoy": LifeBuoy,
 };
 const ACTION_ICONS = { plus: Plus, share: Share2 } as const;
 
@@ -35,6 +36,7 @@ export function AppShell({
   actions = [],
   assistant = null,
   banner = null,
+  announcements = [],
   workspaceName = null,
   children,
 }: {
@@ -45,6 +47,7 @@ export function AppShell({
   subtitle?: string;
   actions?: QuickAction[];
   assistant?: AssistantConfig | null;
+  announcements?: AnnouncementItem[];
   banner?: { tone: "info" | "warn" | "danger"; text: string; href?: string } | null;
   workspaceName?: string | null;
   children: React.ReactNode;
@@ -344,6 +347,7 @@ export function AppShell({
           {banner.href ? <Link href={banner.href} className="font-semibold underline underline-offset-2">Plan &amp; billing →</Link> : <span className="opacity-80">Ask your administrator to review the subscription.</span>}
         </div>
       )}
+      <AnnouncementBar items={announcements} />
       <main id="main" className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
         <div key={pathname} className="page-enter">{children}</div>
       </main>

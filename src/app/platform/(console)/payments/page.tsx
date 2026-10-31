@@ -3,7 +3,7 @@ import { TableWrap } from "@/components/ui/table";
 import { ActionForm, ReasonButton, RunButton } from "@/components/platform/console";
 import { confirmPaymentAction, refundAction, rejectPaymentAction } from "@/server/actions/platform";
 import { adminCan, requireAdminPage } from "@/server/platform/admin-auth";
-import { invoiceNumber, METHOD_LABEL } from "@/server/platform/billing";
+import { creditNoteNumber, invoiceNumber, METHOD_LABEL } from "@/server/platform/billing";
 import { platformDb } from "@/server/platform/client";
 import { fmtDateTime, fmtMoney } from "@/lib/utils";
 
@@ -56,7 +56,7 @@ export default async function Payments() {
                 <td className="px-4 py-2.5 capitalize">{i.planKey} · {i.interval === "YEAR" ? "yearly" : "monthly"}</td>
                 <td className="px-4 py-2.5">{fmtMoney(i.amount, i.currency)}</td>
                 <td className="px-4 py-2.5">{METHOD_LABEL[i.method]}{i.reference ? ` · ${i.reference}` : ""}</td>
-                <td className="px-4 py-2.5">{refunded ? <Badge tone="amber">{fmtMoney(refunded, i.currency)}</Badge> : "—"}</td>
+                <td className="px-4 py-2.5">{refunded ? <><Badge tone="amber">{fmtMoney(refunded, i.currency)}</Badge> {i.refunds.map((r) => <a key={r.id} className="link ml-1 text-xs text-brand-600" href={`/api/platform/refunds/${r.id}/pdf`} target="_blank" rel="noreferrer">{creditNoteNumber(r.number)}</a>)}</> : "—"}</td>
                 <td className="px-4 py-2.5 text-right">
                   {canRefund && refunded < i.amount && (
                     <ReasonButton

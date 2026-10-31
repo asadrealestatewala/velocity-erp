@@ -4,6 +4,7 @@ import { env } from "@/lib/env";
 import { runScheduledJobs } from "@/server/services/jobs";
 import { forEachTenant } from "@/server/platform/runtime";
 import { runLifecycle } from "@/server/platform/lifecycle";
+import { logError, recordJob } from "@/server/platform/ops-log";
 
 /** Constant-time comparison; the secret must be at least 16 characters. */
 function authorised(given: string) {
@@ -13,7 +14,11 @@ function authorised(given: string) {
 
 async function run() {
   try {
-    const perWorkspace = await forEachTenant(() => runScheduledJobs());
+    const perWorkspace = await recordJob("scheduled-jobs", async () => {
+      const rows = await forEachTenant(() => runScheduledJobs());
+      for (const r of rows) if (!r.ok) await logError("job.scheduled-jobs", new Error(r.error ?? "failed"), { detail: { workspace: r.slug } });
+      return Object.assign(rows, { ok: rows.every((r) => r.ok), workspaces: rows.length, failed: rows.filter((r) => !r.ok).map((r) => r.slug) });
+    });
     // Back-compat: the original response shape is the default workspace's result.
     const first = perWorkspace.find((r) => r.ok)?.result ?? {};
     const lifecycle = await runLifecycle().catch((e) => { console.error("[lifecycle] failed", e); return null; });

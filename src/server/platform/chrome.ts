@@ -1,6 +1,7 @@
 import "server-only";
 import { billingState } from "./billing-state";
 import { entitlementsCached } from "./plans";
+import { announcementsFor } from "./announcements";
 import { currentTenant } from "./runtime";
 
 export type WorkspaceBanner = { tone: "info" | "warn" | "danger"; text: string; href?: string };
@@ -11,5 +12,6 @@ export async function workspaceChrome(canManageBilling: boolean) {
   const state = billingState(t);
   const ent = t.isLegacy ? null : await entitlementsCached(t);
   const banner: WorkspaceBanner | null = state.banner ? { ...state.banner, href: canManageBilling ? "/crm/billing" : undefined } : null;
-  return { banner, workspaceName: t.isLegacy ? null : t.name, assistantAllowed: !ent || ent.assistant, locked: state.locked };
+  const announcements = await announcementsFor(t);
+  return { banner, announcements, workspaceName: t.isLegacy ? null : t.name, assistantAllowed: !ent || ent.assistant, locked: state.locked };
 }

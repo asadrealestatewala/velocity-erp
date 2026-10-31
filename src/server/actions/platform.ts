@@ -16,6 +16,9 @@ import { decryptSecret, encryptSecret, sha256 } from "@/server/platform/crypto";
 import { platformRateLimit } from "@/server/platform/guard";
 import { runLifecycle } from "@/server/platform/lifecycle";
 import { deletionBlocker } from "@/server/platform/purge";
+import { recordManualBackup } from "@/server/platform/backups";
+import { clearAnnouncementCache } from "@/server/platform/announcements";
+import { clearFlagCache, FLAG_KEY_RE } from "@/server/platform/flags";
 import { sendPlanEmail } from "@/server/platform/plan-mail";
 import { migrateAllTenants } from "@/server/platform/migrate-all";
 import { clearEntitlementCache } from "@/server/platform/plans";
@@ -515,6 +518,103 @@ export async function signOutAdminEverywhereAction(adminId: string) {
   });
 }
 
+// ───────────────────────── announcements
+
+const announcementSchema = z.object({
+  title: z.string().trim().min(3, "Add a short title").max(80),
+  body: z.string().trim().min(3, "Say what customers need to know").max(400),
+  tone: z.enum(["info", "warn", "danger"]),
+  planKey: z.string().trim().optional().nullable(),
+  tenantCode: z.string().trim().toLowerCase().optional().nullable(),
+  endsAt: z.string().trim().optional().nullable(),
+});
+export async function saveAnnouncementAction(input: z.input<typeof announcementSchema>) {
+  return runAction(async () => {
+    const a = await requireAdminAction("announcements.manage");
+    const v = announcementSchema.parse(input);
+    const tenant = v.tenantCode ? await platformDb().tenant.findUnique({ where: { slug: v.tenantCode } }) : null;
+    if (v.tenantCode && !tenant) throw new AppError(`No workspace with code “${v.tenantCode}”.`, "VALIDATION", { tenantCode: "Unknown workspace" });
+    const endsAt = v.endsAt ? new Date(`${v.endsAt}T23:59:59`) : null;
+    if (endsAt && Number.isNaN(endsAt.getTime())) throw new AppError("That end date is not valid.", "VALIDATION", { endsAt: "Invalid date" });
+    const row = await platformDb().announcement.create({ data: { title: v.title, body: v.body, tone: v.tone, planKey: v.planKey || null, tenantId: tenant?.id ?? null, endsAt, createdBy: a.email } });
+    clearAnnouncementCache();
+    await platformAudit({ admin: a, action: "announcement.created", targetType: "Announcement", targetId: row.id, detail: { title: v.title, tone: v.tone, planKey: v.planKey || null, workspace: tenant?.slug ?? null } });
+    return { ok: true as const, message: "Published. Customers see it within a minute." };
+  });
+}
+export async function toggleAnnouncementAction(id: string, active: boolean) {
+  return runAction(async () => {
+    const a = await requireAdminAction("announcements.manage");
+    await platformDb().announcement.update({ where: { id }, data: { isActive: active } });
+    clearAnnouncementCache();
+    await platformAudit({ admin: a, action: active ? "announcement.enabled" : "announcement.disabled", targetType: "Announcement", targetId: id });
+    return { ok: true as const };
+  });
+}
+export async function deleteAnnouncementAction(id: string) {
+  return runAction(async () => {
+    const a = await requireAdminAction("announcements.manage");
+    await platformDb().announcement.delete({ where: { id } });
+    clearAnnouncementCache();
+    await platformAudit({ admin: a, action: "announcement.deleted", targetType: "Announcement", targetId: id });
+    return { ok: true as const, message: "Deleted." };
+  });
+}
+
+// ───────────────────────── feature flags
+
+const flagSchema = z.object({
+  key: z.string().trim().toLowerCase().regex(FLAG_KEY_RE, "3–40 characters: lowercase letters, numbers and dashes, starting with a letter"),
+  name: z.string().trim().min(3).max(80),
+  description: z.string().trim().max(300).default(""),
+  enabled: z.boolean().default(false),
+  planKeys: z.union([z.string(), z.array(z.string())]).default([]),
+  rolloutPercent: z.number().int().min(0).max(100).default(0),
+});
+export async function saveFlagAction(input: z.input<typeof flagSchema>) {
+  return runAction(async () => {
+    const a = await requireAdminAction("flags.manage");
+    const v = flagSchema.parse(input);
+    const planKeys = (Array.isArray(v.planKeys) ? v.planKeys : v.planKeys.split(",")).map((p) => p.trim().toLowerCase()).filter(Boolean);
+    const known = new Set((await platformDb().plan.findMany({ select: { key: true } })).map((p) => p.key));
+    const unknown = planKeys.filter((p) => !known.has(p));
+    if (unknown.length) throw new AppError(`Unknown plan(s): ${unknown.join(", ")}.`, "VALIDATION", { planKeys: "Unknown plan" });
+    const data = { name: v.name, description: v.description, enabled: v.enabled, planKeys, rolloutPercent: v.rolloutPercent };
+    const before = await platformDb().featureFlag.findUnique({ where: { key: v.key } });
+    await platformDb().featureFlag.upsert({ where: { key: v.key }, create: { key: v.key, ...data }, update: { ...data, isArchived: false } });
+    clearFlagCache();
+    await platformAudit({ admin: a, action: before ? "flag.updated" : "flag.created", targetType: "FeatureFlag", targetId: v.key, detail: { before: before ? { enabled: before.enabled, planKeys: before.planKeys, rolloutPercent: before.rolloutPercent } : null, after: { enabled: v.enabled, planKeys, rolloutPercent: v.rolloutPercent } } });
+    return { ok: true as const, message: `Flag ${v.key} saved.` };
+  });
+}
+export async function archiveFlagAction(key: string, archived: boolean) {
+  return runAction(async () => {
+    const a = await requireAdminAction("flags.manage");
+    await platformDb().featureFlag.update({ where: { key }, data: { isArchived: archived } });
+    clearFlagCache();
+    await platformAudit({ admin: a, action: archived ? "flag.archived" : "flag.restored", targetType: "FeatureFlag", targetId: key });
+    return { ok: true as const };
+  });
+}
+/** Forces a flag on or off for one workspace (a reason is required), or `enabled: null` removes the exception. */
+export async function setFlagOverrideAction(tenantId: string, input: { flagKey: string; enabled: boolean | null; reason?: string }) {
+  return runAction(async () => {
+    const a = await requireAdminAction("flags.manage");
+    const flagKey = z.string().min(1).parse(input.flagKey);
+    if (input.enabled === null) {
+      await platformDb().tenantFlagOverride.deleteMany({ where: { tenantId, flagKey } });
+      clearFlagCache();
+      await platformAudit({ admin: a, action: "flag.override_removed", targetType: "Tenant", targetId: tenantId, detail: { flag: flagKey } });
+      return { ok: true as const, message: "Back to the default for this workspace." };
+    }
+    const why = reasonSchema.parse(input.reason);
+    await platformDb().tenantFlagOverride.upsert({ where: { tenantId_flagKey: { tenantId, flagKey } }, create: { tenantId, flagKey, enabled: Boolean(input.enabled), reason: why, setBy: a.email }, update: { enabled: Boolean(input.enabled), reason: why, setBy: a.email, at: new Date() } });
+    clearFlagCache();
+    await platformAudit({ admin: a, action: "flag.override_set", targetType: "Tenant", targetId: tenantId, reason: why, detail: { flag: flagKey, enabled: Boolean(input.enabled) } });
+    return { ok: true as const, message: `${flagKey} is now ${input.enabled ? "on" : "off"} for this workspace.` };
+  });
+}
+
 // ───────────────────────── system
 
 export async function runLifecycleAction() {
@@ -523,6 +623,17 @@ export async function runLifecycleAction() {
     const r = await runLifecycle();
     await platformAudit({ admin: a, action: "system.lifecycle_run", detail: r });
     return { ok: true as const, message: `Checked ${r.checked} workspaces · ${r.trialsExpired} trials ended · ${r.pastDue} past due · ${r.expired} expired · ${r.remindersSent} emails.` };
+  });
+}
+
+/** For backups taken outside the script (provider snapshot, off-site copy), so the System page reflects reality. */
+export async function recordBackupAction(input: { note: string }) {
+  return runAction(async () => {
+    const a = await requireAdminAction("system.manage");
+    const note = z.string().trim().min(3, "Say what was backed up and where").max(300).parse(input.note);
+    await recordManualBackup(note, a.email);
+    await platformAudit({ admin: a, action: "system.backup_recorded", detail: { note } });
+    return { ok: true as const, message: "Backup recorded." };
   });
 }
 

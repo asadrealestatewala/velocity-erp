@@ -117,6 +117,8 @@ model Tenant {
   invoices Invoice[]
   payments Payment[]
   addOns   TenantAddOn[]
+  tickets  SupportTicket[]
+  flagOverrides TenantFlagOverride[]
 
   @@index([status])
   @@index([subStatus])
@@ -248,8 +250,10 @@ model Invoice {
   @@index([tenantId, issuedAt])
 }
 
+/// Every refund is also a numbered credit note (CN-00001) that can be downloaded as a PDF.
 model Refund {
   id        String   @id @default(cuid())
+  number    Int      @unique @default(autoincrement())
   invoiceId String
   amount    Int
   currency  String
@@ -521,4 +525,162 @@ model MailMessage {
   @@index([direction, mailboxKey, createdAt])
   @@index([threadKey])
   @@index([tenantId])
+}
+
+/// One execution of a scheduled job (lifecycle, per-workspace jobs). Pruned after 90 days.
+model JobRun {
+  id         String    @id @default(cuid())
+  job        String
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  ok         Boolean   @default(false)
+  summary    Json      @default("{}")
+  error      String?
+
+  @@index([job, startedAt])
+}
+
+/// Server-side failures worth an operator's attention (webhook handlers, jobs, unhandled request errors). Pruned after 30 days.
+model ErrorLog {
+  id      String   @id @default(cuid())
+  at      DateTime @default(now())
+  source  String
+  message String
+  stack   String?
+  path    String?
+  detail  Json     @default("{}")
+
+  @@index([at])
+  @@index([source, at])
+}
+
+/// One backup of the platform and its workspaces. `kind` is SCRIPT (npm run platform:backup) or MANUAL (an operator recorded a provider/off-site backup).
+model BackupRun {
+  id         String    @id @default(cuid())
+  kind       String
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  ok         Boolean   @default(false)
+  location   String?
+  note       String?
+  /// SCRIPT runs: [{ schema, label, ok, bytes, verified, error? }]
+  items      Json      @default("[]")
+  recordedBy String?
+
+  @@index([startedAt])
+}
+
+/// A notice shown in the app of every workspace (or one plan, or one workspace) between `startsAt` and `endsAt`. tone: info | warn | danger.
+model Announcement {
+  id        String    @id @default(cuid())
+  title     String
+  body      String
+  tone      String    @default("info")
+  planKey   String?
+  tenantId  String?
+  startsAt  DateTime  @default(now())
+  endsAt    DateTime?
+  isActive  Boolean   @default(true)
+  createdBy String?
+  createdAt DateTime  @default(now())
+
+  @@index([isActive, startsAt])
+}
+
+enum TicketStatus {
+  OPEN
+  WAITING_CUSTOMER
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TicketSource {
+  CONSOLE
+  MAIL
+  APP
+}
+
+enum TicketMessageKind {
+  CUSTOMER
+  STAFF
+  NOTE
+}
+
+/// A customer problem tracked to resolution, with an owner and a first-response deadline.
+model SupportTicket {
+  id                 String          @id @default(cuid())
+  number             Int             @unique @default(autoincrement())
+  tenantId           String?
+  subject            String
+  status             TicketStatus    @default(OPEN)
+  priority           TicketPriority  @default(NORMAL)
+  source             TicketSource    @default(CONSOLE)
+  requesterName      String?
+  requesterEmail     String?
+  assigneeId         String?
+  assigneeName       String?
+  /// The inbox thread this ticket was created from (MailMessage.threadKey).
+  mailThreadKey      String?
+  firstResponseDueAt DateTime
+  firstResponseAt    DateTime?
+  resolvedAt         DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  tenant             Tenant?         @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  messages           TicketMessage[]
+
+  @@index([status, priority])
+  @@index([tenantId, createdAt])
+  @@index([mailThreadKey])
+}
+
+model TicketMessage {
+  id          String            @id @default(cuid())
+  ticketId    String
+  at          DateTime          @default(now())
+  kind        TicketMessageKind
+  authorName  String
+  authorEmail String?
+  body        String            @db.Text
+  ticket      SupportTicket     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, at])
+}
+
+/// A switch for a beta or optional feature. A workspace's setting is decided in this order: its own override, the plans listed in `planKeys`,
+/// the percentage rollout (stable per workspace), then `enabled` (on for everyone).
+model FeatureFlag {
+  key            String               @id
+  name           String
+  description    String               @default("")
+  enabled        Boolean              @default(false)
+  planKeys       Json                 @default("[]")
+  rolloutPercent Int                  @default(0)
+  isArchived     Boolean              @default(false)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  overrides      TenantFlagOverride[]
+}
+
+/// An exception for one workspace: forced on (beta access, a promise to a customer) or forced off.
+model TenantFlagOverride {
+  id       String      @id @default(cuid())
+  tenantId String
+  flagKey  String
+  enabled  Boolean
+  reason   String
+  setBy    String?
+  at       DateTime    @default(now())
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  flag     FeatureFlag @relation(fields: [flagKey], references: [key], onDelete: Cascade)
+
+  @@unique([tenantId, flagKey])
+  @@index([flagKey])
 }

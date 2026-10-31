@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { handleResendEvent, webhookSecret } from "@/server/platform/mail-inbox";
+import { logError } from "@/server/platform/ops-log";
 import { verifyResendSignature, type ResendEvent } from "@/server/platform/mail-webhook";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true, result: await handleResendEvent(ev) });
   } catch (e) {
     console.error("[mail webhook]", (e as Error).message);
+    await logError("webhook.resend", e, { detail: { type: ev.type } });
     return NextResponse.json({ error: "Handler failed" }, { status: 500 }); // Resend retries
   }
 }

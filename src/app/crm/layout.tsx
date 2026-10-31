@@ -22,7 +22,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
   return (
     <Suspense>
       <ViewAsBanner view={user.impersonation} />
-      <AppShell variant="crm" nav={nav} user={{ name: user.name, email: user.email, roleName: user.roleName }} unread={unread} actions={actions} assistant={chrome.assistantAllowed ? assistantConfigFor(user) : null} banner={chrome.banner} workspaceName={chrome.workspaceName}>
+      <AppShell variant="crm" nav={nav} user={{ name: user.name, email: user.email, roleName: user.roleName }} unread={unread} actions={actions} assistant={chrome.assistantAllowed ? assistantConfigFor(user) : null} banner={chrome.banner} announcements={chrome.announcements} workspaceName={chrome.workspaceName}>
         {children}
       </AppShell>
     </Suspense>

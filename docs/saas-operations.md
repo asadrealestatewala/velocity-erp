@@ -54,6 +54,11 @@ Migrations must be additive (new tables/columns, nullable or defaulted) so a hal
 * Platform staff two-factor is **off until an owner turns it on** (an owner can only do that after enrolling their own two-factor on My account, so the change cannot lock them out) (Settings → Staff two-factor: all staff, owners and billing only, or off). Once required, anyone without it signs in normally but is taken to a set-up page (`/platform/enrol`) and cannot use the console until they finish, so nobody is locked out. Enrolled staff cannot turn it off while it is required. Company staff: optional TOTP on the Account page; administrators can remove a colleague's 2FA after a lost phone.
 * Support "view as": OWNER and SUPPORT staff can open a workspace as one of its users (Workspaces → *View as user*). It needs a written reason, lasts 30 minutes, shows a banner with an *Exit view* button, is recorded in the platform audit log and in the company's own audit log, and is read-only: every database write is refused while the view cookie is present. Raw SQL and outbound side effects (email, webhooks) are not covered by that guard, so they are avoided by design on read paths.
 * Data export and deletion (OWNER only, reason required, audited): a workspace page can download a full `.zip` (one JSON-lines file per table plus uploaded files; password hashes, 2FA secrets and sessions are never included), or `npm run tenants:export -- <code> out.zip` for very large workspaces. Deletion can only be scheduled for a suspended or cancelled workspace, needs the workspace code typed as confirmation, and waits the retention window (Settings, default 30 days). Reactivating or *Cancel deletion* stops it. When due, the lifecycle job erases uploaded files and the schema; the tenant row and its invoices/payments stay for accounting with personal fields cleared. Workspaces on their own database connection are never dropped (the customer owns that database).
+* Health and logs: System shows the last run of each scheduled job (flagged overdue after 3× its cadence, e.g. when the scheduler stopped calling `/api/jobs/run`), server errors in the last 24 h, and failed or bounced emails; System → Logs lists errors (webhook handlers, jobs, unhandled request errors) and job runs. Errors are kept 30 days, job history 90.
+* Dunning: when a renewal is missed the workspace goes past-due with a grace period (plan or Settings default). The owner is emailed on entering past-due and again on the same days-before-deadline as trial reminders (Settings → *Email reminders*). A failed Stripe card payment starts the grace period once (Stripe's retries don't extend it) and emails the owner once per Stripe invoice. Every refund gets a credit-note number (CN-00001) and PDF, available to platform staff and, for their own workspace, in Plan & billing.
+* Announcements: *Announcements* (OWNER, SUPPORT) posts a notice at the top of every page in customers' workspaces, optionally limited to one plan or one workspace and an end date. Customers can dismiss it (per browser). Changes show within about a minute.
+* Support tickets: *Support tickets* (OWNER, BILLING, SUPPORT) has views for open, mine, unassigned, overdue and done. Each ticket has an owner, a priority and a first-reply deadline (urgent 4 h, high 8 h, normal 24 h, low 72 h) that stops at the first public reply. Tickets come from three places: customers (*Support* in their workspace; replies appear there and by email), the Mail inbox (*Create ticket* on a thread, linked to the workspace) and staff (phone/WhatsApp). Internal notes are never shown to customers.
+* Feature flags: *Feature flags* (OWNER, SUPPORT) switches a beta or optional feature on for everyone, for listed plans, for a stable percentage of workspaces, or per workspace (a reason-stamped exception on the workspace page, which always wins). Code checks a flag with `await isFeatureOn("key")` or `assertFeature("key")` from `server/platform/flags`; unknown or archived flags are off. Changes apply within about 15 seconds.
 * Tokens (email confirmation, invitation, password reset) are stored hashed, expire, and are single use. Password reset answers are identical whether or not the email exists.
 * Headers: `nosniff`, frame protection, strict referrer, HSTS in production; console and billing endpoints are `no-store` and `noindex`.
 * **Not done**: a Content-Security-Policy (needs testing against every page), per-company encryption keys, SSO/SAML.
@@ -61,11 +66,23 @@ Migrations must be additive (new tables/columns, nullable or defaulted) so a hal
 ## 7. Backups and restore
 
 ```
-npm run platform:backup            # needs pg_dump on PATH; writes backups/<timestamp>/<schema>.dump
-pg_restore --clean --if-exists --no-owner -d "<connection string>" backups/<ts>/t_acme.dump
+npm run platform:backup            # needs pg_dump and pg_restore on PATH; writes backups/<timestamp>/<schema>.dump
 ```
 
-Also enable your database provider's point-in-time backups (Supabase: Pro plan). Test a restore into a scratch database before relying on any of this. `platform:backup` has **not been run in this environment** (no `pg_dump` installed here).
+Schedule it at least daily. Each dump is checked with `pg_restore --list`, and the run is recorded: **System → Backups** shows the last good backup (red after 36 h or when none exists), workspaces missing from it, and the recent runs. If you rely on your provider's snapshots or an off-site copy, use *Record a backup taken elsewhere* so the page stays truthful. Also enable your database provider's point-in-time backups (Supabase: Pro plan).
+
+**Restore one workspace** (do this on a scratch database first, and rehearse it before you need it):
+
+1. Pick the newest good `backups/<ts>/<schema>.dump` (`t_<code>.dump` for a workspace, `platform.dump` for the control plane).
+2. Put the workspace in *Maintenance mode* (System) so nobody writes during the restore.
+3. Restore into a scratch schema and check row counts: `pg_restore --no-owner --schema=<schema> -d "<scratch connection string>" <file>`.
+4. Restore over the live schema in a quiet period: `pg_restore --clean --if-exists --no-owner -d "<connection string>" <file>`.
+5. Run *Apply pending migrations to all workspaces* (System) in case the dump is older than the code.
+6. Turn maintenance mode off and open the workspace to confirm.
+
+Uploaded files are not part of the dump: they live in the storage bucket (or `LOCAL_STORAGE_DIR`); enable versioning or back that up separately.
+
+`platform:backup` has **not been run in this environment** against production data; test a restore before relying on it.
 
 ## 8. Runbooks
 

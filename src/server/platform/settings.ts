@@ -33,7 +33,8 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   reminderDays: [3, 1, 0],
   graceDays: 7,
   oneTrialPerOwner: true,
-  staff2fa: "all",
+  // Off until an owner who has enrolled themselves switches it on (see setStaff2faAction), so a first deploy can never lock anyone out.
+  staff2fa: "off",
   deletionRetentionDays: 30,
   maintenance: { on: false, message: "We are doing scheduled maintenance. Please try again shortly." },
   support: { email: "", phone: "" },

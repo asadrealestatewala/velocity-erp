@@ -46,7 +46,7 @@ export default async function SettingsPage() {
           <div className="p-5">
             <ActionForm
               action={setStaff2faAction}
-              fields={[{ name: "mode", label: "Require two-factor for", type: "select", options: [{ value: "all", label: "All platform staff (recommended)" }, { value: "privileged", label: "Owners and billing staff only" }, { value: "off", label: "Nobody (optional per person)" }], defaultValue: s.staff2fa }]}
+              fields={[{ name: "mode", label: "Require two-factor for", type: "select", options: [{ value: "all", label: "All platform staff (recommended; enrol yourself first)" }, { value: "privileged", label: "Owners and billing staff only" }, { value: "off", label: "Nobody (optional per person)" }], defaultValue: s.staff2fa }]}
             />
           </div>
         </Card>

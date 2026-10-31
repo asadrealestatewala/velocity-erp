@@ -328,6 +328,8 @@ export async function setStaff2faAction(input: { mode: "all" | "privileged" | "o
   return runAction(async () => {
     const a = await requireAdminAction("settings.manage");
     const { mode } = z.object({ mode: z.enum(["all", "privileged", "off"]) }).parse(input);
+    // Lock-out guard: you cannot require two-factor unless you have it yourself, otherwise you would be stopped at the enrolment page by your own change.
+    if (mode !== "off" && !a.totpEnabled) throw new AppError("Turn on two-factor for your own account first (My account), then require it for staff.", "VALIDATION", { mode: "Enrol your own two-factor first" });
     const cur = await getPlatformSettings();
     await savePlatformSettings({ staff2fa: mode });
     await platformAudit({ admin: a, action: "settings.staff_2fa", detail: { from: cur.staff2fa, to: mode } });

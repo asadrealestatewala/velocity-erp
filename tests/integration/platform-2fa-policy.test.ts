@@ -20,9 +20,11 @@ describe("staff two-factor policy", () => {
     expect(twoFactorRequired("off", "OWNER")).toBe(false);
   });
 
-  it("is on for everyone by default, sends only un-enrolled staff to enrolment, and can be switched off", async () => {
+  it("is off by default (no lock-out on first deploy), then sends only un-enrolled staff to enrolment once required", async () => {
     await platformDb().siteSetting.deleteMany({ where: { key: "platform" } });
-    expect((await getPlatformSettings()).staff2fa).toBe("all");
+    expect((await getPlatformSettings()).staff2fa).toBe("off");
+    expect(await mustEnrolTwoFactor(admin("OWNER", false))).toBe(false);
+    await savePlatformSettings({ staff2fa: "all" });
     expect(await mustEnrolTwoFactor(admin("OWNER", false))).toBe(true);
     expect(await mustEnrolTwoFactor(admin("OWNER", true))).toBe(false);
     await savePlatformSettings({ staff2fa: "privileged" });
@@ -30,5 +32,24 @@ describe("staff two-factor policy", () => {
     expect(await mustEnrolTwoFactor(admin("BILLING", false))).toBe(true);
     await savePlatformSettings({ staff2fa: "off" });
     expect(await mustEnrolTwoFactor(admin("OWNER", false))).toBe(false);
+  });
+});
+
+describe("requiring two-factor", () => {
+  it("is refused for an owner who has not enrolled themselves, allowed once they have", async () => {
+    vi.resetModules();
+    let enrolled = false;
+    vi.doMock("next/headers", () => ({ headers: async () => new Headers(), cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }) }));
+    vi.doMock("@/server/platform/admin-auth", async (orig) => ({ ...(await orig<object>()), requireAdminAction: async () => ({ id: "o1", email: "o@t.dev", role: "OWNER", totpEnabled: enrolled }), platformAudit: async () => {} }));
+    const { setStaff2faAction } = await import("@/server/actions/platform");
+    await platformDb().siteSetting.deleteMany({ where: { key: "platform" } });
+    expect(await setStaff2faAction({ mode: "all" })).toMatchObject({ ok: false });
+    expect((await getPlatformSettings()).staff2fa).toBe("off");
+    expect(await setStaff2faAction({ mode: "off" })).toMatchObject({ ok: true });
+    enrolled = true;
+    expect(await setStaff2faAction({ mode: "all" })).toMatchObject({ ok: true });
+    expect((await getPlatformSettings()).staff2fa).toBe("all");
+    await platformDb().siteSetting.deleteMany({ where: { key: "platform" } });
+    vi.doUnmock("@/server/platform/admin-auth");
   });
 });

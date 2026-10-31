@@ -241,8 +241,10 @@ model Invoice {
   @@index([tenantId, issuedAt])
 }
 
+/// Every refund is also a numbered credit note (CN-00001) that can be downloaded as a PDF.
 model Refund {
   id        String   @id @default(cuid())
+  number    Int      @unique @default(autoincrement())
   invoiceId String
   amount    Int
   currency  String

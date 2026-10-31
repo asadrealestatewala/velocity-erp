@@ -7,7 +7,7 @@ import { TableWrap } from "@/components/ui/table";
 import { PlanPicker, type PlanCard } from "@/components/billing/plan-picker";
 import { BillingActions } from "@/components/billing/billing-actions";
 import { billingState } from "@/server/platform/billing-state";
-import { invoiceNumber, METHOD_LABEL } from "@/server/platform/billing";
+import { creditNoteNumber, invoiceNumber, METHOD_LABEL } from "@/server/platform/billing";
 import { platformDb } from "@/server/platform/client";
 import { currentUsage } from "@/server/platform/guard";
 import { entitlementsFor, listPlans, priceOf } from "@/server/platform/plans";
@@ -128,7 +128,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                     <td className="td font-medium">{invoiceNumber(i.number)}<span className="block text-xs font-normal text-ink-400">{fmtDateTime(i.issuedAt)}</span></td>
                     <td className="td capitalize">{i.planKey} · {i.interval === "YEAR" ? "yearly" : "monthly"}</td>
                     <td className="td text-xs">{i.periodStart.toISOString().slice(0, 10)} → {i.periodEnd.toISOString().slice(0, 10)}</td>
-                    <td className="td text-right tabular-nums">{i.currency} {i.amount.toLocaleString("en-US")}{refunded > 0 && <span className="block text-xs text-red-600">refunded {refunded.toLocaleString("en-US")}</span>}</td>
+                    <td className="td text-right tabular-nums">{i.currency} {i.amount.toLocaleString("en-US")}{refunded > 0 && <span className="block text-xs text-red-600">refunded {refunded.toLocaleString("en-US")} {i.refunds.map((r) => <Link key={r.id} href={`/api/billing/credit-notes/${r.id}/pdf`} target="_blank" className="ml-1 underline">{creditNoteNumber(r.number)}</Link>)}</span>}</td>
                     <td className="td">{METHOD_LABEL[i.method]}</td>
                     <td className="td text-right"><Link href={`/api/billing/invoices/${i.id}/pdf`} target="_blank" className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline"><FileText className="h-4 w-4" aria-hidden /> PDF</Link></td>
                   </tr>

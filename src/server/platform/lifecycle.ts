@@ -5,17 +5,14 @@ import { addDays, changeSubscription } from "./subscriptions";
 import { renderMail, sendSystemMail, workspaceUrl } from "./mail";
 import { sendTemplate } from "./mail-send";
 import { getPlatformSettings } from "./settings";
+import { noticeOnce } from "./notices";
 
 export type LifecycleSummary = { checked: number; trialsExpired: number; pastDue: number; expired: number; remindersSent: number };
 
 const DAY = 86_400_000;
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
 
-/** Each reminder is recorded first (unique key per workspace), so running the job twice — or two instances at once — can never email twice. */
-async function once(tenantId: string, key: string): Promise<boolean> {
-  const r = await platformDb().lifecycleNotice.createMany({ data: [{ tenantId, key }], skipDuplicates: true });
-  return r.count === 1;
-}
+const once = noticeOnce;
 
 async function email(t: Tenant, subject: string, heading: string, lines: string[], cta = "Open Plan & billing") {
   if (!t.ownerEmail) return;
@@ -77,6 +74,16 @@ export async function runLifecycle(now = new Date()): Promise<LifecycleSummary> 
       continue;
     }
 
+    if (t.subStatus === "PAST_DUE" && t.graceUntil && t.graceUntil > now) {
+      // Still in the grace period: remind the owner as the deadline approaches (same days as the trial reminders).
+      const daysLeft = Math.ceil((t.graceUntil.getTime() - now.getTime()) / DAY);
+      if (settings.reminderDays.includes(daysLeft) && (await once(t.id, `grace:${daysLeft}:${ymd(t.graceUntil)}`))) {
+        const when = daysLeft === 1 ? "tomorrow" : `in ${daysLeft} days`;
+        await email(t, "Payment still outstanding", "Your payment is still outstanding", [`Your workspace becomes read-only ${when} (${ymd(t.graceUntil)}) unless the renewal is paid. Nothing is deleted, and editing resumes as soon as the payment is confirmed.`], "Pay now");
+        out.remindersSent++;
+      }
+      continue;
+    }
     if (t.subStatus === "PAST_DUE" && (!t.graceUntil || t.graceUntil <= now)) {
       await changeSubscription(t.id, { subStatus: "EXPIRED" }, { source: "SYSTEM", reason: "Grace period ended without payment" });
       out.expired++;

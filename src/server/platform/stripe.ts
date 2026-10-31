@@ -8,6 +8,8 @@ import { decryptSecret } from "./crypto";
 import { appBaseUrl, workspaceUrl } from "./mail";
 import { getPlatformSettings } from "./settings";
 import { addDays, changeSubscription } from "./subscriptions";
+import { noticeOnce } from "./notices";
+import { sendTemplate } from "./mail-send";
 
 /**
  * Stripe over plain HTTPS (no SDK). Keys and price ids are entered in the platform console and stored encrypted;
@@ -121,8 +123,13 @@ export async function handleStripeEvent(ev: StripeEvent): Promise<string> {
       const t = await db.tenant.findFirst({ where: { OR: [{ stripeSubscriptionId: String(o.subscription ?? "") }, { stripeCustomerId: String(o.customer ?? "") }] } });
       if (!t) return "ignored";
       const plan = t.planKey ? await db.plan.findUnique({ where: { key: t.planKey } }) : null;
-      await changeSubscription(t.id, { subStatus: "PAST_DUE", graceUntil: addDays(new Date(), plan?.graceDays ?? 7) }, { source: "WEBHOOK", reason: "Stripe reported a failed payment" });
-      return "past_due";
+      // Stripe retries a failed card several times: only the first failure starts the grace period, later ones must not extend it.
+      const alreadyInGrace = t.subStatus === "PAST_DUE" && t.graceUntil !== null && t.graceUntil > new Date();
+      if (!alreadyInGrace) await changeSubscription(t.id, { subStatus: "PAST_DUE", graceUntil: addDays(new Date(), plan?.graceDays ?? 7) }, { source: "WEBHOOK", reason: "Stripe reported a failed payment" });
+      if (t.ownerEmail && (await noticeOnce(t.id, `stripe-failed:${String(o.id)}`))) {
+        await sendTemplate("payment-failed", t.ownerEmail, { name: (t.ownerName ?? "there").split(" ")[0], workspaceName: t.name, reference: String(o.number ?? o.id), reason: "your card payment could not be completed. Please update your card or pay another way before the grace period ends.", billingUrl: workspaceUrl(t.slug, "/crm/billing") }, { tenantId: t.id }).catch(() => {});
+      }
+      return alreadyInGrace ? "past_due_already" : "past_due";
     }
     case "customer.subscription.deleted": {
       const t = await db.tenant.findFirst({ where: { stripeSubscriptionId: String(o.id) } });

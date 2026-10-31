@@ -14,6 +14,7 @@ import { platformDb } from "@/server/platform/client";
 import { decryptSecret, encryptSecret, sha256 } from "@/server/platform/crypto";
 import { platformRateLimit } from "@/server/platform/guard";
 import { runLifecycle } from "@/server/platform/lifecycle";
+import { deletionBlocker } from "@/server/platform/purge";
 import { sendPlanEmail } from "@/server/platform/plan-mail";
 import { migrateAllTenants } from "@/server/platform/migrate-all";
 import { clearEntitlementCache } from "@/server/platform/plans";
@@ -70,10 +71,39 @@ export async function setWorkspaceStatusAction(id: string, input: { status: "ACT
     const a = await requireAdminAction("tenants.manage");
     const why = reasonSchema.parse(input.reason);
     const status = z.enum(["ACTIVE", "SUSPENDED", "CANCELLED"]).parse(input.status);
-    const t = await platformDb().tenant.update({ where: { id }, data: { status } });
+    const t = await platformDb().tenant.update({ where: { id }, data: { status, ...(status === "ACTIVE" ? { deletionRequestedAt: null, deletionScheduledFor: null, deletionReason: null } : {}) } });
     refreshTenant(t.slug);
     await platformAudit({ admin: a, action: `tenant.${status.toLowerCase()}`, targetType: "Tenant", targetId: id, reason: why, detail: { slug: t.slug } });
     return { ok: true as const, message: `Workspace ${t.slug} is now ${status.toLowerCase()}.` };
+  });
+}
+
+/** Schedules erasure of a suspended or cancelled workspace after the retention window. Owner-only; the operator must type the workspace code. */
+export async function scheduleDeletionAction(id: string, input: { confirmSlug: string; reason: string }) {
+  return runAction(async () => {
+    const a = await requireAdminAction("tenants.delete");
+    const why = reasonSchema.parse(input.reason);
+    const t = await platformDb().tenant.findUnique({ where: { id } });
+    if (!t) throw new AppError("Workspace not found.", "NOT_FOUND");
+    const blocker = deletionBlocker(t);
+    if (blocker) throw new AppError(blocker);
+    if (String(input.confirmSlug ?? "").trim().toLowerCase() !== t.slug) throw new AppError(`Type the workspace code (${t.slug}) to confirm.`, "VALIDATION", { confirmSlug: "Does not match" });
+    const days = (await getPlatformSettings()).deletionRetentionDays;
+    const at = new Date(Date.now() + days * 86_400_000);
+    await platformDb().tenant.update({ where: { id }, data: { deletionRequestedAt: new Date(), deletionScheduledFor: at, deletionReason: why } });
+    await platformAudit({ admin: a, action: "tenant.deletion_scheduled", targetType: "Tenant", targetId: id, reason: why, detail: { slug: t.slug, eraseAfter: at.toISOString(), retentionDays: days } });
+    return { ok: true as const, message: `Scheduled. All data of ${t.slug} will be erased after ${at.toISOString().slice(0, 10)} unless you cancel. Download an export first if the customer wants one.` };
+  });
+}
+
+export async function cancelDeletionAction(id: string) {
+  return runAction(async () => {
+    const a = await requireAdminAction("tenants.delete");
+    const t = await platformDb().tenant.findUnique({ where: { id } });
+    if (!t?.deletionScheduledFor || t.dataPurgedAt) throw new AppError("No deletion is scheduled for this workspace.");
+    await platformDb().tenant.update({ where: { id }, data: { deletionRequestedAt: null, deletionScheduledFor: null, deletionReason: null } });
+    await platformAudit({ admin: a, action: "tenant.deletion_cancelled", targetType: "Tenant", targetId: id, detail: { slug: t.slug } });
+    return { ok: true as const, message: "Deletion cancelled. The data is kept." };
   });
 }
 
@@ -279,7 +309,7 @@ export async function grantAddOnAction(tenantId: string, input: { addOnKey: stri
 
 const settingsSchema = z.object({
   trialDays: z.number().int().min(0).max(60), trialPlanKey: z.string().min(1), graceDays: z.number().int().min(0).max(60), oneTrialPerOwner: z.boolean(),
-  reminderDays: z.array(z.number().int().min(0).max(30)).max(6), supportEmail: z.string().trim().max(160), supportPhone: z.string().trim().max(40), operatorEmail: z.string().trim().max(160),
+  deletionRetentionDays: z.number().int().min(7).max(365), reminderDays: z.array(z.number().int().min(0).max(30)).max(6), supportEmail: z.string().trim().max(160), supportPhone: z.string().trim().max(40), operatorEmail: z.string().trim().max(160),
 });
 export async function saveSettingsAction(input: Record<string, unknown>) {
   return runAction(async () => {
@@ -287,7 +317,7 @@ export async function saveSettingsAction(input: Record<string, unknown>) {
     const days = typeof input.reminderDays === "string" ? input.reminderDays.split(",").map((x) => x.trim()).filter(Boolean).map(Number) : input.reminderDays;
     const v = settingsSchema.parse({ ...input, reminderDays: days });
     const cur = await getPlatformSettings();
-    await savePlatformSettings({ trialDays: v.trialDays, trialPlanKey: v.trialPlanKey, graceDays: v.graceDays, oneTrialPerOwner: v.oneTrialPerOwner, reminderDays: v.reminderDays, support: { email: v.supportEmail, phone: v.supportPhone }, billing: { ...cur.billing, operatorEmail: v.operatorEmail } });
+    await savePlatformSettings({ trialDays: v.trialDays, trialPlanKey: v.trialPlanKey, graceDays: v.graceDays, oneTrialPerOwner: v.oneTrialPerOwner, deletionRetentionDays: v.deletionRetentionDays, reminderDays: v.reminderDays, support: { email: v.supportEmail, phone: v.supportPhone }, billing: { ...cur.billing, operatorEmail: v.operatorEmail } });
     await platformAudit({ admin: a, action: "settings.saved", detail: { trialDays: v.trialDays, graceDays: v.graceDays } });
     return { ok: true as const, message: "Settings saved." };
   });

@@ -104,6 +104,12 @@ model Tenant {
   provisionedAt        DateTime?
   lastSeenAt           DateTime?
   schemaVersion        Int                @default(0)
+  /// Offboarding: set when deletion is scheduled; the lifecycle job erases the workspace's data once the retention window has passed.
+  deletionRequestedAt  DateTime?
+  deletionScheduledFor DateTime?
+  deletionReason       String?
+  /// Set once the workspace's data has been erased. The tenant row and its invoices are kept for accounting.
+  dataPurgedAt         DateTime?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
@@ -114,6 +120,7 @@ model Tenant {
 
   @@index([status])
   @@index([subStatus])
+  @@index([deletionScheduledFor])
 }
 
 model Plan {

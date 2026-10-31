@@ -8,6 +8,8 @@ export type PlatformSettings = {
   reminderDays: number[];
   graceDays: number;
   oneTrialPerOwner: boolean;
+  /** Days between scheduling a workspace's deletion and its data actually being erased. */
+  deletionRetentionDays: number;
   maintenance: { on: boolean; message: string };
   support: { email: string; phone: string };
   billing: {
@@ -27,6 +29,7 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   reminderDays: [3, 1, 0],
   graceDays: 7,
   oneTrialPerOwner: true,
+  deletionRetentionDays: 30,
   maintenance: { on: false, message: "We are doing scheduled maintenance. Please try again shortly." },
   support: { email: "", phone: "" },
   billing: { stripeMode: "test", stripeSecretKeyEnc: null, stripeWebhookSecretEnc: null, stripePublishableKey: "", stripePrices: {}, operatorEmail: "" },

@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  BarChart3, Bell, BookOpen, Bike, Boxes, Building2, CheckSquare, ChevronDown, ClipboardList, FileCheck2, FileText, Folder, Footprints, History, Inbox, KanbanSquare,
+  BarChart3, Bell, BookOpen, Bike, Boxes, Building2, CheckSquare, ChevronDown, ClipboardList, FileCheck2, FileText, Folder, Footprints, History, Inbox, KanbanSquare, LifeBuoy,
   LayoutDashboard, List, LogOut, Menu as MenuIcon, Package, PanelLeftClose, PanelLeftOpen, Plus, Receipt, Search, Settings, Share2, Shield, Sparkles, Store, Trophy, Truck, UserCheck, Users, UsersRound, Wallet, X, Zap, KeyRound, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,7 +20,7 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   store: Store, "file-check": FileCheck2, zap: Zap, "check-square": CheckSquare, "bar-chart": BarChart3, bell: Bell, shield: Shield,
   settings: Settings, history: History, trophy: Trophy, "user-check": UserCheck, list: List, building: Building2, footprints: Footprints,
   "users-round": UsersRound, boxes: Boxes, "clipboard-list": ClipboardList, truck: Truck, wallet: Wallet, receipt: Receipt, folder: Folder, package: Package,
-  "book-open": BookOpen,
+  "book-open": BookOpen, "life-buoy": LifeBuoy,
 };
 const ACTION_ICONS = { plus: Plus, share: Share2 } as const;
 

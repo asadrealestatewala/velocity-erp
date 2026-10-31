@@ -111,6 +111,7 @@ model Tenant {
   invoices Invoice[]
   payments Payment[]
   addOns   TenantAddOn[]
+  tickets  SupportTicket[]
 
   @@index([status])
   @@index([subStatus])
@@ -347,6 +348,73 @@ model PlatformSession {
   admin     PlatformAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
   @@index([adminId])
+}
+
+enum TicketStatus {
+  OPEN
+  WAITING_CUSTOMER
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TicketSource {
+  CONSOLE
+  MAIL
+  APP
+}
+
+enum TicketMessageKind {
+  CUSTOMER
+  STAFF
+  NOTE
+}
+
+/// A customer problem tracked to resolution, with an owner and a first-response deadline.
+model SupportTicket {
+  id                 String          @id @default(cuid())
+  number             Int             @unique @default(autoincrement())
+  tenantId           String?
+  subject            String
+  status             TicketStatus    @default(OPEN)
+  priority           TicketPriority  @default(NORMAL)
+  source             TicketSource    @default(CONSOLE)
+  requesterName      String?
+  requesterEmail     String?
+  assigneeId         String?
+  assigneeName       String?
+  /// The inbox thread this ticket was created from (MailMessage.threadKey).
+  mailThreadKey      String?
+  firstResponseDueAt DateTime
+  firstResponseAt    DateTime?
+  resolvedAt         DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  tenant             Tenant?         @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  messages           TicketMessage[]
+
+  @@index([status, priority])
+  @@index([tenantId, createdAt])
+  @@index([mailThreadKey])
+}
+
+model TicketMessage {
+  id          String            @id @default(cuid())
+  ticketId    String
+  at          DateTime          @default(now())
+  kind        TicketMessageKind
+  authorName  String
+  authorEmail String?
+  body        String            @db.Text
+  ticket      SupportTicket     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, at])
 }
 
 /// Append-only.

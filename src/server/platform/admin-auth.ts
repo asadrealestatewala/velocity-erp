@@ -8,6 +8,8 @@ import { verifyTotp } from "@/lib/totp";
 import { platformDb } from "./client";
 import { decryptSecret, newToken, sha256 } from "./crypto";
 import { getPlatformSettings, type Staff2faMode } from "./settings";
+import { ipAllowed } from "./ip-allow";
+import { staffAllowlist } from "./settings";
 export { ensureFirstAdmin } from "./admin-bootstrap";
 
 export const ADMIN_COOKIE = "yadea_platform";
@@ -38,6 +40,21 @@ export async function platformAudit(entry: { admin?: Pick<PlatformAdmin, "id" | 
   });
 }
 
+/** Break-glass: set PLATFORM_IP_ALLOWLIST_OFF=1 in the environment to ignore the saved list (for example after your own address changed). */
+export async function networkAllowed(): Promise<boolean> {
+  if (process.env.PLATFORM_IP_ALLOWLIST_OFF === "1") return true;
+  const list = await staffAllowlist();
+  if (!list.length) return true;
+  let ip: string | null = null;
+  try {
+    const h = await headers();
+    ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip");
+  } catch {
+    return true; // no request scope (scripts, tests)
+  }
+  return ipAllowed(ip, list);
+}
+
 export async function startAdminSession(adminId: string) {
   const token = newToken();
   const h = await headers();
@@ -65,6 +82,7 @@ export const getAdmin = cache(async (): Promise<PlatformAdmin | null> => {
   if (!token) return null;
   const s = await platformDb().platformSession.findUnique({ where: { id: sha256(token) }, include: { admin: true } });
   if (!s || s.expiresAt < new Date() || !s.admin.isActive) return null;
+  if (!(await networkAllowed())) return null;
   // Record activity at most every 5 minutes so the sessions page can show "last active" without a write per request.
   if (!s.lastSeenAt || Date.now() - s.lastSeenAt.getTime() > 5 * 60_000) await platformDb().platformSession.update({ where: { id: s.id }, data: { lastSeenAt: new Date() } }).catch(() => {});
   return s.admin;

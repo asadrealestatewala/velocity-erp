@@ -61,6 +61,7 @@ Migrations must be additive (new tables/columns, nullable or defaulted) so a hal
 * Feature flags: *Feature flags* (OWNER, SUPPORT) switches a beta or optional feature on for everyone, for listed plans, for a stable percentage of workspaces, or per workspace (a reason-stamped exception on the workspace page, which always wins). Code checks a flag with `await isFeatureOn("key")` or `assertFeature("key")` from `server/platform/flags`; unknown or archived flags are off. Changes apply within about 15 seconds.
 * Tokens (email confirmation, invitation, password reset) are stored hashed, expire, and are single use. Password reset answers are identical whether or not the email exists.
 * Headers: `nosniff`, frame protection, strict referrer, HSTS in production; console and billing endpoints are `no-store` and `noindex`.
+* **Network allowlist** (Settings → Where staff can sign in from): when set, sign-in and every console request from other addresses is refused. The list cannot be saved without your own current address. Break-glass: set `PLATFORM_IP_ALLOWLIST_OFF=1`, sign in, fix the list, remove the variable. The address is read from `x-forwarded-for`, which is only trustworthy behind your host's proxy (Vercel sets it).
 * **Not done**: a Content-Security-Policy (needs testing against every page), per-company encryption keys, SSO/SAML.
 
 ## 7. Backups and restore

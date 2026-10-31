@@ -52,6 +52,7 @@ Migrations must be additive (new tables/columns, nullable or defaulted) so a hal
 * Tenant isolation: separate schemas, one Prisma client per company, and tests that create two real companies and check that neither can read the other (`tests/integration/tenancy.test.ts`).
 * Platform console: separate sign-in and cookie (`yadea_platform`, path `/platform`, 8 h), roles OWNER / BILLING / SUPPORT / ANALYTICS, optional TOTP with replay protection and one-time recovery codes, rate-limited sign-in, append-only audit log, every sensitive change needs a written reason.
 * Staff: optional TOTP on the Account page; administrators can remove a colleague's 2FA after a lost phone.
+* Announcements: *Announcements* (OWNER, SUPPORT) posts a notice at the top of every page in customers' workspaces, optionally limited to one plan or one workspace and an end date. Customers can dismiss it (per browser). Changes show within about a minute.
 * Tokens (email confirmation, invitation, password reset) are stored hashed, expire, and are single use. Password reset answers are identical whether or not the email exists.
 * Headers: `nosniff`, frame protection, strict referrer, HSTS in production; console and billing endpoints are `no-store` and `noindex`.
 * **Not done**: a Content-Security-Policy (needs testing against every page), per-company encryption keys, SSO/SAML.

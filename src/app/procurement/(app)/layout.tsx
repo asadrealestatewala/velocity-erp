@@ -24,7 +24,7 @@ export default async function ProcurementLayout({ children }: { children: React.
         unread={unread}
         subtitle={user.roleName}
         assistant={chrome.assistantAllowed ? assistantConfigFor(user) : null}
-        banner={chrome.banner}
+        banner={chrome.banner} announcements={chrome.announcements}
         workspaceName={chrome.workspaceName}
         actions={can(user, "dashboard.view") ? [{ label: "Open CRM", href: "/crm/dashboard", variant: "outline", icon: "share" }] : []}
       >

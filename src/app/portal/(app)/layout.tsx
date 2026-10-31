@@ -23,7 +23,7 @@ export default async function PortalLayout({ children }: { children: React.React
         subtitle={user.memberships.map((m) => m.dealershipName).join(", ")}
         actions={actions}
         assistant={chrome.assistantAllowed ? assistantConfigFor(user) : null}
-        banner={chrome.banner}
+        banner={chrome.banner} announcements={chrome.announcements}
         workspaceName={chrome.workspaceName}
       >
         {children}

@@ -13,6 +13,7 @@ const NAV: (RailItem & { perm: PlatformPerm })[] = [
   { href: "/platform/payments", label: "Payments & invoices", icon: "payments", perm: "payments.manage" },
   { href: "/platform/plans", label: "Plans & coupons", icon: "plans", perm: "plans.manage" },
   { href: "/platform/mail", label: "Mail", icon: "mail", perm: "mail.manage" },
+  { href: "/platform/announcements", label: "Announcements", icon: "announcements", perm: "announcements.manage" },
   { href: "/platform/settings", label: "Settings", icon: "settings", perm: "settings.manage" },
   { href: "/platform/admins", label: "Platform staff", icon: "staff", perm: "admins.manage" },
   { href: "/platform/audit", label: "Audit log", icon: "audit", perm: "audit.view" },

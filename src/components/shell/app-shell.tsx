@@ -13,6 +13,7 @@ import { Avatar } from "@/components/ui/misc";
 import { Menu, MenuItem, MenuLabel, MenuLink, MenuSeparator } from "@/components/ui/menu";
 import { buttonClass } from "@/components/ui/button";
 import type { NavItem } from "./nav";
+import { AnnouncementBar, type AnnouncementItem } from "./announcement-bar";
 import { AssistantWidget, type AssistantConfig } from "@/components/assistant/assistant-widget";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -35,6 +36,7 @@ export function AppShell({
   actions = [],
   assistant = null,
   banner = null,
+  announcements = [],
   workspaceName = null,
   children,
 }: {
@@ -45,6 +47,7 @@ export function AppShell({
   subtitle?: string;
   actions?: QuickAction[];
   assistant?: AssistantConfig | null;
+  announcements?: AnnouncementItem[];
   banner?: { tone: "info" | "warn" | "danger"; text: string; href?: string } | null;
   workspaceName?: string | null;
   children: React.ReactNode;
@@ -344,6 +347,7 @@ export function AppShell({
           {banner.href ? <Link href={banner.href} className="font-semibold underline underline-offset-2">Plan &amp; billing →</Link> : <span className="opacity-80">Ask your administrator to review the subscription.</span>}
         </div>
       )}
+      <AnnouncementBar items={announcements} />
       <main id="main" className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
         <div key={pathname} className="page-enter">{children}</div>
       </main>

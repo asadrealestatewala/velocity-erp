@@ -351,6 +351,26 @@ model PlatformSession {
   @@index([adminId])
 }
 
+/// A time-boxed, read-only "view as" session of a platform operator inside a tenant workspace. `id` is the SHA-256 of the cookie token.
+/// Kept as history (no foreign keys) so records outlive deleted staff or workspaces.
+model PlatformImpersonation {
+  id         String    @id
+  adminId    String
+  adminEmail String
+  tenantId   String
+  tenantSlug String
+  userId     String
+  userName   String
+  userEmail  String
+  reason     String
+  startedAt  DateTime  @default(now())
+  expiresAt  DateTime
+  endedAt    DateTime?
+
+  @@index([adminId])
+  @@index([tenantId, startedAt])
+}
+
 /// Append-only.
 model PlatformAudit {
   id         String   @id @default(cuid())

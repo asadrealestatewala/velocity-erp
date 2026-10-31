@@ -11,6 +11,8 @@ import { cachedTenant, DEFAULT_SLUG, getTenant, listActiveTenants, tenantDbUrl }
 
 export const TENANT_COOKIE = "yadea_tenant";
 export const TENANT_HEADER = "x-tenant";
+/** Present while a platform operator is "viewing as" a workspace user. While it is set, every database write in a request is refused. */
+export const VIEW_AS_COOKIE = "yadea_viewas";
 
 const als = new AsyncLocalStorage<{ slug: string }>();
 
@@ -64,6 +66,23 @@ const LOCKED_OK_MODELS = new Set(["Session", "AuditLog", "PasswordResetToken", "
 const USER_SELF_FIELDS = new Set(["lastLoginAt", "passwordHash", "mustChangePassword", "totpSecretEnc", "totpEnabled", "recoveryCodes", "lastTotpStep", "updatedAt"]);
 const WRITE_OPS = new Set(["create", "createMany", "createManyAndReturn", "update", "updateMany", "upsert", "delete", "deleteMany"]);
 
+export class ReadOnlyViewError extends AppError {
+  constructor() {
+    super("You are viewing this workspace as platform support, which is read-only. Exit the view to make changes.", "FORBIDDEN");
+  }
+}
+
+/** Fails closed: a request that carries the view-as cookie cannot write, even if the cookie has just expired. Scripts and cron (explicit workspace context) are unaffected. */
+async function viewingAs(): Promise<boolean> {
+  if (als.getStore()) return false;
+  try {
+    return Boolean((await cookies()).get(VIEW_AS_COOKIE)?.value);
+  } catch (e) {
+    if (isDynamicUsage(e)) throw e;
+    return false; // no request scope
+  }
+}
+
 function lockedFor(slug: string) {
   const t = cachedTenant(slug);
   return t ? billingState(t).locked : false;
@@ -88,6 +107,7 @@ function build(t: Tenant): PrismaClient {
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
+          if (WRITE_OPS.has(operation) && (await viewingAs())) throw new ReadOnlyViewError();
           if (WRITE_OPS.has(operation) && !LOCKED_OK_MODELS.has(model)) {
             const selfOnly = model === "User" && (operation === "update" || operation === "updateMany") && Object.keys((args as { data?: object }).data ?? {}).every((k) => USER_SELF_FIELDS.has(k));
             if (!selfOnly) {

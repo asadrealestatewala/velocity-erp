@@ -205,6 +205,16 @@ export const PAGES: PageDoc[] = [
     keywords: ["billing", "subscription", "plan", "upgrade", "invoice", "trial", "pay", "payment", "renew", "limit"],
   },
   {
+    id: "crm-support", workspace: "crm", label: "Support", path: "/crm/support",
+    summary: "Ask the platform team for help and follow your requests.",
+    inside: [
+      "Your open and closed requests with their status, and a form to send a new one (subject, how urgent, what happened).",
+      "Open a request to read the replies from our team and answer them.",
+    ],
+    actions: ["Send a new support request", "Reply to our team", "Close a request that is solved"],
+    keywords: ["support", "help", "ticket", "problem", "contact us", "report a bug"],
+  },
+  {
     id: "crm-account", workspace: "crm", sidebar: false, label: "Account & password", path: "/crm/account",
     summary: "Your own profile, password and notification preferences (avatar menu → Account & password).",
     inside: ["Change password, personal details, in-app / email notification switches per type."],

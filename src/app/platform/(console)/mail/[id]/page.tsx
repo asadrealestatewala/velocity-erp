@@ -5,8 +5,9 @@ import { ReplyBox } from "@/components/platform/mail";
 import { RunButton } from "@/components/platform/console";
 import { DELIVERY_TONE, INBOX_TONE } from "@/components/platform/tones";
 import { fmtDateTime } from "@/lib/utils";
+import { ticketFromMailAction } from "@/server/actions/platform-support";
 import { replyAction, setInboxStatusAction } from "@/server/actions/platform-mail";
-import { requireAdminPage } from "@/server/platform/admin-auth";
+import { adminCan, requireAdminPage } from "@/server/platform/admin-auth";
 import { platformDb } from "@/server/platform/client";
 import { getThread, markRead } from "@/server/platform/mail-inbox";
 
@@ -21,6 +22,7 @@ export default async function MessagePage({ params }: { params: Promise<{ id: st
   await markRead(message.id);
   const tenant = message.tenantId ? await platformDb().tenant.findUnique({ where: { id: message.tenantId }, select: { id: true, name: true, slug: true } }) : null;
   const status = message.inboxStatus ?? "NEW";
+  const ticket = await platformDb().supportTicket.findFirst({ where: { mailThreadKey: message.threadKey }, select: { id: true, number: true } });
   return (
     <>
       <p className="mb-3 text-sm"><Link href="/platform/mail" className="text-brand-600 hover:underline">← Inbox</Link></p>
@@ -31,6 +33,7 @@ export default async function MessagePage({ params }: { params: Promise<{ id: st
           action={
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={INBOX_TONE[status]}>{status.toLowerCase()}</Badge>
+              {ticket ? <Link className="text-sm text-brand-600 hover:underline" href={`/platform/support/${ticket.id}`}>Ticket #{ticket.number}</Link> : adminCan(admin.role, "support.manage") && <RunButton label="Create ticket" action={ticketFromMailAction.bind(null, message.id)} />}
               {status !== "RESOLVED" && <RunButton label="Mark resolved" action={setInboxStatusAction.bind(null, message.id, { status: "RESOLVED" })} />}
               {status === "RESOLVED" && <RunButton label="Reopen" action={setInboxStatusAction.bind(null, message.id, { status: "OPEN" })} />}
               {status !== "SPAM" && <RunButton label="Spam" variant="ghost" action={setInboxStatusAction.bind(null, message.id, { status: "SPAM" })} />}

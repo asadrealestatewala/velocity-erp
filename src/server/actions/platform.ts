@@ -8,7 +8,7 @@ import { clientIp } from "@/server/request";
 import { hashIdentifier } from "@/server/rate-limit";
 import { newRecoveryCodes, newTotpSecret, otpauthUrl, verifyTotp } from "@/lib/totp";
 import { passwordSchema } from "@/lib/password-policy";
-import { checkSecondFactor, endAdminSession, ensureFirstAdmin, getAdmin, platformAudit, requireAdminAction, startAdminSession } from "@/server/platform/admin-auth";
+import { networkAllowed, checkSecondFactor, endAdminSession, ensureFirstAdmin, getAdmin, platformAudit, requireAdminAction, startAdminSession } from "@/server/platform/admin-auth";
 import { activatePlan, buildQuote, confirmPayment, recordRefund, rejectPayment } from "@/server/platform/billing";
 import { platformDb } from "@/server/platform/client";
 import { decryptSecret, encryptSecret, sha256 } from "@/server/platform/crypto";
@@ -37,6 +37,10 @@ export async function platformLoginAction(_: PlatformLoginState, formData: FormD
   const ip = hashIdentifier(await clientIp());
   if (!(await platformRateLimit(`pf:ip:${ip}`, 20, 900)) || !(await platformRateLimit(`pf:user:${hashIdentifier(email)}`, 8, 900))) return { error: "Too many sign-in attempts. Please wait 15 minutes." };
   await ensureFirstAdmin();
+  if (!(await networkAllowed())) {
+    await platformAudit({ admin: { id: "", email }, action: "platform.login_blocked", detail: { reason: "network not on the allowlist" } }).catch(() => {});
+    return { error: "Sign-in is not allowed from this network. Ask an owner to add your address, or sign in from the office or VPN." };
+  }
   const admin = await platformDb().platformAdmin.findUnique({ where: { email } });
   const ok = admin ? await bcrypt.compare(password, admin.passwordHash) : await bcrypt.compare(password, "$2a$12$CwTycUXWue0Thq9StjUM0uJ8.ZpQb6Y5fmmS0cVnS3SrcX1Jb7dZ2");
   if (!admin || !ok || !admin.isActive) {

@@ -1,9 +1,11 @@
 import { Card, CardHeader, PageHeader } from "@/components/ui/misc";
 import { ActionForm, RunButton } from "@/components/platform/console";
 import { deleteAccountAction, saveAccountAction, saveSettingsAction, saveStripeAction, testStripeAction } from "@/server/actions/platform";
+import { saveIpAllowlistAction } from "@/server/actions/platform-security";
 import { requireAdminPage } from "@/server/platform/admin-auth";
 import { METHOD_LABEL } from "@/server/platform/billing";
 import { platformDb } from "@/server/platform/client";
+import { headers } from "next/headers";
 import { getPlatformSettings } from "@/server/platform/settings";
 import { listPlans } from "@/server/platform/plans";
 import { webhookUrl } from "@/server/platform/stripe";
@@ -15,6 +17,8 @@ const LOCAL = ["BANK_TRANSFER", "RAAST", "EASYPAISA", "JAZZCASH", "SADAPAY", "NA
 export default async function SettingsPage() {
   await requireAdminPage("settings.manage");
   const [s, plans, accounts] = await Promise.all([getPlatformSettings(), listPlans(), platformDb().paymentAccount.findMany({ orderBy: [{ sortOrder: "asc" }, { title: "asc" }] })]);
+  const h = await headers();
+  const myIp = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";
   const planOptions = plans.map((p) => ({ value: p.key, label: p.name }));
   const priceLines = Object.entries(s.billing.stripePrices).map(([k, v]) => `${k}=${v}`).join("\n");
   return (
@@ -59,6 +63,17 @@ export default async function SettingsPage() {
           </div>
         </Card>
       </div>
+
+      <Card className="mt-4">
+        <CardHeader title="Where staff can sign in from" description="Optional. When set, only these networks can sign in to this console or keep a session going. One address or range per line, such as 203.0.113.7 or 203.0.113.0/24. Leave empty to allow any network." />
+        <div className="space-y-3 p-5">
+          <p className="text-sm text-ink-600">Your address right now: <code className="font-mono">{myIp}</code>. The list must include it. If you are ever locked out, set <code className="font-mono">PLATFORM_IP_ALLOWLIST_OFF=1</code> in the server environment, sign in, fix the list, then remove the variable. Home and mobile addresses change; prefer a VPN or office range.</p>
+          <ActionForm
+            action={saveIpAllowlistAction}
+            fields={[{ name: "list", label: "Allowed addresses", type: "textarea", optional: true, defaultValue: s.staffIpAllowlist.join("\n") }]}
+          />
+        </div>
+      </Card>
 
       <Card className="mt-4">
         <CardHeader title="Bank and wallet accounts customers pay into" description="Shown on the customer's billing page. Customers send money here and submit the transaction reference." />

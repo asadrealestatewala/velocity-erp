@@ -54,6 +54,7 @@ Migrations must be additive (new tables/columns, nullable or defaulted) so a hal
 * Staff: optional TOTP on the Account page; administrators can remove a colleague's 2FA after a lost phone.
 * Tokens (email confirmation, invitation, password reset) are stored hashed, expire, and are single use. Password reset answers are identical whether or not the email exists.
 * Headers: `nosniff`, frame protection, strict referrer, HSTS in production; console and billing endpoints are `no-store` and `noindex`.
+* **Network allowlist** (Settings → Where staff can sign in from): when set, sign-in and every console request from other addresses is refused. The list cannot be saved without your own current address. Break-glass: set `PLATFORM_IP_ALLOWLIST_OFF=1`, sign in, fix the list, remove the variable. The address is read from `x-forwarded-for`, which is only trustworthy behind your host's proxy (Vercel sets it).
 * **Not done**: a Content-Security-Policy (needs testing against every page), per-company encryption keys, SSO/SAML.
 
 ## 7. Backups and restore

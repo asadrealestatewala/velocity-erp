@@ -18,6 +18,7 @@ import { runLifecycle } from "@/server/platform/lifecycle";
 import { deletionBlocker } from "@/server/platform/purge";
 import { recordManualBackup } from "@/server/platform/backups";
 import { clearAnnouncementCache } from "@/server/platform/announcements";
+import { clearFlagCache, FLAG_KEY_RE } from "@/server/platform/flags";
 import { sendPlanEmail } from "@/server/platform/plan-mail";
 import { migrateAllTenants } from "@/server/platform/migrate-all";
 import { clearEntitlementCache } from "@/server/platform/plans";
@@ -557,6 +558,60 @@ export async function deleteAnnouncementAction(id: string) {
     clearAnnouncementCache();
     await platformAudit({ admin: a, action: "announcement.deleted", targetType: "Announcement", targetId: id });
     return { ok: true as const, message: "Deleted." };
+  });
+}
+
+// ───────────────────────── feature flags
+
+const flagSchema = z.object({
+  key: z.string().trim().toLowerCase().regex(FLAG_KEY_RE, "3–40 characters: lowercase letters, numbers and dashes, starting with a letter"),
+  name: z.string().trim().min(3).max(80),
+  description: z.string().trim().max(300).default(""),
+  enabled: z.boolean().default(false),
+  planKeys: z.union([z.string(), z.array(z.string())]).default([]),
+  rolloutPercent: z.number().int().min(0).max(100).default(0),
+});
+export async function saveFlagAction(input: z.input<typeof flagSchema>) {
+  return runAction(async () => {
+    const a = await requireAdminAction("flags.manage");
+    const v = flagSchema.parse(input);
+    const planKeys = (Array.isArray(v.planKeys) ? v.planKeys : v.planKeys.split(",")).map((p) => p.trim().toLowerCase()).filter(Boolean);
+    const known = new Set((await platformDb().plan.findMany({ select: { key: true } })).map((p) => p.key));
+    const unknown = planKeys.filter((p) => !known.has(p));
+    if (unknown.length) throw new AppError(`Unknown plan(s): ${unknown.join(", ")}.`, "VALIDATION", { planKeys: "Unknown plan" });
+    const data = { name: v.name, description: v.description, enabled: v.enabled, planKeys, rolloutPercent: v.rolloutPercent };
+    const before = await platformDb().featureFlag.findUnique({ where: { key: v.key } });
+    await platformDb().featureFlag.upsert({ where: { key: v.key }, create: { key: v.key, ...data }, update: { ...data, isArchived: false } });
+    clearFlagCache();
+    await platformAudit({ admin: a, action: before ? "flag.updated" : "flag.created", targetType: "FeatureFlag", targetId: v.key, detail: { before: before ? { enabled: before.enabled, planKeys: before.planKeys, rolloutPercent: before.rolloutPercent } : null, after: { enabled: v.enabled, planKeys, rolloutPercent: v.rolloutPercent } } });
+    return { ok: true as const, message: `Flag ${v.key} saved.` };
+  });
+}
+export async function archiveFlagAction(key: string, archived: boolean) {
+  return runAction(async () => {
+    const a = await requireAdminAction("flags.manage");
+    await platformDb().featureFlag.update({ where: { key }, data: { isArchived: archived } });
+    clearFlagCache();
+    await platformAudit({ admin: a, action: archived ? "flag.archived" : "flag.restored", targetType: "FeatureFlag", targetId: key });
+    return { ok: true as const };
+  });
+}
+/** Forces a flag on or off for one workspace (a reason is required), or `enabled: null` removes the exception. */
+export async function setFlagOverrideAction(tenantId: string, input: { flagKey: string; enabled: boolean | null; reason?: string }) {
+  return runAction(async () => {
+    const a = await requireAdminAction("flags.manage");
+    const flagKey = z.string().min(1).parse(input.flagKey);
+    if (input.enabled === null) {
+      await platformDb().tenantFlagOverride.deleteMany({ where: { tenantId, flagKey } });
+      clearFlagCache();
+      await platformAudit({ admin: a, action: "flag.override_removed", targetType: "Tenant", targetId: tenantId, detail: { flag: flagKey } });
+      return { ok: true as const, message: "Back to the default for this workspace." };
+    }
+    const why = reasonSchema.parse(input.reason);
+    await platformDb().tenantFlagOverride.upsert({ where: { tenantId_flagKey: { tenantId, flagKey } }, create: { tenantId, flagKey, enabled: Boolean(input.enabled), reason: why, setBy: a.email }, update: { enabled: Boolean(input.enabled), reason: why, setBy: a.email, at: new Date() } });
+    clearFlagCache();
+    await platformAudit({ admin: a, action: "flag.override_set", targetType: "Tenant", targetId: tenantId, reason: why, detail: { flag: flagKey, enabled: Boolean(input.enabled) } });
+    return { ok: true as const, message: `${flagKey} is now ${input.enabled ? "on" : "off"} for this workspace.` };
   });
 }
 

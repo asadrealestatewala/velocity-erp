@@ -1,4 +1,8 @@
-import { Badge, Card, CardHeader, PageHeader } from "@/components/ui/misc";
+import Link from "next/link";
+import { FileText } from "lucide-react";
+import { Badge, Card, CardHeader, EmptyState, PageHeader } from "@/components/ui/misc";
+import { FilterTabs, SearchBox } from "@/components/platform/list";
+import { SavedViews } from "@/components/platform/saved-views";
 import { TableWrap } from "@/components/ui/table";
 import { ActionForm, ReasonButton, RunButton } from "@/components/platform/console";
 import { confirmPaymentAction, refundAction, rejectPaymentAction } from "@/server/actions/platform";
@@ -9,12 +13,21 @@ import { fmtDateTime, fmtMoney } from "@/lib/utils";
 
 export const metadata = { title: "Payments & invoices" };
 
-export default async function Payments() {
+const VIEWS = [{ key: "all", label: "All invoices" }, { key: "refunded", label: "Refunded" }, { key: "clean", label: "Not refunded" }];
+
+export default async function Payments({ searchParams }: { searchParams: Promise<{ view?: string; q?: string }> }) {
   const admin = await requireAdminPage("payments.manage");
+  const sp = await searchParams;
+  const view = VIEWS.some((v) => v.key === sp.view) ? sp.view! : "all";
+  const q = sp.q?.trim() || undefined;
+  const num = q && /^(inv-?)?\d+$/i.test(q) ? Number(q.replace(/\D/g, "")) : null;
+  const search = q ? { OR: [{ tenant: { is: { name: { contains: q, mode: "insensitive" as const } } } }, { reference: { contains: q, mode: "insensitive" as const } }, ...(num !== null ? [{ number: num }] : [])] } : {};
+  const whereFor = (v: string) => (v === "refunded" ? { refunds: { some: {} } } : v === "clean" ? { refunds: { none: {} } } : {});
   const db = platformDb();
-  const [pending, invoices, recent] = await Promise.all([
+  const [counts, pending, invoices, recent] = await Promise.all([
+    Promise.all(VIEWS.map((v) => db.invoice.count({ where: { ...whereFor(v.key), ...search } }))),
     db.payment.findMany({ where: { status: "PENDING" }, orderBy: { submittedAt: "asc" }, include: { tenant: { select: { name: true, slug: true } } } }),
-    db.invoice.findMany({ orderBy: { issuedAt: "desc" }, take: 60, include: { tenant: { select: { name: true, slug: true } }, refunds: true } }),
+    db.invoice.findMany({ where: { ...whereFor(view), ...search }, orderBy: { issuedAt: "desc" }, take: 60, include: { tenant: { select: { name: true, slug: true } }, refunds: true } }),
     db.payment.findMany({ where: { status: { not: "PENDING" } }, orderBy: { decidedAt: "desc" }, take: 15, include: { tenant: { select: { name: true } } } }),
   ]);
   const canRefund = adminCan(admin.role, "refunds.manage");
@@ -37,11 +50,14 @@ export default async function Payments() {
               </div>
             </li>
           ))}
-          {!pending.length && <li className="px-5 py-6 text-sm text-ink-500">Nothing is waiting.</li>}
+          {!pending.length && <li className="px-5 py-6 text-sm text-ink-500">All clear. No payments are waiting for confirmation.</li>}
         </ul>
       </Card>
 
-      <h2 className="mt-6 mb-2 text-sm font-semibold text-ink-700">Invoices</h2>
+      <h2 className="mt-6 mb-2 text-sm font-semibold">Invoices</h2>
+      <FilterTabs label="Invoice views" active={view} tabs={VIEWS.map((v, i) => ({ key: v.key, label: v.label, count: counts[i], href: `/platform/payments?${new URLSearchParams({ view: v.key, ...(q ? { q } : {}) })}` }))} />
+      <SearchBox id="inv-q" label="Search invoices" action="/platform/payments" q={q} placeholder="Company, invoice number or reference" keep={{ view }} clearHref={`/platform/payments?view=${view}`} />
+      <SavedViews storageKey="payments" />
       <TableWrap>
         <thead>
           <tr className="text-left text-xs font-semibold uppercase text-ink-500"><th className="px-4 py-2.5">Invoice</th><th className="px-4 py-2.5">Company</th><th className="px-4 py-2.5">Plan</th><th className="px-4 py-2.5">Amount</th><th className="px-4 py-2.5">Method</th><th className="px-4 py-2.5">Refunded</th><th className="px-4 py-2.5" /></tr>
@@ -77,7 +93,7 @@ export default async function Payments() {
               </tr>
             );
           })}
-          {!invoices.length && <tr><td colSpan={7} className="px-4 py-8 text-center text-ink-500">No invoices yet.</td></tr>}
+          {!invoices.length && <tr><td colSpan={7}><EmptyState icon={FileText} title={q || view !== "all" ? "No invoices match these filters" : "No invoices yet"} description={q || view !== "all" ? "Try a different search or view." : "An invoice is created each time a payment is confirmed."} action={q || view !== "all" ? <Link href="/platform/payments" className="link text-sm">Clear filters</Link> : undefined} /></td></tr>}
         </tbody>
       </TableWrap>
 

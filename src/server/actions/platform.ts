@@ -8,7 +8,8 @@ import { clientIp } from "@/server/request";
 import { hashIdentifier } from "@/server/rate-limit";
 import { newRecoveryCodes, newTotpSecret, otpauthUrl, verifyTotp } from "@/lib/totp";
 import { passwordSchema } from "@/lib/password-policy";
-import { checkSecondFactor, endAdminSession, ensureFirstAdmin, getAdmin, platformAudit, requireAdminAction, startAdminSession, twoFactorRequired } from "@/server/platform/admin-auth";
+import { revokeSession, revokeSessions } from "@/server/platform/sessions";
+import { checkSecondFactor, currentSessionId, endAdminSession, ensureFirstAdmin, getAdmin, platformAudit, requireAdminAction, startAdminSession, twoFactorRequired } from "@/server/platform/admin-auth";
 import { activatePlan, buildQuote, confirmPayment, recordRefund, rejectPayment } from "@/server/platform/billing";
 import { platformDb } from "@/server/platform/client";
 import { decryptSecret, encryptSecret, sha256 } from "@/server/platform/crypto";
@@ -408,8 +409,9 @@ export async function changeOwnPasswordAction(input: { current: string; next: st
     const pw = passwordSchema.safeParse(next);
     if (!pw.success) throw new AppError(pw.error.issues[0]!.message, "VALIDATION", { next: pw.error.issues[0]!.message });
     await platformDb().platformAdmin.update({ where: { id: a.id }, data: { passwordHash: await bcrypt.hash(next, 12) } });
+    await revokeSessions(a.id, await currentSessionId()); // a changed password signs out every other device
     await platformAudit({ admin: a, action: "admin.password_changed" });
-    return { ok: true as const, message: "Password changed." };
+    return { ok: true as const, message: "Password changed. Other devices were signed out." };
   });
 }
 
@@ -446,6 +448,38 @@ export async function disableTotpAction(password: string) {
     await platformDb().platformAdmin.update({ where: { id: a.id }, data: { totpEnabled: false, totpSecretEnc: null, recoveryCodes: [], lastTotpStep: 0 } });
     await platformAudit({ admin: a, action: "admin.2fa_disabled" });
     return { ok: true as const, message: "Two-factor sign-in is off." };
+  });
+}
+
+// ───────────────────────── sessions
+
+export async function revokeSessionAction(sessionId: string) {
+  return runAction(async () => {
+    const a = await requireAdminAction("dashboard");
+    if (!(await revokeSession(a.id, String(sessionId)))) throw new AppError("That session has already ended.", "NOT_FOUND");
+    await platformAudit({ admin: a, action: "admin.session_revoked", targetType: "PlatformSession", targetId: String(sessionId).slice(0, 12) });
+    return { ok: true as const, message: "Signed out that device." };
+  });
+}
+
+/** Signs out every other device; the one you are using stays signed in. */
+export async function revokeOtherSessionsAction() {
+  return runAction(async () => {
+    const a = await requireAdminAction("dashboard");
+    const n = await revokeSessions(a.id, await currentSessionId());
+    await platformAudit({ admin: a, action: "admin.sessions_revoked_others", detail: { count: n } });
+    return { ok: true as const, message: n ? `Signed out ${n} other ${n === 1 ? "device" : "devices"}.` : "There were no other signed-in devices." };
+  });
+}
+
+/** An owner ends every session of a colleague (lost laptop, leaver, suspected compromise). Yourself: use "sign out other devices". */
+export async function signOutAdminEverywhereAction(adminId: string) {
+  return runAction(async () => {
+    const a = await requireAdminAction("admins.manage");
+    if (adminId === a.id) throw new AppError("Use “Sign out other devices” on My account for your own sessions.");
+    const n = await revokeSessions(adminId);
+    await platformAudit({ admin: a, action: "admin.sessions_revoked_all", targetType: "PlatformAdmin", targetId: adminId, detail: { count: n } });
+    return { ok: true as const, message: `Ended ${n} ${n === 1 ? "session" : "sessions"}.` };
   });
 }
 

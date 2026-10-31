@@ -53,12 +53,20 @@ export async function endAdminSession() {
   jar.delete({ name: ADMIN_COOKIE, path: "/platform" });
 }
 
+/** Id of the session behind the current cookie (the hash of the token), or null. */
+export async function currentSessionId(): Promise<string | null> {
+  const token = (await cookies()).get(ADMIN_COOKIE)?.value;
+  return token ? sha256(token) : null;
+}
+
 /** The signed-in platform admin (or null). */
 export const getAdmin = cache(async (): Promise<PlatformAdmin | null> => {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
   if (!token) return null;
   const s = await platformDb().platformSession.findUnique({ where: { id: sha256(token) }, include: { admin: true } });
   if (!s || s.expiresAt < new Date() || !s.admin.isActive) return null;
+  // Record activity at most every 5 minutes so the sessions page can show "last active" without a write per request.
+  if (!s.lastSeenAt || Date.now() - s.lastSeenAt.getTime() > 5 * 60_000) await platformDb().platformSession.update({ where: { id: s.id }, data: { lastSeenAt: new Date() } }).catch(() => {});
   return s.admin;
 });
 

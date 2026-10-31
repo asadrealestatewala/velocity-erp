@@ -50,8 +50,8 @@ Migrations must be additive (new tables/columns, nullable or defaulted) so a hal
 ## 6. Security model
 
 * Tenant isolation: separate schemas, one Prisma client per company, and tests that create two real companies and check that neither can read the other (`tests/integration/tenancy.test.ts`).
-* Platform console: separate sign-in and cookie (`yadea_platform`, path `/platform`, 8 h), roles OWNER / BILLING / SUPPORT / ANALYTICS, optional TOTP with replay protection and one-time recovery codes, rate-limited sign-in, append-only audit log, every sensitive change needs a written reason.
-* Staff: optional TOTP on the Account page; administrators can remove a colleague's 2FA after a lost phone.
+* Platform console: separate sign-in and cookie (`yadea_platform`, path `/platform`, 8 h), roles OWNER / BILLING / SUPPORT / ANALYTICS, TOTP with replay protection and one-time recovery codes, rate-limited sign-in, append-only audit log, every sensitive change needs a written reason.
+* Platform staff two-factor is **required by default** (Settings → Staff two-factor: all staff, owners and billing only, or off). Anyone without it signs in normally but is taken to a set-up page (`/platform/enrol`) and cannot use the console until they finish, so nobody is locked out. Enrolled staff cannot turn it off while it is required. Company staff: optional TOTP on the Account page; administrators can remove a colleague's 2FA after a lost phone.
 * Tokens (email confirmation, invitation, password reset) are stored hashed, expire, and are single use. Password reset answers are identical whether or not the email exists.
 * Headers: `nosniff`, frame protection, strict referrer, HSTS in production; console and billing endpoints are `no-store` and `noindex`.
 * **Not done**: a Content-Security-Policy (needs testing against every page), per-company encryption keys, SSO/SAML.

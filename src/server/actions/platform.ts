@@ -8,7 +8,7 @@ import { clientIp } from "@/server/request";
 import { hashIdentifier } from "@/server/rate-limit";
 import { newRecoveryCodes, newTotpSecret, otpauthUrl, verifyTotp } from "@/lib/totp";
 import { passwordSchema } from "@/lib/password-policy";
-import { checkSecondFactor, endAdminSession, ensureFirstAdmin, getAdmin, platformAudit, requireAdminAction, startAdminSession } from "@/server/platform/admin-auth";
+import { checkSecondFactor, endAdminSession, ensureFirstAdmin, getAdmin, platformAudit, requireAdminAction, startAdminSession, twoFactorRequired } from "@/server/platform/admin-auth";
 import { activatePlan, buildQuote, confirmPayment, recordRefund, rejectPayment } from "@/server/platform/billing";
 import { platformDb } from "@/server/platform/client";
 import { decryptSecret, encryptSecret, sha256 } from "@/server/platform/crypto";
@@ -293,6 +293,17 @@ export async function saveSettingsAction(input: Record<string, unknown>) {
   });
 }
 
+export async function setStaff2faAction(input: { mode: "all" | "privileged" | "off" }) {
+  return runAction(async () => {
+    const a = await requireAdminAction("settings.manage");
+    const { mode } = z.object({ mode: z.enum(["all", "privileged", "off"]) }).parse(input);
+    const cur = await getPlatformSettings();
+    await savePlatformSettings({ staff2fa: mode });
+    await platformAudit({ admin: a, action: "settings.staff_2fa", detail: { from: cur.staff2fa, to: mode } });
+    return { ok: true as const, message: mode === "off" ? "Two-factor is no longer required for staff." : "Saved. Staff without two-factor will be asked to set it up at their next page load." };
+  });
+}
+
 export async function setMaintenanceAction(input: { on: boolean; message: string }) {
   return runAction(async () => {
     const a = await requireAdminAction("system.manage");
@@ -391,7 +402,7 @@ export async function updateAdminAction(id: string, patch: { isActive?: boolean;
 export async function changeOwnPasswordAction(input: { current: string; next: string }) {
   return runAction(async () => {
     const { current, next } = input;
-    const a = await requireAdminAction("dashboard");
+    const a = await requireAdminAction("dashboard", { allowUnenrolled: true });
     const row = await platformDb().platformAdmin.findUniqueOrThrow({ where: { id: a.id } });
     if (!(await bcrypt.compare(current, row.passwordHash))) throw new AppError("Your current password is not correct.", "VALIDATION", { current: "Incorrect password" });
     const pw = passwordSchema.safeParse(next);
@@ -404,7 +415,8 @@ export async function changeOwnPasswordAction(input: { current: string; next: st
 
 export async function beginTotpAction() {
   return runAction(async () => {
-    const a = await requireAdminAction("dashboard");
+    const a = await requireAdminAction("dashboard", { allowUnenrolled: true });
+    if (a.totpEnabled) throw new AppError("Two-factor is already on. Turn it off first if you need to set up a new phone.");
     const secret = newTotpSecret();
     await platformDb().platformAdmin.update({ where: { id: a.id }, data: { totpSecretEnc: encryptSecret(secret), totpEnabled: false } });
     return { ok: true as const, data: { secret, url: otpauthUrl(secret, a.email, process.env.PLATFORM_NAME || "Velocity Platform") } };
@@ -413,7 +425,7 @@ export async function beginTotpAction() {
 
 export async function confirmTotpAction(code: string) {
   return runAction(async () => {
-    const a = await requireAdminAction("dashboard");
+    const a = await requireAdminAction("dashboard", { allowUnenrolled: true });
     const row = await platformDb().platformAdmin.findUniqueOrThrow({ where: { id: a.id } });
     if (!row.totpSecretEnc) throw new AppError("Start the setup first.");
     const step = verifyTotp(decryptSecret(row.totpSecretEnc), code);
@@ -429,6 +441,7 @@ export async function disableTotpAction(password: string) {
   return runAction(async () => {
     const a = await requireAdminAction("dashboard");
     const row = await platformDb().platformAdmin.findUniqueOrThrow({ where: { id: a.id } });
+    if (twoFactorRequired((await getPlatformSettings()).staff2fa, a.role)) throw new AppError("Your organisation requires two-factor sign-in for your role, so it can't be turned off.", "FORBIDDEN");
     if (!(await bcrypt.compare(password, row.passwordHash))) throw new AppError("Your password is not correct.");
     await platformDb().platformAdmin.update({ where: { id: a.id }, data: { totpEnabled: false, totpSecretEnc: null, recoveryCodes: [], lastTotpStep: 0 } });
     await platformAudit({ admin: a, action: "admin.2fa_disabled" });

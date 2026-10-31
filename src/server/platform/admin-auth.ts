@@ -7,6 +7,7 @@ import { AppError } from "@/server/errors";
 import { verifyTotp } from "@/lib/totp";
 import { platformDb } from "./client";
 import { decryptSecret, newToken, sha256 } from "./crypto";
+import { getPlatformSettings, type Staff2faMode } from "./settings";
 export { ensureFirstAdmin } from "./admin-bootstrap";
 
 export const ADMIN_COOKIE = "yadea_platform";
@@ -61,18 +62,31 @@ export const getAdmin = cache(async (): Promise<PlatformAdmin | null> => {
   return s.admin;
 });
 
-/** For pages: redirects to sign-in, or back to the dashboard when the role lacks the permission. */
+/** Whether the platform's two-factor policy applies to a staff role. */
+export function twoFactorRequired(mode: Staff2faMode, role: PlatformRole): boolean {
+  return mode === "all" || (mode === "privileged" && (role === "OWNER" || role === "BILLING"));
+}
+
+/** True when this admin must turn on two-factor before using the console. They can still sign in (so nobody is locked out) but only reach the enrolment page. */
+export async function mustEnrolTwoFactor(admin: PlatformAdmin): Promise<boolean> {
+  if (admin.totpEnabled) return false;
+  return twoFactorRequired((await getPlatformSettings()).staff2fa, admin.role);
+}
+
+/** For pages: redirects to sign-in, to two-factor enrolment when the policy requires it, or back to the dashboard when the role lacks the permission. */
 export async function requireAdminPage(perm?: PlatformPerm): Promise<PlatformAdmin> {
   const a = await getAdmin();
   if (!a) redirect("/platform/login");
+  if (await mustEnrolTwoFactor(a)) redirect("/platform/enrol");
   if (perm && !adminCan(a.role, perm)) redirect("/platform?denied=1");
   return a;
 }
 
 /** For server actions: throws instead of redirecting. */
-export async function requireAdminAction(perm: PlatformPerm): Promise<PlatformAdmin> {
+export async function requireAdminAction(perm: PlatformPerm, opts: { allowUnenrolled?: boolean } = {}): Promise<PlatformAdmin> {
   const a = await getAdmin();
   if (!a) throw new AppError("Your session has expired. Please sign in again.", "UNAUTHENTICATED");
+  if (!opts.allowUnenrolled && (await mustEnrolTwoFactor(a))) throw new AppError("Turn on two-factor sign-in first (My account) before using the console.", "FORBIDDEN");
   if (!adminCan(a.role, perm)) throw new AppError("Your platform role does not allow this action.", "FORBIDDEN");
   return a;
 }

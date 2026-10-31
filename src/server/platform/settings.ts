@@ -1,6 +1,8 @@
 import "server-only";
 import { platformDb } from "./client";
 
+export type Staff2faMode = "all" | "privileged" | "off";
+
 /** Platform-wide settings, edited in the platform console. Defaults apply until a value is saved. */
 export type PlatformSettings = {
   trialDays: number;
@@ -8,6 +10,8 @@ export type PlatformSettings = {
   reminderDays: number[];
   graceDays: number;
   oneTrialPerOwner: boolean;
+  /** Who must sign in with two-factor: every staff member, only owners and billing staff, or nobody. */
+  staff2fa: Staff2faMode;
   maintenance: { on: boolean; message: string };
   support: { email: string; phone: string };
   billing: {
@@ -27,6 +31,7 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   reminderDays: [3, 1, 0],
   graceDays: 7,
   oneTrialPerOwner: true,
+  staff2fa: "all",
   maintenance: { on: false, message: "We are doing scheduled maintenance. Please try again shortly." },
   support: { email: "", phone: "" },
   billing: { stripeMode: "test", stripeSecretKeyEnc: null, stripeWebhookSecretEnc: null, stripePublishableKey: "", stripePrices: {}, operatorEmail: "" },

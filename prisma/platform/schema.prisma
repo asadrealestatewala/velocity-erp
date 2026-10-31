@@ -567,3 +567,20 @@ model BackupRun {
 
   @@index([startedAt])
 }
+
+/// A notice shown in the app of every workspace (or one plan, or one workspace) between `startsAt` and `endsAt`. tone: info | warn | danger.
+model Announcement {
+  id        String    @id @default(cuid())
+  title     String
+  body      String
+  tone      String    @default("info")
+  planKey   String?
+  tenantId  String?
+  startsAt  DateTime  @default(now())
+  endsAt    DateTime?
+  isActive  Boolean   @default(true)
+  createdBy String?
+  createdAt DateTime  @default(now())
+
+  @@index([isActive, startsAt])
+}

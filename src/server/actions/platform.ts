@@ -17,6 +17,7 @@ import { platformRateLimit } from "@/server/platform/guard";
 import { runLifecycle } from "@/server/platform/lifecycle";
 import { deletionBlocker } from "@/server/platform/purge";
 import { recordManualBackup } from "@/server/platform/backups";
+import { clearAnnouncementCache } from "@/server/platform/announcements";
 import { sendPlanEmail } from "@/server/platform/plan-mail";
 import { migrateAllTenants } from "@/server/platform/migrate-all";
 import { clearEntitlementCache } from "@/server/platform/plans";
@@ -513,6 +514,49 @@ export async function signOutAdminEverywhereAction(adminId: string) {
     const n = await revokeSessions(adminId);
     await platformAudit({ admin: a, action: "admin.sessions_revoked_all", targetType: "PlatformAdmin", targetId: adminId, detail: { count: n } });
     return { ok: true as const, message: `Ended ${n} ${n === 1 ? "session" : "sessions"}.` };
+  });
+}
+
+// ───────────────────────── announcements
+
+const announcementSchema = z.object({
+  title: z.string().trim().min(3, "Add a short title").max(80),
+  body: z.string().trim().min(3, "Say what customers need to know").max(400),
+  tone: z.enum(["info", "warn", "danger"]),
+  planKey: z.string().trim().optional().nullable(),
+  tenantCode: z.string().trim().toLowerCase().optional().nullable(),
+  endsAt: z.string().trim().optional().nullable(),
+});
+export async function saveAnnouncementAction(input: z.input<typeof announcementSchema>) {
+  return runAction(async () => {
+    const a = await requireAdminAction("announcements.manage");
+    const v = announcementSchema.parse(input);
+    const tenant = v.tenantCode ? await platformDb().tenant.findUnique({ where: { slug: v.tenantCode } }) : null;
+    if (v.tenantCode && !tenant) throw new AppError(`No workspace with code “${v.tenantCode}”.`, "VALIDATION", { tenantCode: "Unknown workspace" });
+    const endsAt = v.endsAt ? new Date(`${v.endsAt}T23:59:59`) : null;
+    if (endsAt && Number.isNaN(endsAt.getTime())) throw new AppError("That end date is not valid.", "VALIDATION", { endsAt: "Invalid date" });
+    const row = await platformDb().announcement.create({ data: { title: v.title, body: v.body, tone: v.tone, planKey: v.planKey || null, tenantId: tenant?.id ?? null, endsAt, createdBy: a.email } });
+    clearAnnouncementCache();
+    await platformAudit({ admin: a, action: "announcement.created", targetType: "Announcement", targetId: row.id, detail: { title: v.title, tone: v.tone, planKey: v.planKey || null, workspace: tenant?.slug ?? null } });
+    return { ok: true as const, message: "Published. Customers see it within a minute." };
+  });
+}
+export async function toggleAnnouncementAction(id: string, active: boolean) {
+  return runAction(async () => {
+    const a = await requireAdminAction("announcements.manage");
+    await platformDb().announcement.update({ where: { id }, data: { isActive: active } });
+    clearAnnouncementCache();
+    await platformAudit({ admin: a, action: active ? "announcement.enabled" : "announcement.disabled", targetType: "Announcement", targetId: id });
+    return { ok: true as const };
+  });
+}
+export async function deleteAnnouncementAction(id: string) {
+  return runAction(async () => {
+    const a = await requireAdminAction("announcements.manage");
+    await platformDb().announcement.delete({ where: { id } });
+    clearAnnouncementCache();
+    await platformAudit({ admin: a, action: "announcement.deleted", targetType: "Announcement", targetId: id });
+    return { ok: true as const, message: "Deleted." };
   });
 }
 

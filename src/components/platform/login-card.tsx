@@ -1,8 +1,8 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useActionState, useRef } from "react";
-import { ArrowRight, CheckCircle2, FlaskConical, KeyRound, Mail } from "lucide-react";
+import { useActionState } from "react";
+import { ArrowRight, CheckCircle2, KeyRound, Mail } from "lucide-react";
 import { useFormStatus } from "react-dom";
 import { platformLoginAction, type PlatformLoginState } from "@/server/actions/platform";
 import { PlatformPasswordInput } from "@/components/platform/password-input";
@@ -52,21 +52,19 @@ export function PlatformAuthShell({ title, children }: { title: string; children
   );
 }
 
-/** Platform operator sign-in. `demo` is only passed when the deployment explicitly enables a throwaway demo account. */
-export function PlatformLoginCard({ demo, notice }: { demo?: { email: string; password: string } | null; notice?: string }) {
+/** Platform operator sign-in. */
+export function PlatformLoginCard({ notice }: { notice?: string }) {
   const [state, action] = useActionState<PlatformLoginState, FormData>(platformLoginAction, undefined);
-  const emailRef = useRef<HTMLInputElement>(null);
-  const passRef = useRef<HTMLInputElement>(null);
   return (
     <PlatformAuthShell title="Platform Login">
       {notice && <p role="status" className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-emerald-50 px-4 py-2 text-center text-sm text-emerald-800"><CheckCircle2 className="size-4 shrink-0" aria-hidden />{notice}</p>}
       <form action={action} className="mt-7 space-y-3">
         <div className="relative">
           <label htmlFor="pf-email" className="sr-only">Email</label>
-          <input ref={emailRef} id="pf-email" name="email" type="email" required autoComplete="username" placeholder="Email" className={pill} />
+          <input id="pf-email" name="email" type="email" required autoComplete="username" placeholder="Email" className={pill} />
           <Mail className={icon} aria-hidden />
         </div>
-        <PlatformPasswordInput id="pf-pass" inputRef={passRef} />
+        <PlatformPasswordInput id="pf-pass" />
         {state?.needsCode && (
           <div className="relative">
             <label htmlFor="pf-code" className="sr-only">Authenticator code or recovery code</label>
@@ -78,14 +76,6 @@ export function PlatformLoginCard({ demo, notice }: { demo?: { email: string; pa
         <div className="text-right"><Link href="/platform/forgot-password" className="text-xs font-medium text-pink-600 hover:underline">Forgot your password?</Link></div>
         <div className="pt-1"><Submit label={state?.needsCode ? "Verify" : "Login"} /></div>
       </form>
-      {demo && (
-        <section aria-labelledby="pf-demo" className="mt-5 rounded-2xl border border-amber-200 bg-amber-50/70 p-3.5 text-xs text-amber-900">
-          <h2 id="pf-demo" className="flex items-center gap-1.5 font-semibold"><FlaskConical className="size-3.5" aria-hidden />Demo account (read-only)</h2>
-          <p className="mt-1.5 break-all">Email: <code className="font-mono font-semibold select-all">{demo.email}</code></p>
-          <p className="break-all">Password: <code className="font-mono font-semibold select-all">{demo.password}</code></p>
-          <button type="button" onClick={() => { if (emailRef.current) emailRef.current.value = demo.email; if (passRef.current) passRef.current.value = demo.password; }} className="mt-2 rounded-full bg-amber-200/70 px-3 py-1 font-semibold hover:bg-amber-200">Fill in the form</button>
-        </section>
-      )}
       <p className="mt-5 text-center text-xs text-neutral-500">For platform operators only.</p>
       <Link href="/login" className="mt-8 flex items-center justify-center gap-1.5 text-xs font-medium text-neutral-500 hover:text-pink-600">
         Company staff sign in here <ArrowRight className="size-3.5" aria-hidden />

@@ -1,6 +1,7 @@
 import "server-only";
 import { db, type Tx } from "@/lib/db";
 import { env } from "@/lib/env";
+import { deliverEmail, emailConfigured } from "@/server/messaging/providers";
 
 export const NOTIFICATION_TYPES = {
   LEAD_ASSIGNED: "New lead assignment",
@@ -112,11 +113,12 @@ export async function centralUserIdsWith(tx: Tx, permissionKey: string) {
 
 // ───────── Email delivery ─────────
 
+/** True when email can be delivered, through Resend (RESEND_API_KEY) or SMTP (SMTP_HOST). */
 export function smtpConfigured() {
-  return !!process.env.SMTP_HOST;
+  return emailConfigured();
 }
 
-/** Deliver pending outbox emails. Without SMTP they are marked SKIPPED — never reported as sent. */
+/** Deliver pending outbox emails. Without Resend or SMTP they are marked SKIPPED — never reported as sent. */
 export async function deliverOutbox(limit = 50) {
   const pending = await db.outboxMessage.findMany({
     where: { status: "PENDING", attempts: { lt: 5 } },
@@ -128,23 +130,16 @@ export async function deliverOutbox(limit = 50) {
   if (!smtpConfigured()) {
     await db.outboxMessage.updateMany({
       where: { id: { in: pending.map((p) => p.id) } },
-      data: { status: "SKIPPED", lastError: "SMTP not configured" },
+      data: { status: "SKIPPED", lastError: "Email not configured" },
     });
     return { sent: 0, skipped: pending.length, failed: 0 };
   }
 
-  const nodemailer = await import("nodemailer");
-  const transport = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT ?? 587),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD } : undefined,
-  });
   let sent = 0;
   let failed = 0;
   for (const m of pending) {
     try {
-      await transport.sendMail({ from: process.env.EMAIL_FROM, to: m.to, subject: m.subject, text: m.body });
+      await deliverEmail({ to: m.to, subject: m.subject, body: m.body });
       await db.outboxMessage.update({ where: { id: m.id }, data: { status: "SENT", sentAt: new Date(), attempts: { increment: 1 } } });
       sent++;
     } catch (e) {

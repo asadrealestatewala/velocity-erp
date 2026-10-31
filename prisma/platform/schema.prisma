@@ -714,3 +714,17 @@ model TenantFlagOverride {
   @@unique([tenantId, flagKey])
   @@index([flagKey])
 }
+
+/// A public notice on /status: something customers should know is broken or degraded. Written by staff; resolved when fixed.
+model StatusIncident {
+  id         String    @id @default(cuid())
+  title      String
+  body       String
+  /// minor | major
+  impact     String    @default("minor")
+  startedAt  DateTime  @default(now())
+  resolvedAt DateTime?
+  createdBy  String?
+
+  @@index([startedAt])
+}

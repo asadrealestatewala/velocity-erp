@@ -105,6 +105,10 @@ Uploaded files are not part of the dump: they live in the storage bucket (or `LO
 * **Usage tracking**: a workspace counts as active on a day when someone signs in to use it (one row per workspace per day). Retention is therefore empty before this release and fills in from deploy day onwards.
 * **Campaigns** (`/platform/growth/campaigns`, owner only): save a draft, check the audience count, then send. Audiences: paying, on trial, trial ending within 7 days, payment overdue, inactive 30 days. Each email has a signed unsubscribe link; the link opens a confirmation page (so mail scanners cannot unsubscribe anyone). Unsubscribed workspaces are skipped from then on. Account, security and billing emails are never affected. Sending is claimed atomically, so a double click cannot send twice. Sends happen inside the request, so keep audiences to a few hundred; larger lists need a queue.
 
+## 8c. Public status page
+
+`/status` is public and needs no sign-in. It shows what the platform can verify itself (database reachable, maintenance mode) plus incidents staff post under *Status page* in the console (owner and support). It does not check Stripe, email delivery or any third party, and it cannot report on an outage that takes the whole site down, so host it elsewhere if you need that.
+
 ## 9. Known limits
 
 * Placeholder plan limits and prices; no real tax handling; invoices are simple PDFs.

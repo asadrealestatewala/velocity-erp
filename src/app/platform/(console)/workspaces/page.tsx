@@ -1,6 +1,9 @@
 import Link from "next/link";
-import { Badge, PageHeader } from "@/components/ui/misc";
+import { buttonClass } from "@/components/ui/button";
+import { Building2 } from "lucide-react";
+import { Badge, EmptyState, PageHeader } from "@/components/ui/misc";
 import { TableWrap } from "@/components/ui/table";
+import { SavedViews } from "@/components/platform/saved-views";
 import { BulkExtendTrial } from "@/components/platform/bulk-trial";
 import { adminCan, requireAdminPage } from "@/server/platform/admin-auth";
 import { platformDb } from "@/server/platform/client";
@@ -16,19 +19,31 @@ export default async function Workspaces({ searchParams }: { searchParams: Promi
   const me = await requireAdminPage("tenants.view");
   const { q, sub } = await searchParams;
   const where = tenantWhere(q, sub);
-  const rows = await platformDb().tenant.findMany({ where, orderBy: { createdAt: "desc" }, take: 200 });
+  const [rows, counts] = await Promise.all([
+    platformDb().tenant.findMany({ where, orderBy: { createdAt: "desc" }, take: 200 }),
+    platformDb().tenant.groupBy({ by: ["subStatus"], where: tenantWhere(q, undefined), _count: true }),
+  ]);
+  const countOf = Object.fromEntries(counts.map((c) => [c.subStatus, c._count])) as Record<string, number>;
+  const all = counts.reduce((n, c) => n + c._count, 0);
+  const tabHref = (s?: string) => `/platform/workspaces?${new URLSearchParams({ ...(q ? { q } : {}), ...(s ? { sub: s } : {}) })}`;
   return (
     <>
-      <PageHeader title="Workspaces" description="Every company on the platform." />
-      <form className="mb-4 flex flex-wrap gap-2" action="/platform/workspaces">
-        <input name="q" defaultValue={q} placeholder="Search name, code or owner email" className="input max-w-xs" />
-        <select name="sub" defaultValue={sub ?? ""} className="input max-w-[11rem]">
-          <option value="">All statuses</option>
-          {SUBS.map((s) => <option key={s} value={s}>{s.toLowerCase().replace("_", " ")}</option>)}
-        </select>
-        <button className="btn btn-secondary" type="submit">Filter</button>
-        {adminCan(me.role, "tenants.export") && <a className="link self-center text-sm" href={`/api/platform/tenants-export?${new URLSearchParams({ ...(q ? { q } : {}), ...(sub ? { sub } : {}) })}`}>Download CSV</a>}
+      <PageHeader title="Workspaces" description="Every company on the platform. Open one to see its plan, people and payments." />
+      <nav aria-label="Filter by status" className="mb-3 flex flex-wrap gap-1.5">
+        {[["", "All", all] as const, ...SUBS.map((k) => [k, k.toLowerCase().replace("_", " "), countOf[k] ?? 0] as const)].map(([k, label, n]) => (
+          <Link key={k || "all"} href={tabHref(k)} aria-current={(sub ?? "") === k ? "page" : undefined} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] capitalize ${(sub ?? "") === k ? "border-[var(--pf-accent)] bg-[var(--pf-accent-soft)] font-semibold text-[var(--pf-accent)]" : "border-[var(--pf-border)] text-[var(--pf-muted)] hover:text-[var(--pf-text)]"}`}>
+            {label}<span className="tabular-nums opacity-80">{n}</span>
+          </Link>
+        ))}
+      </nav>
+      <form className="mb-3 flex flex-wrap items-end gap-2" action="/platform/workspaces" role="search">
+        <div><label htmlFor="ws-q" className="label">Search</label><input id="ws-q" name="q" defaultValue={q} placeholder="Name, code or owner email" className="input w-72 max-w-full" /></div>
+        {sub && <input type="hidden" name="sub" value={sub} />}
+        <button className={buttonClass("secondary", "md")} type="submit">Search</button>
+        {(q || sub) && <Link href="/platform/workspaces" className="self-center text-[13px] text-[var(--pf-accent)] hover:underline">Clear filters</Link>}
+        {adminCan(me.role, "tenants.export") && <a className="link ml-auto self-center text-[13px]" href={`/api/platform/tenants-export?${new URLSearchParams({ ...(q ? { q } : {}), ...(sub ? { sub } : {}) })}`}>Download CSV</a>}
       </form>
+      <SavedViews storageKey="workspaces" />
       {adminCan(me.role, "trials.manage") && <div className="mb-3"><BulkExtendTrial /></div>}
       <TableWrap>
         <thead>
@@ -48,7 +63,7 @@ export default async function Workspaces({ searchParams }: { searchParams: Promi
               <td className="px-4 py-2.5">{fmtDate(t.createdAt)}</td>
             </tr>
           ))}
-          {!rows.length && <tr><td colSpan={7} className="px-4 py-8 text-center text-ink-500">No workspaces match.</td></tr>}
+          {!rows.length && <tr><td colSpan={7}><EmptyState icon={Building2} title={q || sub ? "No workspaces match these filters" : "No workspaces yet"} description={q || sub ? "Try a different search or clear the filters." : "Companies appear here as soon as they sign up."} action={q || sub ? <Link href="/platform/workspaces" className="link text-sm">Clear filters</Link> : undefined} /></td></tr>}
         </tbody>
       </TableWrap>
     </>

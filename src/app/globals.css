@@ -325,13 +325,96 @@
   .scene[data-phase="submitting"] .scene-bike, .scene[data-phase="error"] .scene-bike { animation: none; }
 }
 
-/* Platform console skin: warm canvas, soft rounded cards, pill buttons. Scoped to .pf so the CRM is unaffected. */
-.pf .card { border-radius: 1.75rem; border-color: transparent; background: #f6f4f2; box-shadow: none; }
-.pf .card-hover:hover { box-shadow: 0 12px 28px -14px rgb(15 18 32 / 0.25); }
-.pf h1 { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.02em; }
-.pf main button[class*="inline-flex"], .pf main a[class*="inline-flex"] { border-radius: 9999px; }
-.pf main .input { border-radius: 9999px; background: #e9e6e3; border-color: transparent; }
-.pf main textarea.input { border-radius: 1.25rem; }
-.pf main table thead { background: transparent; }
-.pf main tbody tr:hover { background: rgb(15 18 32 / 0.03); }
-.pf main .card > div > h2, .pf main .card h2 { letter-spacing: 0.02em; }
+/* ── Platform console skin ───────────────────────────────────────────────────────────────
+   Calm, flat, dense. Velocity brand: charcoal wordmark + one magenta accent (the logo gradient is only
+   ever used in the logo itself). Scoped to .pf, and to html[data-pf] for portalled UI (dialogs, menus).
+   Motion: none by default. Only colour changes ease in (<=100ms); nothing moves, lifts, scales or loops. */
+html[data-pf] {
+  --pf-bg: #f7f7f8;
+  --pf-surface: #ffffff;
+  --pf-sunken: #f1f1f3;
+  --pf-border: #e4e4e8;
+  --pf-text: #1b1a1f;
+  --pf-muted: #62616b;
+  --pf-accent: #c42a6c;
+  --pf-accent-soft: #fbe9f1;
+  --pf-ring: #c42a6c;
+}
+.pf { background: var(--pf-bg); color: var(--pf-text); }
+html[data-pf-theme="dark"] {
+  --pf-bg: #121216;
+  --pf-surface: #1a1a20;
+  --pf-sunken: #22222a;
+  --pf-border: #2f2f38;
+  --pf-text: #ececf0;
+  --pf-muted: #a2a2ad;
+  --pf-accent: #f0679f;
+  --pf-accent-soft: #3a1c2b;
+  --pf-ring: #f0679f;
+  color-scheme: dark;
+  /* Re-map the shared neutral scale so every shared component (dialogs, menus, inputs, tables) follows. */
+  --color-ink-50: #1d1d24;
+  --color-ink-100: #24242c;
+  --color-ink-200: #2f2f38;
+  --color-ink-300: #4a4a56;
+  --color-ink-400: #8a8a96;
+  --color-ink-500: #a2a2ad;
+  --color-ink-600: #bcbcc5;
+  --color-ink-700: #d3d3da;
+  --color-ink-800: #e4e4ea;
+  --color-ink-900: #f2f2f5;
+  --color-ink-950: #ffffff;
+  --color-brand-50: #3a1c2b;
+  --color-brand-100: #4a2236;
+  --color-brand-200: #6b2d4a;
+  --color-brand-600: #f0679f;
+  --color-brand-700: #f58ab5;
+}
+html[data-pf-theme="dark"] .bg-white { background-color: var(--pf-surface); }
+html[data-pf-theme="dark"] :is(.bg-emerald-50, .bg-red-50, .bg-amber-50, .bg-blue-50, .bg-violet-50, .bg-amber-100) { background-color: rgb(255 255 255 / 0.07); }
+html[data-pf-theme="dark"] :is(.text-emerald-700, .text-emerald-600) { color: #6ee7b7; }
+html[data-pf-theme="dark"] :is(.text-red-700, .text-red-600) { color: #fca5a5; }
+html[data-pf-theme="dark"] :is(.text-amber-800, .text-amber-900) { color: #fcd34d; }
+html[data-pf-theme="dark"] :is(.text-blue-700, .text-blue-600) { color: #93c5fd; }
+html[data-pf-theme="dark"] :is(.text-violet-700, .text-xp-600) { color: #c4b5fd; }
+html[data-pf-theme="dark"] .text-slate-600 { color: var(--pf-muted); }
+
+/* Surfaces: flat, thin border, no shadow, no gradient. */
+.pf .card { border-radius: 0.75rem; border: 1px solid var(--pf-border); background: var(--pf-surface); box-shadow: none; }
+.pf .card-hover:hover { translate: none; transform: none; box-shadow: none; border-color: var(--pf-muted); }
+.pf h1 { font-size: 1.5rem; line-height: 1.25; font-weight: 650; letter-spacing: -0.01em; color: var(--pf-text); }
+.pf h2 { letter-spacing: 0; }
+.pf main .input { border-radius: 0.5rem; background: var(--pf-surface); border-color: var(--pf-border); }
+.pf main .input:focus { box-shadow: none; border-color: var(--pf-ring); outline: 2px solid var(--pf-ring); outline-offset: 0; }
+.pf main textarea.input { border-radius: 0.5rem; }
+.pf main :is(button, a)[class*="inline-flex"] { border-radius: 0.5rem; box-shadow: none; }
+.pf main [class*="bg-gradient"], html[data-pf] [class*="bg-gradient-action"] { background-image: none; background-color: var(--pf-accent); }
+.pf main [class*="bg-gradient-action"] { color: #fff; }
+.pf main :is(button, a)[class*="bg-gradient-action"]:hover { filter: brightness(0.94); }
+.pf main table thead { background: var(--pf-sunken); }
+.pf main table :is(th, .th) { font-size: 12px; letter-spacing: 0.02em; text-transform: none; font-weight: 600; color: var(--pf-muted); }
+.pf main tbody tr:hover { background: var(--pf-sunken); }
+.pf main table tbody td { padding-block: 0.5rem; }
+.pf main table { font-variant-numeric: tabular-nums; }
+.pf :focus-visible, html[data-pf] :focus-visible { outline: 2px solid var(--pf-ring); outline-offset: 2px; }
+
+/* No decorative motion anywhere in the console (including portalled dialogs and menus). */
+.pf *, .pf *::before, .pf *::after, html[data-pf] [role="dialog"], html[data-pf] [role="dialog"] *, html[data-pf] [role="menu"], html[data-pf] [role="menu"] *, html[data-pf] [data-radix-popper-content-wrapper] * {
+  animation: none !important;
+  scroll-behavior: auto !important;
+}
+.pf *, .pf *::before, .pf *::after { transition-property: color, background-color, border-color, opacity !important; transition-duration: 90ms !important; transition-timing-function: linear !important; }
+.pf :is(button, a, [role="button"]):active, html[data-pf] [role="dialog"] button:active { scale: none !important; transform: none !important; }
+.pf .skeleton, html[data-pf] .skeleton { animation: none !important; background: var(--pf-sunken); }
+.pf [class*="backdrop-blur"], html[data-pf] [class*="backdrop-blur"] { backdrop-filter: none; }
+@media (prefers-reduced-motion: reduce) {
+  .pf *, .pf *::before, .pf *::after { transition-duration: 0.001ms !important; }
+}
+
+/* Console chrome */
+.pf-sr-only-focusable:not(:focus) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.pf-logo-dark { display: none; }
+html[data-pf-theme="dark"] .pf-logo-dark { display: block; }
+html[data-pf-theme="dark"] .pf-logo-light { display: none; }
+html[data-pf] .pf-bare:focus-visible { outline: none; }
+html[data-pf] kbd { font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 2px 5px; border-radius: 4px; border: 1px solid var(--pf-border); background: var(--pf-sunken); color: var(--pf-muted); }

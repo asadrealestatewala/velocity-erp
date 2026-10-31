@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { ViewAsBanner } from "@/components/shell/view-as-banner";
 import { db } from "@/lib/db";
 import { can, requirePortalPage } from "@/server/authz";
 import { AppShell, type QuickAction } from "@/components/shell/app-shell";
@@ -15,6 +16,7 @@ export default async function PortalLayout({ children }: { children: React.React
   const actions: QuickAction[] = can(user, "contacts.create") ? [{ label: "New walk-in lead", href: "/portal/leads/new", variant: "primary", icon: "plus" }] : [];
   return (
     <Suspense>
+      <ViewAsBanner view={user.impersonation} />
       <AppShell
         variant="portal"
         nav={nav}

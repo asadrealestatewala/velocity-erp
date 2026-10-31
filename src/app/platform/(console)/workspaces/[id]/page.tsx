@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { Badge, Card, CardHeader, PageHeader, DescriptionList } from "@/components/ui/misc";
 import { ActionForm, ReasonButton } from "@/components/platform/console";
+import { db as tenantDb } from "@/lib/db";
+import { startViewAsAction } from "@/server/actions/impersonation";
 import { changePlanAction, grantAddOnAction, recordPaymentAction, saveNotesAction, setWorkspaceStatusAction, trialAction } from "@/server/actions/platform";
 import { adminCan, requireAdminPage } from "@/server/platform/admin-auth";
 import { invoiceNumber, METHOD_LABEL } from "@/server/platform/billing";
@@ -19,6 +21,9 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
   const db = platformDb();
   const t = await db.tenant.findUnique({ where: { id }, include: { history: { orderBy: { at: "desc" }, take: 15 }, invoices: { orderBy: { issuedAt: "desc" }, take: 10 }, addOns: { include: { addOn: true } } } });
   if (!t) notFound();
+  const viewable = adminCan(admin.role, "tenants.impersonate") && t.status !== "CANCELLED"
+    ? await runInTenant(t.slug, () => tenantDb.user.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, take: 100, select: { id: true, name: true, email: true, role: { select: { name: true } } } })).catch(() => [])
+    : [];
   const [plans, addOns, ent, usage] = await Promise.all([
     listPlans(),
     db.addOn.findMany({ orderBy: { key: "asc" } }),
@@ -48,6 +53,19 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
               { label: "Database", value: `${t.dbSchema}${t.dbUrlEnc ? " (own connection)" : ""} · migrations v${t.schemaVersion}` },
               { label: "Coupon", value: t.couponCode ?? "—" },
             ]} />
+            {viewable.length > 0 && (
+              <div className="mt-4">
+                <ReasonButton
+                  label="View as user (read-only)"
+                  title="View this workspace as one of its users"
+                  description="Opens the workspace exactly as that person sees it, for 30 minutes. Nothing can be changed. Your reason is saved in the platform audit log and in the company's own audit log."
+                  variant="secondary"
+                  confirmLabel="Start read-only view"
+                  action={startViewAsAction.bind(null, t.id)}
+                  extra={[{ name: "userId", label: "View as", type: "select", options: viewable.map((u) => ({ value: u.id, label: `${u.name} · ${u.role.name} · ${u.email}` })), defaultValue: viewable[0]!.id }]}
+                />
+              </div>
+            )}
             {!t.isLegacy && can("tenants.manage") && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {t.status === "SUSPENDED" ? (

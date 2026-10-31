@@ -15,7 +15,7 @@ export function middleware(req: NextRequest) {
   const effective = m ? m[2] || "/" : pathname;
   const prefix = workspace ? `/w/${workspace}` : "";
 
-  const hasSession = req.cookies.has("yadea_session");
+  const hasSession = req.cookies.has("yadea_session") || req.cookies.has("yadea_viewas");
   const guarded = effective.startsWith("/crm") || effective.startsWith("/portal") || effective.startsWith("/procurement");
   if (!hasSession && guarded && !PUBLIC.has(effective)) {
     const url = req.nextUrl.clone();

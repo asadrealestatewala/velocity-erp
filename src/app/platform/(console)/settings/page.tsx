@@ -30,6 +30,7 @@ export default async function SettingsPage() {
                 { name: "trialDays", label: "Free trial length (days, 0 = no trial)", type: "number", defaultValue: s.trialDays },
                 { name: "trialPlanKey", label: "Plan used during the trial", type: "select", options: planOptions, defaultValue: s.trialPlanKey },
                 { name: "graceDays", label: "Default grace days after a missed renewal", type: "number", defaultValue: s.graceDays },
+                { name: "deletionRetentionDays", label: "Days to keep a workspace's data after deletion is scheduled", type: "number", defaultValue: s.deletionRetentionDays },
                 { name: "reminderDays", label: "Email reminders (days before expiry, comma separated)", defaultValue: s.reminderDays.join(", ") },
                 { name: "oneTrialPerOwner", label: "Only one free trial per owner email", type: "checkbox", defaultValue: s.oneTrialPerOwner },
                 { name: "supportEmail", label: "Support email", defaultValue: s.support.email },

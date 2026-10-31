@@ -12,6 +12,8 @@ export type PlatformSettings = {
   oneTrialPerOwner: boolean;
   /** Who must sign in with two-factor: every staff member, only owners and billing staff, or nobody. */
   staff2fa: Staff2faMode;
+  /** Days between scheduling a workspace's deletion and its data actually being erased. */
+  deletionRetentionDays: number;
   maintenance: { on: boolean; message: string };
   support: { email: string; phone: string };
   billing: {
@@ -32,6 +34,7 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   graceDays: 7,
   oneTrialPerOwner: true,
   staff2fa: "all",
+  deletionRetentionDays: 30,
   maintenance: { on: false, message: "We are doing scheduled maintenance. Please try again shortly." },
   support: { email: "", phone: "" },
   billing: { stripeMode: "test", stripeSecretKeyEnc: null, stripeWebhookSecretEnc: null, stripePublishableKey: "", stripePrices: {}, operatorEmail: "" },

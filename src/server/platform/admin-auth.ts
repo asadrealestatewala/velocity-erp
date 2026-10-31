@@ -14,9 +14,9 @@ const SESSION_HOURS = 8;
 
 /** What each platform role may do. OWNER can do everything; the others are deliberately narrow. */
 export const ROLE_PERMS = {
-  OWNER: ["dashboard", "reports", "tenants.view", "tenants.manage", "trials.manage", "payments.manage", "refunds.manage", "plans.manage", "coupons.manage", "settings.manage", "admins.manage", "audit.view", "system.manage", "mail.manage", "mail.settings"],
+  OWNER: ["dashboard", "reports", "tenants.view", "tenants.manage", "trials.manage", "payments.manage", "refunds.manage", "plans.manage", "coupons.manage", "settings.manage", "status.manage", "admins.manage", "audit.view", "system.manage", "mail.manage", "mail.settings"],
   BILLING: ["dashboard", "reports", "tenants.view", "payments.manage", "refunds.manage", "coupons.manage", "audit.view", "mail.manage"],
-  SUPPORT: ["dashboard", "tenants.view", "tenants.manage", "trials.manage", "audit.view", "mail.manage"],
+  SUPPORT: ["dashboard", "tenants.view", "tenants.manage", "trials.manage", "status.manage", "audit.view", "mail.manage"],
   ANALYTICS: ["dashboard", "reports", "tenants.view"],
 } as const satisfies Record<PlatformRole, readonly string[]>;
 export type PlatformPerm = (typeof ROLE_PERMS)["OWNER"][number];

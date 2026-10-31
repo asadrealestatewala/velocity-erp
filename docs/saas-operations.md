@@ -79,6 +79,10 @@ Also enable your database provider's point-in-time backups (Supabase: Pro plan).
 
 **Restore one company.** Restore its `.dump` into a scratch schema first, check it, then restore over the live schema in a quiet period.
 
+## 8c. Public status page
+
+`/status` is public and needs no sign-in. It shows what the platform can verify itself (database reachable, maintenance mode) plus incidents staff post under *Status page* in the console (owner and support). It does not check Stripe, email delivery or any third party, and it cannot report on an outage that takes the whole site down, so host it elsewhere if you need that.
+
 ## 9. Known limits
 
 * Placeholder plan limits and prices; no real tax handling; invoices are simple PDFs.

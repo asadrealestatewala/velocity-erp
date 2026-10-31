@@ -411,3 +411,85 @@ model RateLimitBucket {
   count       Int
   windowStart DateTime
 }
+
+enum MailDirection {
+  INBOUND
+  OUTBOUND
+}
+
+/// Where an outgoing message got to (updated from the provider's delivery webhooks). NOT_SENT = no mail provider configured or the provider refused it.
+enum MailDelivery {
+  QUEUED
+  SENT
+  DELIVERED
+  DELAYED
+  BOUNCED
+  COMPLAINED
+  FAILED
+  NOT_SENT
+}
+
+/// Workflow state of a received message in the console inbox.
+enum MailInboxStatus {
+  NEW
+  OPEN
+  RESOLVED
+  SPAM
+}
+
+/// A sender identity: billing@, support@, no-reply@ … `receives` = mail sent to this address lands in the console inbox.
+model MailMailbox {
+  key         String   @id
+  address     String   @unique
+  displayName String
+  replyTo     String?
+  signature   String   @default("")
+  receives    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+}
+
+/// Operator edits of a built-in email template (key = e.g. "welcome"). Missing row = the built-in text.
+model MailTemplate {
+  key       String   @id
+  subject   String
+  heading   String
+  body      String   @db.Text
+  ctaLabel  String   @default("")
+  ctaUrl    String   @default("")
+  isEnabled Boolean  @default(true)
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+}
+
+/// Every email the platform sent or received (the console's inbox and sent log).
+model MailMessage {
+  id             String           @id @default(cuid())
+  direction      MailDirection
+  mailboxKey     String
+  category       String?
+  templateKey    String?
+  fromAddress    String
+  fromName       String?
+  toAddress      String
+  subject        String
+  bodyText       String           @default("") @db.Text
+  bodyHtml       String?          @db.Text
+  providerId     String?
+  messageIdHeader String?
+  inReplyTo      String?
+  threadKey      String
+  tenantId       String?
+  delivery       MailDelivery?
+  deliveryDetail String?
+  inboxStatus    MailInboxStatus?
+  readAt         DateTime?
+  sentByEmail    String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([direction, providerId])
+  @@index([direction, mailboxKey, createdAt])
+  @@index([threadKey])
+  @@index([tenantId])
+}

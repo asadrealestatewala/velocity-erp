@@ -1,6 +1,7 @@
 import "server-only";
 import { platformDb } from "./client";
 import { renderMail, sendSystemMail, workspaceUrl } from "./mail";
+import { sendTemplate } from "./mail-send";
 import { entitlementsFor } from "./plans";
 import { getPlatformSettings } from "./settings";
 
@@ -44,15 +45,8 @@ export async function sendPlanEmail(tenantId: string, kind: PlanMailKind, extra:
     let heading: string;
     let lines: string[];
     if (kind === "trial-started") {
-      subject = `Your ${settings.trialDays}-day free trial has started`;
-      heading = `Welcome, ${first} — your free trial is on`;
-      lines = [
-        `Your workspace "${t.name}" is ready. You are on the ${planLine}, free until ${fmtDate(t.trialEndsAt)}.`,
-        "What your plan includes:",
-        ...includes,
-        `Sign in any time with workspace code "${t.slug}" at ${workspaceUrl(t.slug, "/login")}.`,
-        `What happens next: we will remind you before the trial ends. When it ends the workspace becomes read-only — nothing is deleted — until you choose a plan under Plan & billing. No card is needed to start.`,
-      ];
+      const sent = await sendTemplate("trial-started", t.ownerEmail, { name: first, workspaceName: t.name, workspaceCode: t.slug, planName: planLine, trialDays: settings.trialDays, trialEndsAt: fmtDate(t.trialEndsAt), includes: includes.join("\n"), billingUrl: cta.url }, { tenantId: t.id });
+      return sent.delivered;
     } else if (kind === "payment-submitted") {
       subject = "We received your payment details";
       heading = "Payment received for checking";
@@ -63,16 +57,9 @@ export async function sendPlanEmail(tenantId: string, kind: PlanMailKind, extra:
         ...includes,
       ];
     } else if (kind === "plan-active") {
-      subject = `Your ${plan?.name ?? "plan"} plan is active`;
-      heading = "Your plan is active";
-      lines = [
-        `Thank you, ${first}. You are on the ${planLine}, billed ${interval === "YEAR" ? "yearly" : "monthly"}${t.priceAmount ? ` at ${money(t.priceAmount, t.priceCurrency)} per ${per}` : ""}.`,
-        ...(extra.amount !== undefined && extra.invoiceNumber ? [`We received ${money(extra.amount, extra.currency ?? t.currency)}. Invoice INV-${String(extra.invoiceNumber).padStart(5, "0")} is available under Plan & billing.`] : []),
-        `Your current period runs ${t.currentPeriodStart ? `from ${fmtDate(t.currentPeriodStart)} ` : ""}until ${fmtDate(t.currentPeriodEnd)}.`,
-        "What your plan includes:",
-        ...includes,
-        "Before the period ends we will email you a reminder so access is never interrupted.",
-      ];
+      const receipt = extra.amount !== undefined && extra.invoiceNumber ? `INV-${String(extra.invoiceNumber).padStart(5, "0")}` : "";
+      const sent = await sendTemplate("payment-receipt", t.ownerEmail, { name: first, workspaceName: t.name, planName: plan?.name ?? "your", amount: extra.amount !== undefined ? money(extra.amount, extra.currency ?? t.currency) : "your payment", invoiceNumber: receipt || "your invoice", periodEnd: fmtDate(t.currentPeriodEnd), includes: includes.join("\n"), billingUrl: cta.url }, { tenantId: t.id });
+      return sent.delivered;
     } else {
       subject = "Your plan was updated";
       heading = "Your plan was updated";
@@ -85,8 +72,8 @@ export async function sendPlanEmail(tenantId: string, kind: PlanMailKind, extra:
         ...includes,
       ];
     }
-    const mail = renderMail({ heading, paragraphs: lines, cta, footer });
-    const sent = await sendSystemMail({ to: t.ownerEmail, subject, text: mail.text, html: mail.html });
+    const mail = await renderMail({ heading, paragraphs: lines, cta, footer });
+    const sent = await sendSystemMail({ to: t.ownerEmail, subject, category: "billing", tenantId: t.id, text: mail.text, html: mail.html });
     return sent.delivered;
   } catch (e) {
     console.error("[plan-mail] failed:", (e as Error).message);

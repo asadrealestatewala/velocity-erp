@@ -34,8 +34,8 @@ export async function requestDemoAction(_: DemoState, formData: FormData): Promi
   const s = await getPlatformSettings();
   const to = s.billing.operatorEmail || s.support.email;
   if (to) {
-    const mail = renderMail({ heading: "New demo request", paragraphs: [`${v.name} <${v.email}>${v.company ? ` from ${v.company}` : ""}`, v.message || "(no message)"] });
-    await sendSystemMail({ to, subject: `Demo request from ${v.name}`, ...mail }).catch(() => {});
+    const mail = await renderMail({ heading: "New demo request", paragraphs: [`${v.name} <${v.email}>${v.company ? ` from ${v.company}` : ""}`, v.message || "(no message)"] });
+    await sendSystemMail({ to, subject: `Demo request from ${v.name}`, category: "system", ...mail }).catch(() => {});
   }
   return { ok: true };
 }

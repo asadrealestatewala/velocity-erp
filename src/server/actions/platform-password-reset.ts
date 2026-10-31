@@ -32,13 +32,13 @@ export async function requestPlatformPasswordResetAction(_: PlatformForgotState,
     if (admin?.isActive) {
       const token = newToken();
       await platformDb().platformPasswordReset.create({ data: { adminId: admin.id, tokenHash: sha256(token), expiresAt: new Date(Date.now() + RESET_HOURS * 3_600_000) } });
-      const mail = renderMail({
+      const mail = await renderMail({
         heading: "Reset your platform password",
         paragraphs: [`Someone asked to reset the password for ${email} on the Platform console.`, `The link works once and expires in ${RESET_HOURS} hour. Using it signs you out everywhere. Two-factor sign-in, if enabled, still applies afterwards.`],
         cta: { label: "Choose a new password", url: `${appBaseUrl()}/platform/reset-password/${token}` },
         footer: "If you didn't ask for this, you can ignore this email — your password stays the same.",
       });
-      await sendSystemMail({ to: email, subject: "Reset your platform password", text: mail.text, html: mail.html });
+      await sendSystemMail({ to: email, subject: "Reset your platform password", category: "auth", text: mail.text, html: mail.html });
       await platformAudit({ admin, action: "admin.password_reset_requested" });
     }
   } catch (e) {

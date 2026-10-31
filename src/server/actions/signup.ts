@@ -8,7 +8,8 @@ import { hashIdentifier } from "@/server/rate-limit";
 import { createSession } from "@/server/auth/session";
 import { createWorkspace } from "@/server/platform/provision";
 import { platformRateLimit } from "@/server/platform/guard";
-import { renderMail, sendSystemMail, workspaceUrl, appBaseUrl } from "@/server/platform/mail";
+import { workspaceUrl, appBaseUrl } from "@/server/platform/mail";
+import { sendTemplate } from "@/server/platform/mail-send";
 import { sendPlanEmail } from "@/server/platform/plan-mail";
 import { runInTenant } from "@/server/platform/runtime";
 import { getPlatformSettings } from "@/server/platform/settings";
@@ -56,17 +57,13 @@ export async function signupAction(_: SignupState, formData: FormData): Promise<
   // Welcome email with the one-time confirmation link (the owner cannot invite people until it is used).
   const settings = await getPlatformSettings();
   const confirmUrl = `${appBaseUrl()}/confirm-email/${created.confirmToken}`;
-  const mail = renderMail({
-    heading: `Welcome to ${process.env.PLATFORM_NAME || "Velocity"}, ${v.ownerName.split(" ")[0]}!`,
-    paragraphs: [
-      `Your workspace "${v.companyName}" is ready${created.trial ? ` and your ${settings.trialDays}-day free trial has started` : ""}.`,
-      `Sign in any time with your workspace code "${v.slug}" at ${workspaceUrl(v.slug, "/login")}.`,
-      "Please confirm your email address so you can invite your team.",
-    ],
-    cta: { label: "Confirm my email", url: confirmUrl },
-    footer: "This link works once and expires in 3 days. If you did not create this workspace, you can ignore this email.",
-  });
-  await sendSystemMail({ to: v.ownerEmail, subject: "Confirm your email — your workspace is ready", text: mail.text, html: mail.html });
+  await sendTemplate("confirm-email", v.ownerEmail, {
+    name: v.ownerName.split(" ")[0],
+    workspaceName: v.companyName,
+    workspaceCode: v.slug,
+    confirmUrl,
+    trialLine: created.trial ? `Your ${settings.trialDays}-day free trial has started.` : "",
+  }, { tenantId: created.tenantId });
 
   // What the trial includes and when it ends (separate from the confirmation link so each email has one job).
   if (created.trial) await sendPlanEmail(created.tenantId, "trial-started");

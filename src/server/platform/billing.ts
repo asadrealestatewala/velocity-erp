@@ -3,6 +3,7 @@ import type { BillingInterval, Coupon, Invoice, Payment, PaymentMethod, Tenant }
 import { AppError } from "@/server/errors";
 import { platformDb } from "./client";
 import { renderMail, sendSystemMail, workspaceUrl } from "./mail";
+import { sendTemplate } from "./mail-send";
 import { sendPlanEmail } from "./plan-mail";
 import { listPlans, priceOf } from "./plans";
 import { getPlatformSettings } from "./settings";
@@ -114,8 +115,8 @@ export async function submitLocalPayment(tenant: Tenant, input: { method: Paymen
     });
     const settings = await getPlatformSettings();
     if (settings.billing.operatorEmail) {
-      const mail = renderMail({ heading: "A payment needs confirming", paragraphs: [`${tenant.name} (${tenant.slug}) says they paid ${q.total.toLocaleString("en-US")} ${q.currency} by ${METHOD_LABEL[input.method]}.`, `Reference: ${reference}`, "Check your account, then confirm or reject it in the platform console."], cta: { label: "Open the console", url: `${process.env.APP_URL ?? ""}/platform/payments` } });
-      await sendSystemMail({ to: settings.billing.operatorEmail, subject: `Payment to confirm: ${tenant.slug}`, text: mail.text, html: mail.html });
+      const mail = await renderMail({ heading: "A payment needs confirming", paragraphs: [`${tenant.name} (${tenant.slug}) says they paid ${q.total.toLocaleString("en-US")} ${q.currency} by ${METHOD_LABEL[input.method]}.`, `Reference: ${reference}`, "Check your account, then confirm or reject it in the platform console."], cta: { label: "Open the console", url: `${process.env.APP_URL ?? ""}/platform/payments` } });
+      await sendSystemMail({ to: settings.billing.operatorEmail, subject: `Payment to confirm: ${tenant.slug}`, category: "billing", text: mail.text, html: mail.html });
     }
     await sendPlanEmail(tenant.id, "payment-submitted", { reference, amount: q.total, currency: q.currency, planKey: q.planKey, interval: q.interval });
     return p;
@@ -144,8 +145,7 @@ export async function rejectPayment(paymentId: string, reason: string, who: Who)
   if (reason.trim().length < 3) throw new AppError("Give a reason so the customer knows what to fix.");
   await db.payment.update({ where: { id: p.id }, data: { status: "REJECTED", decidedAt: new Date(), decidedBy: who.actor ?? null, rejectReason: reason.trim() } });
   if (p.tenant.ownerEmail) {
-    const mail = renderMail({ heading: "We could not confirm your payment", paragraphs: [`Reference ${p.reference} was not confirmed: ${reason.trim()}`, "You can submit the payment details again from Plan & billing."], cta: { label: "Open Plan & billing", url: workspaceUrl(p.tenant.slug, "/crm/billing") } });
-    await sendSystemMail({ to: p.tenant.ownerEmail, subject: "Payment not confirmed", text: mail.text, html: mail.html });
+    await sendTemplate("payment-failed", p.tenant.ownerEmail, { name: (p.tenant.ownerName ?? "there").split(" ")[0], workspaceName: p.tenant.name, reference: p.reference, reason: reason.trim(), billingUrl: workspaceUrl(p.tenant.slug, "/crm/billing") }, { tenantId: p.tenant.id });
   }
 }
 

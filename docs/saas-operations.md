@@ -109,6 +109,10 @@ Uploaded files are not part of the dump: they live in the storage bucket (or `LO
 
 `/status` is public and needs no sign-in. It shows what the platform can verify itself (database reachable, maintenance mode) plus incidents staff post under *Status page* in the console (owner and support). It does not check Stripe, email delivery or any third party, and it cannot report on an outage that takes the whole site down, so host it elsewhere if you need that.
 
+## 8d. Workspace list: CSV and bulk actions
+
+*Workspaces* has **Download CSV** (owner only, follows the current search and status filter, up to 5,000 rows, audited because it contains owner emails) and **Extend trials for ticked** (owner and support). Only workspaces on a trial have a tick box; at most 50 at once, a written reason is required, each owner is emailed, and every workspace gets its own history and audit entry.
+
 ## 9. Known limits
 
 * Placeholder plan limits and prices; no real tax handling; invoices are simple PDFs.

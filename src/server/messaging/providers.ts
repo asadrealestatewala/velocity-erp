@@ -76,14 +76,33 @@ export function verifyWhatsAppHandshake(mode: string | null, token: string | nul
 // ───────── Email ─────────
 
 export function emailConfigured() {
-  return !!process.env.SMTP_HOST;
+  return !!(process.env.RESEND_API_KEY || process.env.SMTP_HOST);
 }
 export function emailInboundConfigured() {
   return !!process.env.EMAIL_INBOUND_SECRET;
 }
 
-export async function sendEmail(p: { to: string; subject: string; body: string }): Promise<{ externalId: string | null }> {
-  if (!emailConfigured()) throw new ProviderError("Email (SMTP) is not connected.");
+/** Sender used for CRM email. MAIL_FROM is shared with the platform's system mail; EMAIL_FROM is the older SMTP-only name. */
+const mailFrom = () => process.env.MAIL_FROM || process.env.EMAIL_FROM;
+
+/** Sends one plain-text email through Resend (preferred when RESEND_API_KEY is set) or SMTP. Throws ProviderError on rejection. */
+export async function deliverEmail(p: { to: string; subject: string; body: string; replyTo?: string }): Promise<{ externalId: string | null }> {
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const r = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ from: mailFrom(), to: [p.to], subject: p.subject, text: p.body, reply_to: p.replyTo }),
+        signal: AbortSignal.timeout(20_000),
+      });
+      const data = (await r.json().catch(() => ({}))) as { id?: string; message?: string };
+      if (!r.ok) throw new Error(data.message ?? `Resend ${r.status}`);
+      return { externalId: data.id ?? null };
+    } catch (e) {
+      throw new ProviderError(`The email server rejected the message: ${(e as Error).message}`, true);
+    }
+  }
+  if (!process.env.SMTP_HOST) throw new ProviderError("Email is not connected.");
   const nodemailer = await import("nodemailer");
   const transport = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -94,11 +113,16 @@ export async function sendEmail(p: { to: string; subject: string; body: string }
     socketTimeout: 20_000,
   });
   try {
-    const info = await transport.sendMail({ from: process.env.EMAIL_FROM, replyTo: process.env.EMAIL_REPLY_TO || undefined, to: p.to, subject: p.subject, text: p.body });
+    const info = await transport.sendMail({ from: mailFrom(), replyTo: p.replyTo, to: p.to, subject: p.subject, text: p.body });
     return { externalId: info.messageId ?? null };
   } catch (e) {
     throw new ProviderError(`The email server rejected the message: ${(e as Error).message}`, true);
   }
+}
+
+export async function sendEmail(p: { to: string; subject: string; body: string }): Promise<{ externalId: string | null }> {
+  if (!emailConfigured()) throw new ProviderError("Email is not connected.");
+  return deliverEmail({ ...p, replyTo: process.env.EMAIL_REPLY_TO || undefined });
 }
 
 export function verifyInboundEmailSecret(header: string | null) {

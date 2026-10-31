@@ -79,6 +79,10 @@ Also enable your database provider's point-in-time backups (Supabase: Pro plan).
 
 **Restore one company.** Restore its `.dump` into a scratch schema first, check it, then restore over the live schema in a quiet period.
 
+## 8d. Workspace list: CSV and bulk actions
+
+*Workspaces* has **Download CSV** (owner only, follows the current search and status filter, up to 5,000 rows, audited because it contains owner emails) and **Extend trials for ticked** (owner and support). Only workspaces on a trial have a tick box; at most 50 at once, a written reason is required, each owner is emailed, and every workspace gets its own history and audit entry.
+
 ## 9. Known limits
 
 * Placeholder plan limits and prices; no real tax handling; invoices are simple PDFs.

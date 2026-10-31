@@ -169,3 +169,4 @@ export async function cancelAtPeriodEnd(tenantId: string, who: Who) {
 }
 
 export const invoiceNumber = (n: number) => `INV-${String(n).padStart(5, "0")}`;
+export const creditNoteNumber = (n: number) => `CN-${String(n).padStart(5, "0")}`;

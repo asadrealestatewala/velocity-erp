@@ -104,6 +104,8 @@ model Tenant {
   provisionedAt        DateTime?
   lastSeenAt           DateTime?
   schemaVersion        Int                @default(0)
+  /// Set when the owner unsubscribes from product/marketing emails (account and billing emails still go out).
+  marketingOptOutAt    DateTime?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
@@ -111,6 +113,7 @@ model Tenant {
   invoices Invoice[]
   payments Payment[]
   addOns   TenantAddOn[]
+  activity TenantActivity[]
 
   @@index([status])
   @@index([subStatus])
@@ -349,6 +352,31 @@ model PlatformSession {
   @@index([adminId])
 }
 
+/// One row per workspace per day on which someone used it: the basis for retention and "came back" in the growth funnel.
+model TenantActivity {
+  tenantId String
+  day      DateTime @db.Date
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@id([tenantId, day])
+  @@index([day])
+}
+
+/// An email to workspace owners in a segment. `body` is paragraphs separated by blank lines.
+model Campaign {
+  id         String    @id @default(cuid())
+  name       String
+  subject    String
+  body       String    @db.Text
+  segment    String
+  createdBy  String?
+  createdAt  DateTime  @default(now())
+  sentAt     DateTime?
+  recipients Int       @default(0)
+  delivered  Int       @default(0)
+  failed     Int       @default(0)
+}
+
 /// Append-only.
 model PlatformAudit {
   id         String   @id @default(cuid())
@@ -383,12 +411,14 @@ model LifecycleNotice {
 }
 
 model DemoRequest {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
   email     String
   company   String?
   message   String?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  handledAt DateTime?
+  handledBy String?
 }
 
 model SiteSetting {

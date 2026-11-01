@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { platformDb } from "./client";
 
 export type ByCurrency = Record<string, number>;
@@ -33,49 +34,70 @@ export type Metrics = {
  */
 export async function getMetrics(from: Date, to: Date): Promise<Metrics> {
   const db = platformDb();
-  const tenants = await db.tenant.findMany({ where: { isLegacy: false }, select: { subStatus: true, status: true, interval: true, priceAmount: true, priceCurrency: true } });
+  const notLegacy = { isLegacy: false } as const;
+  const sumByCurrency = (rows: { currency: string; _sum: { amount: number | null } }[]) => rows.reduce((m, r) => (add(m, r.currency, r._sum.amount ?? 0), m), {} as ByCurrency);
+
+  // Everything is computed in the database (counts and sums), so the work no longer grows with the number of rows.
+  const [tenantGroups, issued, paid, refunds, signups, trialsEnded, trialsConverted, churnedRows, pending] = await Promise.all([
+    db.tenant.groupBy({ by: ["subStatus", "status", "interval", "priceCurrency"], where: notLegacy, _count: true, _sum: { priceAmount: true } }),
+    db.invoice.groupBy({ by: ["currency"], where: { issuedAt: { gte: from, lte: to }, tenant: notLegacy }, _sum: { amount: true } }),
+    db.invoice.groupBy({ by: ["currency"], where: { status: "PAID", paidAt: { gte: from, lte: to }, tenant: notLegacy }, _sum: { amount: true } }),
+    db.refund.groupBy({ by: ["currency"], where: { at: { gte: from, lte: to }, invoice: { tenant: notLegacy } }, _sum: { amount: true } }),
+    db.tenant.findMany({ where: { ...notLegacy, createdAt: { gte: from, lte: to } }, select: { createdAt: true } }),
+    db.tenant.count({ where: { ...notLegacy, trialStartedAt: { not: null }, trialEndsAt: { gte: from, lte: to } } }),
+    db.tenant.count({ where: { ...notLegacy, trialStartedAt: { not: null }, trialEndsAt: { gte: from, lte: to }, invoices: { some: { status: "PAID" } } } }),
+    db.subscriptionHistory.findMany({ where: { at: { gte: from, lte: to }, fromStatus: { in: ["ACTIVE", "PAST_DUE"] }, toStatus: { in: ["CANCELED", "EXPIRED", "SUSPENDED"] }, tenant: notLegacy }, select: { tenantId: true }, distinct: ["tenantId"] }),
+    db.payment.groupBy({ by: ["currency"], where: { status: "PENDING" }, _count: true, _sum: { amount: true } }),
+  ]);
+
   const bySubscription: Record<string, number> = {};
   const byStatus: Record<string, number> = {};
   const mrr: ByCurrency = {};
   const mrrAtRisk: ByCurrency = {};
-  for (const t of tenants) {
-    bySubscription[t.subStatus] = (bySubscription[t.subStatus] ?? 0) + 1;
-    byStatus[t.status] = (byStatus[t.status] ?? 0) + 1;
-    const monthly = t.interval === "YEAR" ? t.priceAmount / 12 : t.priceAmount;
-    if (t.subStatus === "ACTIVE" && t.status === "ACTIVE") add(mrr, t.priceCurrency, monthly);
-    if (t.subStatus === "PAST_DUE") add(mrrAtRisk, t.priceCurrency, monthly);
+  let totalTenants = 0;
+  for (const g of tenantGroups) {
+    totalTenants += g._count;
+    bySubscription[g.subStatus] = (bySubscription[g.subStatus] ?? 0) + g._count;
+    byStatus[g.status] = (byStatus[g.status] ?? 0) + g._count;
+    const amount = g._sum.priceAmount ?? 0;
+    const monthly = g.interval === "YEAR" ? amount / 12 : amount;
+    if (g.subStatus === "ACTIVE" && g.status === "ACTIVE") add(mrr, g.priceCurrency, monthly);
+    if (g.subStatus === "PAST_DUE") add(mrrAtRisk, g.priceCurrency, monthly);
   }
   const round = (m: ByCurrency) => Object.fromEntries(Object.entries(m).map(([k, v]) => [k, Math.round(v)]));
   const arr = Object.fromEntries(Object.entries(mrr).map(([k, v]) => [k, Math.round(v * 12)]));
 
-  const [issued, paid, refunds, signups, trialsEnded, history, pending] = await Promise.all([
-    db.invoice.findMany({ where: { issuedAt: { gte: from, lte: to }, tenant: { isLegacy: false } }, select: { amount: true, currency: true } }),
-    db.invoice.findMany({ where: { status: "PAID", paidAt: { gte: from, lte: to }, tenant: { isLegacy: false } }, select: { amount: true, currency: true } }),
-    db.refund.findMany({ where: { at: { gte: from, lte: to }, invoice: { tenant: { isLegacy: false } } }, select: { amount: true, currency: true } }),
-    db.tenant.findMany({ where: { isLegacy: false, createdAt: { gte: from, lte: to } }, select: { createdAt: true } }),
-    db.tenant.findMany({ where: { isLegacy: false, trialStartedAt: { not: null }, trialEndsAt: { gte: from, lte: to } }, select: { id: true, invoices: { where: { status: "PAID" }, select: { id: true }, take: 1 } } }),
-    db.subscriptionHistory.findMany({ where: { at: { gte: from, lte: to }, fromStatus: { in: ["ACTIVE", "PAST_DUE"] }, toStatus: { in: ["CANCELED", "EXPIRED", "SUSPENDED"] }, tenant: { isLegacy: false } }, select: { tenantId: true } }),
-    db.payment.findMany({ where: { status: "PENDING" }, select: { amount: true, currency: true } }),
-  ]);
-  const sum = (rows: { amount: number; currency: string }[]) => rows.reduce((m, r) => (add(m, r.currency, r.amount), m), {} as ByCurrency);
-  const invoiced = sum(issued);
-  const collected = sum(paid);
-  const refunded = sum(refunds);
+  const invoiced = sumByCurrency(issued);
+  const collected = sumByCurrency(paid);
+  const refunded = sumByCurrency(refunds);
   const net: ByCurrency = { ...collected };
   for (const [c, v] of Object.entries(refunded)) add(net, c, -v);
-  const converted = trialsEnded.filter((t) => t.invoices.length > 0).length;
   const byDay = new Map<string, number>();
-  for (const s of signups) byDay.set(s.createdAt.toISOString().slice(0, 10), (byDay.get(s.createdAt.toISOString().slice(0, 10)) ?? 0) + 1);
+  for (const s of signups) { const k = s.createdAt.toISOString().slice(0, 10); byDay.set(k, (byDay.get(k) ?? 0) + 1); }
 
   return {
     from, to,
-    workspaces: { total: tenants.length, bySubscription, byStatus },
+    workspaces: { total: totalTenants, bySubscription, byStatus },
     mrr: round(mrr), mrrAtRisk: round(mrrAtRisk), arr,
     invoiced, collected, refunds: refunded, net,
     signups: signups.length,
-    trial: { ended: trialsEnded.length, converted, rate: trialsEnded.length ? Math.round((converted / trialsEnded.length) * 100) : null },
-    churned: new Set(history.map((h) => h.tenantId)).size,
-    pendingPayments: { count: pending.length, value: sum(pending) },
+    trial: { ended: trialsEnded, converted: trialsConverted, rate: trialsEnded ? Math.round((trialsConverted / trialsEnded) * 100) : null },
+    churned: churnedRows.length,
+    pendingPayments: { count: pending.reduce((n, g) => n + g._count, 0), value: sumByCurrency(pending) },
     signupsByDay: [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([day, count]) => ({ day, count })),
   };
+}
+
+/** Overview figures for the last `days` days, shared across requests for 30 seconds (the window is rounded to the minute so the cache key is stable). */
+export async function getMetricsCached(days: number): Promise<Metrics> {
+  const minute = Math.floor(Date.now() / 60_000);
+  const m = await unstable_cache(
+    async (d: number, atMinute: number) => {
+      const to = new Date(atMinute * 60_000);
+      return getMetrics(new Date(to.getTime() - d * 86_400_000), to);
+    },
+    ["platform-metrics"],
+    { revalidate: 30 },
+  )(days, minute);
+  return { ...m, from: new Date(m.from), to: new Date(m.to) };
 }

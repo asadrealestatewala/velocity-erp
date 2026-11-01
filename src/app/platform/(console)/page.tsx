@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/ui/misc";
 import { adminCan, requireAdminPage } from "@/server/platform/admin-auth";
-import { getMetrics, type ByCurrency } from "@/server/platform/metrics";
+import { getMetricsCached, type ByCurrency } from "@/server/platform/metrics";
 import { platformDb } from "@/server/platform/client";
 import { fmtDateTime, fmtMoney } from "@/lib/utils";
 
@@ -29,7 +29,7 @@ export default async function Overview({ searchParams }: { searchParams: Promise
   const from = new Date(to.getTime() - days * 86_400_000);
   // Independent queries run together; the metrics function itself runs its own queries in parallel too.
   const [m, visits, openTickets, activity] = await Promise.all([
-    getMetrics(from, to),
+    getMetricsCached(days),
     platformDb().pageView.aggregate({ where: { day: { gte: new Date(from.toISOString().slice(0, 10)) } }, _sum: { count: true } }),
     adminCan(admin.role, "support.manage") ? platformDb().supportTicket.count({ where: { status: "OPEN" } }) : Promise.resolve(null),
     adminCan(admin.role, "audit.view") ? platformDb().platformAudit.findMany({ orderBy: { at: "desc" }, take: 8, select: { id: true, at: true, adminEmail: true, action: true, targetType: true, targetId: true } }) : Promise.resolve(null),

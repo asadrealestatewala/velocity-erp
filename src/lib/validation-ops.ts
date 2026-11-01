@@ -154,6 +154,77 @@ export const knowledgeSchema = z.object({
 });
 export type KnowledgeInput = z.input<typeof knowledgeSchema>;
 
+// ── After-sales service
+
+const serviceVehicle = {
+  vehicleLabel: optStr(120),
+  plateNumber: z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? null : typeof v === "string" ? v.trim().toUpperCase() : v), z.string().max(20).nullable().optional()),
+  chassisNo: z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? null : typeof v === "string" ? v.trim().toUpperCase() : v), z.string().max(40).nullable().optional()),
+};
+const serviceCustomer = {
+  contactId: optId,
+  customerName: optStr(120),
+  customerPhone: optStr(30),
+};
+const needCustomer = (v: { contactId?: string | null; customerName?: string | null }) => !!v.contactId || (!!v.customerName && v.customerName.length >= 2);
+const needCustomerMsg = { path: ["customerName"], message: "Choose a contact or enter the customer's name" };
+
+export const serviceBookingSchema = z
+  .object({
+    ...serviceCustomer,
+    ...serviceVehicle,
+    serviceType: z.string().trim().min(2, "Choose the type of service").max(60),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date"),
+    time: z.string().regex(/^\d{2}:\d{2}$/, "Choose a time"),
+    assignedUserId: optId,
+    notes: optStr(1000),
+    confirmNow: z.boolean().default(false),
+  })
+  .refine(needCustomer, needCustomerMsg);
+export type ServiceBookingInput = z.input<typeof serviceBookingSchema>;
+
+export const jobCardSchema = z
+  .object({
+    ...serviceCustomer,
+    ...serviceVehicle,
+    odometerKm: z.preprocess((v) => (v === "" || v == null ? null : Number(v)), z.number().int().min(0).max(2_000_000).nullable().optional()),
+    complaint: z.string().trim().min(3, "Describe the complaint or work requested").max(2000),
+    isWarranty: z.boolean().default(false),
+    technicianId: optId,
+  })
+  .refine(needCustomer, needCustomerMsg);
+export type JobCardInput = z.input<typeof jobCardSchema>;
+
+export const jobCardUpdateSchema = z.object({
+  diagnosis: optStr(2000),
+  workDone: optStr(2000),
+  odometerKm: z.preprocess((v) => (v === "" || v == null ? null : Number(v)), z.number().int().min(0).max(2_000_000).nullable().optional()),
+  labourCharge: money.default(0),
+  discount: money.default(0),
+  isWarranty: z.boolean().default(false),
+  technicianId: optId,
+});
+export type JobCardUpdateInput = z.input<typeof jobCardUpdateSchema>;
+
+export const jobCardPartSchema = z.object({ productId: z.string().min(1, "Choose a spare part"), quantity: qty, unitPrice: money.optional() });
+
+export const warrantyClaimSchema = z.object({
+  jobCardId: z.string().min(1),
+  jobCardPartId: optId,
+  failureDescription: z.string().trim().min(5, "Describe the failure").max(2000),
+  claimAmount: money.optional(),
+});
+export type WarrantyClaimInput = z.input<typeof warrantyClaimSchema>;
+
+export const warrantyReviewSchema = z
+  .object({
+    claimId: z.string().min(1),
+    decision: z.enum(["APPROVED", "REJECTED"]),
+    approvedAmount: money.optional(),
+    note: optStr(1000),
+  })
+  .refine((v) => v.decision !== "REJECTED" || (v.note && v.note.length >= 3), { path: ["note"], message: "Give a reason for rejecting the claim" });
+
 export { phoneSchema };
 
 // ── Vehicle units (chassis / engine / number plate)

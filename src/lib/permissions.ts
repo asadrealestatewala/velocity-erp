@@ -43,6 +43,12 @@ export const PERMISSIONS = {
   "inventory.view_all": { group: "Inventory", description: "View every dealership's inventory (central)" },
   "salesorders.manage": { group: "Inventory", description: "Create, confirm and cancel customer sales orders (deducts stock)" },
 
+  // ── After-sales service
+  "service.view": { group: "Service", description: "View service bookings, workshop job cards and warranty claims of the dealership" },
+  "service.manage": { group: "Service", description: "Book services, open and progress job cards, consume spare parts on a job (deducts stock)" },
+  "warranty.manage": { group: "Service", description: "Raise and submit warranty claims to YADEA (dealership)" },
+  "warranty.review": { group: "Service", description: "Review, approve or reject dealership warranty claims (central)" },
+
   // ── Procurement (stock orders to YADEA)
   "procurement.order": { group: "Procurement", description: "Place and track stock orders with YADEA procurement; confirm receipt" },
   "procurement.view": { group: "Procurement", description: "View all dealership stock orders (central)" },
@@ -81,6 +87,7 @@ export const ROLE_KEYS = {
 export const DEALER_ONLY_PERMISSIONS: PermissionKey[] = [
   "portal.access", "leads.assign_team", "team.manage", "inventory.view", "inventory.manage", "salesorders.manage",
   "procurement.order", "ledger.pay", "vouchers.manage", "dealerdocs.upload",
+  "service.view", "service.manage", "warranty.manage",
 ];
 
 /**
@@ -112,6 +119,7 @@ const DEALERSHIP_MANAGER_PERMISSIONS: PermissionKey[] = [
       "reports.view", "team.manage", "audit.view",
       "inventory.view", "inventory.manage", "salesorders.manage", "procurement.order", "ledger.view", "ledger.pay",
       "vouchers.manage", "dealerdocs.upload", "messages.send", "assistant.use", "assistant.write",
+      "service.view", "service.manage", "warranty.manage",
     ];
 
 export const DEFAULT_ROLES: {
@@ -138,6 +146,7 @@ export const DEFAULT_ROLES: {
       "testdrives.view", "dealerships.view", "applications.view", "applications.review",
       "documents.view", "payments.view", "reports.view", "audit.view",
       "inventory.view_all", "procurement.view", "ledger.view", "vouchers.view_all", "assistant.use",
+      "warranty.review",
     ],
   },
   {
@@ -161,6 +170,7 @@ export const DEFAULT_ROLES: {
     permissions: [
       "procurement.view", "procurement.manage", "catalog.manage", "bikemodels.manage", "inventory.view_all", "ledger.view", "ledger.manage",
       "vouchers.view_all", "dealerships.view", "dealerdocs.admin", "assistant.use", "assistant.write",
+      "warranty.review",
     ],
   },
   {
@@ -186,6 +196,7 @@ export const DEFAULT_ROLES: {
       "portal.access", "contacts.view", "contacts.create", "contacts.edit", "leads.change_stage",
       "testdrives.view", "testdrives.manage", "tasks.manage", "notes.manage", "documents.view", "documents.manage",
       "inventory.view", "salesorders.manage", "messages.send", "assistant.use", "assistant.write",
+      "service.view",
     ],
   },
 ];

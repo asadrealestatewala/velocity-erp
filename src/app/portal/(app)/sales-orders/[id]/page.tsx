@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { Badge, Card, CardHeader, DescriptionList, PageHeader } from "@/components/ui/misc";
 import { ButtonLink } from "@/components/ui/button";
 import { SalesOrderActions } from "@/components/sales/order-actions";
+import { IssueInvoiceButton } from "@/components/sales/invoice-actions";
 import { INVENTORY_REASON, SALES_ORDER_STATUS } from "@/lib/ops-constants";
 import { fmtDate, fmtDateTime, fmtMoney, fullName } from "@/lib/utils";
 
@@ -19,6 +20,10 @@ export default async function SalesOrderPage({ params }: { params: Promise<{ id:
   if (!order) notFound();
   const movements = await db.inventoryMovement.findMany({ where: { refType: "SalesOrder", refId: order.id }, orderBy: { createdAt: "asc" }, include: { item: { include: { bikeModel: true, product: true } } } });
   const st = SALES_ORDER_STATUS[order.status]!;
+  const [invoice, quotation] = await Promise.all([
+    db.invoice.findFirst({ where: { salesOrderId: order.id, status: { not: "VOID" } }, select: { id: true, number: true } }),
+    db.quotation.findFirst({ where: { convertedOrderId: order.id }, select: { id: true, number: true } }),
+  ]);
 
   return (
     <>
@@ -29,6 +34,8 @@ export default async function SalesOrderPage({ params }: { params: Promise<{ id:
         actions={
           <>
             <ButtonLink href={`/api/sales-orders/${order.id}/pdf`} variant="secondary" download><Download className="h-4 w-4" /> PDF</ButtonLink>
+            {invoice && <ButtonLink href={`/portal/invoices/${invoice.id}`} variant="secondary">Invoice INV-{invoice.number}</ButtonLink>}
+            {!invoice && order.status === "CONFIRMED" && can(user, "invoices.manage") && <IssueInvoiceButton orderId={order.id} />}
             {can(user, "salesorders.manage") && <SalesOrderActions id={order.id} status={order.status} />}
           </>
         }
@@ -68,6 +75,7 @@ export default async function SalesOrderPage({ params }: { params: Promise<{ id:
                 { label: "Order date", value: fmtDate(order.orderDate) },
                 { label: "Confirmed", value: order.confirmedAt ? `${fmtDateTime(order.confirmedAt)} by ${order.confirmedBy?.name ?? "—"}` : "Not yet" },
                 ...(order.status === "CANCELLED" ? [{ label: "Cancelled", value: `${fmtDateTime(order.cancelledAt)}${order.cancelReason ? ` — ${order.cancelReason}` : ""}` }] : []),
+                ...(quotation ? [{ label: "From quotation", value: <Link className="link" href={`/portal/quotations/${quotation.id}`}>QT-{quotation.number}</Link> }] : []),
                 { label: "Notes", value: order.notes ?? "—" },
               ]} />
             </div>

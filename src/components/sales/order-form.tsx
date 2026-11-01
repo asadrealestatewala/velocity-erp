@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/form";
 import { Card, CardHeader } from "@/components/ui/misc";
 import { createSalesOrderAction, searchCustomersAction } from "@/server/actions/sales-orders";
+import { createQuotationAction } from "@/server/actions/quotations";
 import { fmtMoney } from "@/lib/utils";
 
 export type SellableItem = { key: string; kind: "BIKE" | "PART"; name: string; code: string; quantity: number; price: number | null; currency: string };
@@ -16,13 +17,16 @@ type Line = { key: string; itemKey: string; quantity: string; unitPrice: string 
 let seq = 0;
 const newLine = (): Line => ({ key: `l${++seq}`, itemKey: "", quantity: "1", unitPrice: "" });
 
-export function SalesOrderForm({ dealershipId, items, initialCustomer, leadId }: { dealershipId: string; items: SellableItem[]; initialCustomer?: Customer; leadId?: string }) {
+/** `mode="quotation"` reuses the order form for a priced offer: no stock limits, an optional validity date, nothing is deducted. */
+export function SalesOrderForm({ dealershipId, items, initialCustomer, leadId, mode = "order" }: { dealershipId: string; items: SellableItem[]; initialCustomer?: Customer; leadId?: string; mode?: "order" | "quotation" }) {
+  const isQuote = mode === "quotation";
   const router = useRouter();
   const [customer, setCustomer] = useState<Customer | null>(initialCustomer ?? null);
   const [customerName, setCustomerName] = useState("");
   const [lines, setLines] = useState<Line[]>([newLine()]);
   const [discount, setDiscount] = useState("0");
   const [notes, setNotes] = useState("");
+  const [validUntil, setValidUntil] = useState("");
   const [busy, setBusy] = useState<"draft" | "confirm" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -46,14 +50,17 @@ export function SalesOrderForm({ dealershipId, items, initialCustomer, leadId }:
     setBusy(confirmNow ? "confirm" : "draft");
     setError(null);
     setFieldErrors({});
-    const res = await createSalesOrderAction(dealershipId, {
-      contactId: customer?.id ?? null, leadId: leadId ?? null, customerName: customer ? null : customerName, notes, discount: Number(discount) || 0, confirmNow,
+    const payload = {
+      contactId: customer?.id ?? null, leadId: leadId ?? null, customerName: customer ? null : customerName, notes, discount: Number(discount) || 0,
       lines: lines.filter((l) => l.itemKey).map((l) => ({ itemKey: l.itemKey, quantity: Number(l.quantity), unitPrice: Number(l.unitPrice) })),
-    });
+    };
+    const res = isQuote
+      ? await createQuotationAction(dealershipId, { ...payload, validUntil: validUntil || null, markSent: confirmNow })
+      : await createSalesOrderAction(dealershipId, { ...payload, confirmNow });
     setBusy(null);
     if (res.ok) {
-      toast.success(res.message ?? "Order saved.");
-      router.push(`/portal/sales-orders/${(res.data as { id: string }).id}`);
+      toast.success(res.message ?? "Saved.");
+      router.push(`/portal/${isQuote ? "quotations" : "sales-orders"}/${(res.data as { id: string }).id}`);
       router.refresh();
     } else {
       setError(res.error);
@@ -85,11 +92,11 @@ export function SalesOrderForm({ dealershipId, items, initialCustomer, leadId }:
         </Card>
 
         <Card>
-          <CardHeader title="Items" description="Only products with stock in your showroom can be added." />
+          <CardHeader title="Items" description={isQuote ? "Any bike model or spare part you stock can be quoted." : "Only products with stock in your showroom can be added."} />
           <div className="space-y-3 p-5">
             {lines.map((l) => {
               const it = byKey.get(l.itemKey);
-              const over = it ? (requested.get(l.itemKey) ?? 0) > it.quantity : false;
+              const over = it && !isQuote ? (requested.get(l.itemKey) ?? 0) > it.quantity : false;
               return (
                 <div key={l.key} className="grid gap-2 rounded-lg border border-ink-200 p-3 sm:grid-cols-[1fr_6rem_9rem_auto] sm:items-end">
                   <Field label="Item">
@@ -134,13 +141,14 @@ export function SalesOrderForm({ dealershipId, items, initialCustomer, leadId }:
               <div className="flex justify-between border-t border-ink-100 pt-3 text-base"><dt className="font-semibold text-ink-900">Total</dt><dd className="font-bold tabular-nums">{fmtMoney(total, currency)}</dd></div>
             </dl>
             {fieldErrors.discount && <p className="text-xs font-medium text-red-600">{fieldErrors.discount}</p>}
+            {isQuote && <Field label="Valid until" help="Optional — after this date it can no longer be converted">{(p) => <Input {...p} type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />}</Field>}
             <Field label="Notes">{(p) => <Textarea {...p} rows={3} placeholder="Optional — delivery, payment terms…" value={notes} onChange={(e) => setNotes(e.target.value)} />}</Field>
             <FormError error={error} />
             <div className="flex flex-col gap-2">
-              <Button loading={busy === "confirm"} disabled={!!busy} onClick={() => submit(true)}>Confirm order &amp; deduct stock</Button>
+              <Button loading={busy === "confirm"} disabled={!!busy} onClick={() => submit(true)}>{isQuote ? "Save & mark as sent" : "Confirm order & deduct stock"}</Button>
               <Button variant="secondary" loading={busy === "draft"} disabled={!!busy} onClick={() => submit(false)}>Save as draft</Button>
             </div>
-            <p className="text-xs text-ink-500">A draft does not change stock. Confirming deducts each item from your showroom inventory; cancelling a confirmed order puts it back.</p>
+            <p className="text-xs text-ink-500">{isQuote ? "A quotation never changes stock. Once the customer agrees, convert it to a customer order." : "A draft does not change stock. Confirming deducts each item from your showroom inventory; cancelling a confirmed order puts it back."}</p>
           </div>
         </Card>
       </div>

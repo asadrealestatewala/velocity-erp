@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox, Field, Input } from "@/components/ui/form";
 import { useAction } from "@/components/ui/use-action";
 import { updateOwnDealershipAction } from "@/server/actions/portal-settings";
+import { updateDealershipTaxAction } from "@/server/actions/invoices";
 
 const DAYS = [["mon", "Mon"], ["tue", "Tue"], ["wed", "Wed"], ["thu", "Thu"], ["fri", "Fri"], ["sat", "Sat"], ["sun", "Sun"]] as const;
 type H = Record<string, { open: string; close: string; closed?: boolean }>;
@@ -43,6 +44,20 @@ export function DealershipSettingsForm({ id, initial }: { id: string; initial: {
         </div>
       </div>
       <div className="flex justify-end"><Button type="submit" loading={pending}>Save settings</Button></div>
+    </form>
+  );
+}
+
+export function DealershipTaxForm({ id, initial }: { id: string; initial: { ntn: string | null; strn: string | null } }) {
+  const [v, setV] = useState(initial);
+  const { run, pending, fieldErrors } = useAction(updateDealershipTaxAction);
+  return (
+    <form className="space-y-4 p-5" onSubmit={(e) => { e.preventDefault(); run(id, v); }}>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="NTN" error={fieldErrors.ntn} help="National Tax Number, e.g. 1234567-8">{(p) => <Input {...p} value={v.ntn ?? ""} onChange={(e) => setV({ ...v, ntn: e.target.value })} />}</Field>
+        <Field label="STRN" error={fieldErrors.strn} help="Sales Tax Registration Number">{(p) => <Input {...p} value={v.strn ?? ""} onChange={(e) => setV({ ...v, strn: e.target.value })} />}</Field>
+      </div>
+      <div className="flex justify-end"><Button type="submit" loading={pending}>Save tax details</Button></div>
     </form>
   );
 }

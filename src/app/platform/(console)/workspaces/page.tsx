@@ -2,8 +2,9 @@ import Link from "next/link";
 import { buttonClass } from "@/components/ui/button";
 import { Building2 } from "lucide-react";
 import { Badge, EmptyState, PageHeader } from "@/components/ui/misc";
-import { TableWrap } from "@/components/ui/table";
+import { Pagination, parseListParams, TableWrap } from "@/components/ui/table";
 import { SavedViews } from "@/components/platform/saved-views";
+import { SelectAll } from "@/components/platform/select-all";
 import { BulkExtendTrial } from "@/components/platform/bulk-trial";
 import { adminCan, requireAdminPage } from "@/server/platform/admin-auth";
 import { platformDb } from "@/server/platform/client";
@@ -15,16 +16,19 @@ export const metadata = { title: "Workspaces" };
 
 const SUBS = Object.keys(SUB_TONE);
 
-export default async function Workspaces({ searchParams }: { searchParams: Promise<{ q?: string; sub?: string }> }) {
+export default async function Workspaces({ searchParams }: { searchParams: Promise<{ q?: string; sub?: string; page?: string; pageSize?: string }> }) {
   const me = await requireAdminPage("tenants.view");
-  const { q, sub } = await searchParams;
+  const sp = await searchParams;
+  const { q, sub } = sp;
+  const { page, pageSize, skip } = parseListParams(sp);
   const where = tenantWhere(q, sub);
   const [rows, counts] = await Promise.all([
-    platformDb().tenant.findMany({ where, orderBy: { createdAt: "desc" }, take: 200 }),
+    platformDb().tenant.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "asc" }], skip, take: pageSize }),
     platformDb().tenant.groupBy({ by: ["subStatus"], where: tenantWhere(q, undefined), _count: true }),
   ]);
   const countOf = Object.fromEntries(counts.map((c) => [c.subStatus, c._count])) as Record<string, number>;
   const all = counts.reduce((n, c) => n + c._count, 0);
+  const shown = sub ? (countOf[sub] ?? 0) : all;
   const tabHref = (s?: string) => `/platform/workspaces?${new URLSearchParams({ ...(q ? { q } : {}), ...(s ? { sub: s } : {}) })}`;
   return (
     <>
@@ -45,22 +49,22 @@ export default async function Workspaces({ searchParams }: { searchParams: Promi
       </form>
       <SavedViews storageKey="workspaces" />
       {adminCan(me.role, "trials.manage") && <div className="mb-3"><BulkExtendTrial /></div>}
-      <TableWrap>
+      <TableWrap stack footer={<Pagination base="/platform/workspaces" params={{ q, sub, pageSize: sp.pageSize }} page={page} pageSize={pageSize} total={shown} />}>
         <thead>
           <tr className="text-left text-xs font-semibold uppercase text-ink-500">
-            <th className="w-8 px-4 py-2.5"><span className="sr-only">Select</span></th><th className="px-4 py-2.5">Company</th><th className="px-4 py-2.5">Owner</th><th className="px-4 py-2.5">Plan</th><th className="px-4 py-2.5">Status</th><th className="px-4 py-2.5">Ends</th><th className="px-4 py-2.5">Created</th>
+            <th className="w-8 px-4 py-2.5"><SelectAll label="Select all trials on this page" /></th><th className="px-4 py-2.5">Company</th><th className="px-4 py-2.5">Owner</th><th className="px-4 py-2.5">Plan</th><th className="px-4 py-2.5">Status</th><th className="px-4 py-2.5">Ends</th><th className="px-4 py-2.5">Created</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-ink-100 text-sm">
           {rows.map((t) => (
             <tr key={t.id}>
               <td className="px-4 py-2.5">{!t.isLegacy && t.subStatus === "TRIALING" && <input type="checkbox" name="ids" value={t.id} aria-label={`Select ${t.name}`} />}</td>
-              <td className="px-4 py-2.5"><Link href={`/platform/workspaces/${t.id}`} className="font-medium text-brand-700 hover:underline">{t.name}</Link><div className="text-xs text-ink-500">{t.slug}{t.isLegacy ? " · original" : ""}{t.status !== "ACTIVE" ? ` · ${t.status.toLowerCase()}` : ""}</div></td>
-              <td className="px-4 py-2.5">{t.ownerEmail ?? "—"}</td>
-              <td className="px-4 py-2.5 capitalize">{t.planKey ?? "—"}</td>
-              <td className="px-4 py-2.5"><Badge tone={SUB_TONE[t.subStatus]}>{t.subStatus.toLowerCase().replace("_", " ")}</Badge></td>
-              <td className="px-4 py-2.5">{fmtDate(t.subStatus === "TRIALING" ? t.trialEndsAt : t.currentPeriodEnd)}</td>
-              <td className="px-4 py-2.5">{fmtDate(t.createdAt)}</td>
+              <td className="px-4 py-2.5" data-label="Company"><Link href={`/platform/workspaces/${t.id}`} className="font-medium text-brand-700 hover:underline">{t.name}</Link><div className="text-xs text-ink-500">{t.slug}{t.isLegacy ? " · original" : ""}{t.status !== "ACTIVE" ? ` · ${t.status.toLowerCase()}` : ""}</div></td>
+              <td className="px-4 py-2.5" data-label="Owner">{t.ownerEmail ?? "—"}</td>
+              <td className="px-4 py-2.5 capitalize" data-label="Plan">{t.planKey ?? "—"}</td>
+              <td className="px-4 py-2.5" data-label="Status"><Badge tone={SUB_TONE[t.subStatus]}>{t.subStatus.toLowerCase().replace("_", " ")}</Badge></td>
+              <td className="px-4 py-2.5" data-label="Ends">{fmtDate(t.subStatus === "TRIALING" ? t.trialEndsAt : t.currentPeriodEnd)}</td>
+              <td className="px-4 py-2.5" data-label="Created">{fmtDate(t.createdAt)}</td>
             </tr>
           ))}
           {!rows.length && <tr><td colSpan={7}><EmptyState icon={Building2} title={q || sub ? "No workspaces match these filters" : "No workspaces yet"} description={q || sub ? "Try a different search or clear the filters." : "Companies appear here as soon as they sign up."} action={q || sub ? <Link href="/platform/workspaces" className="link text-sm">Clear filters</Link> : undefined} /></td></tr>}

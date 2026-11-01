@@ -2,11 +2,14 @@ import Link from "next/link";
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function TableWrap({ children, className, footer }: { children: React.ReactNode; className?: string; footer?: React.ReactNode }) {
+const STACK = "max-sm:[&_thead]:sr-only max-sm:[&_tbody>tr]:block max-sm:[&_tbody>tr]:px-4 max-sm:[&_tbody>tr]:py-3 max-sm:[&_tbody>tr>td]:flex max-sm:[&_tbody>tr>td]:justify-between max-sm:[&_tbody>tr>td]:gap-3 max-sm:[&_tbody>tr>td]:px-0 max-sm:[&_tbody>tr>td]:py-1 max-sm:[&_tbody>tr>td[data-label]]:before:content-[attr(data-label)] max-sm:[&_tbody>tr>td[data-label]]:before:text-xs max-sm:[&_tbody>tr>td[data-label]]:before:text-ink-500 max-sm:[&_tbody>tr>td[data-label]]:before:shrink-0 max-sm:[&_tbody>tr>td[data-label]]:text-right";
+
+/** `stack` turns each row into a labelled card below 640px (cells need a data-label), so nothing scrolls sideways on a phone. */
+export function TableWrap({ children, className, footer, stack }: { children: React.ReactNode; className?: string; footer?: React.ReactNode; stack?: boolean }) {
   return (
     <div className={cn("card overflow-hidden", className)}>
       <div className="scrollbar-thin relative overflow-x-auto">
-        <table className="w-full min-w-[720px] divide-y divide-ink-100 [&_thead]:bg-ink-50/70 [&_tbody>tr]:transition-colors [&_tbody>tr:hover]:bg-brand-50/40">{children}</table>
+        <table className={cn("w-full divide-y divide-ink-100 [&_thead]:bg-ink-50/70 [&_tbody>tr]:transition-colors [&_tbody>tr:hover]:bg-brand-50/40", stack ? `${STACK} sm:min-w-[720px]` : "min-w-[720px]")}>{children}</table>
       </div>
       {footer}
     </div>

@@ -53,7 +53,7 @@ export default async function JobCardPage({ params }: { params: Promise<{ id: st
                 { label: "Phone", value: job.customerPhone ?? job.contact?.phone ?? "—" },
                 { label: "Vehicle", value: job.vehicleLabel ?? "—" },
                 { label: "Number plate", value: job.plateNumber ?? "—" },
-                { label: "Chassis / VIN", value: job.chassisNo ?? "—" },
+                { label: "Chassis / VIN", value: job.vehicle ? <Link className="link font-mono text-xs" href={`/portal/vehicles/${job.vehicle.id}`}>{job.vehicle.chassisNumber}</Link> : job.chassisNo ?? "—" },
                 { label: "Complaint", value: job.complaint },
                 { label: "Technician", value: job.technician?.name ?? "—" },
                 ...(job.completedAt ? [{ label: "Ready", value: fmtDateTime(job.completedAt) }] : []),

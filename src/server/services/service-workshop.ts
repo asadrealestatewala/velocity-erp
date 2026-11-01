@@ -47,6 +47,21 @@ async function resolveCustomer(tx: Tx, c: CustomerSnapshot) {
   };
 }
 
+/** Finds the Vehicle record matching a typed chassis number or plate in this dealership, if any. The text stays as the fallback. */
+async function resolveVehicleId(tx: Tx, dealershipId: string, v: VehicleSnapshot): Promise<string | null> {
+  const chassis = v.chassisNo?.toUpperCase().replace(/\s+/g, "");
+  if (chassis) {
+    const byChassis = await tx.vehicle.findFirst({ where: { dealershipId, chassisNumber: chassis }, select: { id: true } });
+    if (byChassis) return byChassis.id;
+  }
+  const plate = v.plateNumber?.trim();
+  if (plate) {
+    const byPlate = await tx.vehicle.findFirst({ where: { dealershipId, plateNumber: { equals: plate, mode: "insensitive" } }, select: { id: true } });
+    if (byPlate) return byPlate.id;
+  }
+  return null;
+}
+
 export async function createServiceBooking(
   tx: Tx,
   p: CustomerSnapshot & VehicleSnapshot & { dealershipId: string; userId: string; serviceType: string; scheduledAt: Date; assignedUserId?: string | null; notes?: string | null; confirmNow?: boolean },
@@ -58,6 +73,7 @@ export async function createServiceBooking(
     data: {
       dealershipId: p.dealershipId,
       ...customer,
+      vehicleId: await resolveVehicleId(tx, p.dealershipId, p),
       vehicleLabel: p.vehicleLabel ?? null,
       plateNumber: p.plateNumber ?? null,
       chassisNo: p.chassisNo ?? null,
@@ -98,6 +114,7 @@ export async function openJobCard(
   if (p.technicianId) await assertTeamMember(tx, p.dealershipId, p.technicianId);
   let customer: CustomerSnapshot = p;
   let vehicle: VehicleSnapshot = p;
+  let bookingVehicleId: string | null = null;
   if (p.bookingId) {
     // Checking a booking in: it must be this dealership's, still upcoming, and not already carrying a job.
     const claimed = await tx.serviceBooking.updateMany({ where: { id: p.bookingId, dealershipId: p.dealershipId, status: { in: ["REQUESTED", "CONFIRMED"] } }, data: { status: "CHECKED_IN" } });
@@ -105,6 +122,7 @@ export async function openJobCard(
     const b = await tx.serviceBooking.findUniqueOrThrow({ where: { id: p.bookingId } });
     customer = { contactId: b.contactId, customerName: b.customerName, customerPhone: b.customerPhone };
     vehicle = { vehicleLabel: b.vehicleLabel, plateNumber: b.plateNumber, chassisNo: b.chassisNo };
+    bookingVehicleId = b.vehicleId;
   }
   const c = await resolveCustomer(tx, customer);
   const job = await tx.jobCard.create({
@@ -112,6 +130,7 @@ export async function openJobCard(
       dealershipId: p.dealershipId,
       bookingId: p.bookingId ?? null,
       ...c,
+      vehicleId: bookingVehicleId ?? (await resolveVehicleId(tx, p.dealershipId, vehicle)),
       vehicleLabel: vehicle.vehicleLabel ?? null,
       plateNumber: vehicle.plateNumber ?? null,
       chassisNo: vehicle.chassisNo ?? null,
@@ -297,6 +316,7 @@ export const jobCardInclude = {
   technician: { select: { id: true, name: true } },
   createdBy: { select: { name: true } },
   contact: { select: { id: true, firstName: true, lastName: true, phone: true } },
+  vehicle: { select: { id: true, chassisNumber: true } },
   claims: { orderBy: { createdAt: "desc" } },
 } satisfies Prisma.JobCardInclude;
 

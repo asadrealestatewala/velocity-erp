@@ -6,6 +6,7 @@ import { parseItemKey } from "@/lib/ops-constants";
 import { AppError, notFound } from "@/server/errors";
 import { logActivity } from "@/server/services/activity";
 import { adjustStock, resolveItem, warnIfLow, type ItemRef } from "@/server/services/inventory";
+import { releaseVehiclesForOrder } from "@/server/services/vehicles";
 
 export type SalesLineInput = { itemKey: string; quantity: number; unitPrice: number };
 
@@ -113,6 +114,8 @@ export async function cancelSalesOrder(tx: Tx, orderId: string, userId: string, 
   });
   if (claimed.count !== 1) throw new AppError("This order is already cancelled.", "CONFLICT");
   if (wasConfirmed) {
+    // Units assigned to this order go back to the showroom (their stock count is restored by the movements below).
+    await releaseVehiclesForOrder(tx, orderId);
     for (const l of order.lines) {
       const ref: ItemRef = l.bikeModelId ? { bikeModelId: l.bikeModelId } : { productId: l.productId! };
       await adjustStock(tx, {

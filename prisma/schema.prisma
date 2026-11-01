@@ -260,6 +260,7 @@ model Dealership {
   gamificationEvents GamificationEvent[]
   goals              Goal[]
   inventory          InventoryItem[]
+  vehicles           Vehicle[]
   inventoryMovements InventoryMovement[]
   serviceBookings    ServiceBooking[]
   jobCards           JobCard[]
@@ -326,6 +327,7 @@ model BikeModel {
   testDrives       TestDriveBooking[]
   submissions      FormSubmission[]
   inventory        InventoryItem[]
+  vehicles         Vehicle[]
   salesLines       SalesOrderLine[]
   procurementLines ProcurementOrderLine[]
 
@@ -481,6 +483,7 @@ model Contact {
   jobCards        JobCard[]
   warrantyClaims  WarrantyClaim[]
   salesOrders SalesOrder[]
+  vehicles    Vehicle[]
 
   @@index([phoneNormalized])
   @@index([emailNormalized])
@@ -1406,6 +1409,7 @@ model SalesOrder {
   createdBy   User             @relation("SalesOrderCreator", fields: [createdById], references: [id])
   confirmedBy User?            @relation("SalesOrderConfirmer", fields: [confirmedById], references: [id])
   lines       SalesOrderLine[]
+  vehicles    Vehicle[]
 
   @@index([dealershipId, status, orderDate])
   @@index([contactId])
@@ -1958,4 +1962,51 @@ model WarrantyClaim {
   @@index([dealershipId, status])
   @@index([jobCardId])
   @@index([status, submittedAt])
+}
+
+enum VehicleStatus {
+  IN_STOCK
+  SOLD
+  DAMAGED
+}
+
+enum RegistrationStatus {
+  NOT_REGISTERED
+  APPLIED
+  REGISTERED
+}
+
+/// One physical unit (a single bike) identified by its chassis/VIN. Sits next to the quantity-based InventoryItem:
+/// the stock count is still changed only through adjustStock, units add identity (chassis, engine, plate, owner).
+/// After-sales records should reference Vehicle.id.
+model Vehicle {
+  id                 String             @id @default(cuid())
+  dealershipId       String
+  bikeModelId        String
+  chassisNumber      String             @unique
+  engineNumber       String?
+  color              String?
+  status             VehicleStatus      @default(IN_STOCK)
+  receivedAt         DateTime           @default(now())
+  note               String?
+  // Sale: set when the unit is assigned to a confirmed customer order.
+  salesOrderId       String?
+  ownerContactId     String?
+  soldAt             DateTime?
+  // Number plate / registration.
+  registrationStatus RegistrationStatus @default(NOT_REGISTERED)
+  plateNumber        String?            @unique
+  registeredAt       DateTime?
+  createdById        String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  dealership   Dealership  @relation(fields: [dealershipId], references: [id])
+  bikeModel    BikeModel   @relation(fields: [bikeModelId], references: [id])
+  salesOrder   SalesOrder? @relation(fields: [salesOrderId], references: [id])
+  ownerContact Contact?    @relation(fields: [ownerContactId], references: [id])
+
+  @@index([dealershipId, status])
+  @@index([ownerContactId])
+  @@index([salesOrderId])
 }

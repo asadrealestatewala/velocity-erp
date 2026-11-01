@@ -82,6 +82,12 @@ A dealership only ever sees its own data. Anything outside a user's scope behave
     body: `Every dealership keeps its own inventory under **Inventory**, split into **Bike models** (e.g. GT70, Ruibin L, Ruibin S, Keeness) and **Spare parts**. A manager adds each item with its opening quantity and a reorder level, and can add, remove or recount stock; every change is written to an append-only history (who, when, why, new quantity). Stock never goes below zero. When an item reaches its reorder level, the dealership managers get a low-stock alert. Procurement can see every dealership's stock under Dealer Stock.`,
   },
   {
+    id: "vehicles",
+    title: "Vehicles (chassis, owner and number plate)",
+    audience: ["portal"],
+    body: `**Vehicles** records each physical bike by its chassis (VIN) and engine number. It sits beside Inventory and never changes the stock count. A manager adds a unit; a salesperson then assigns it to a **confirmed** customer order, which makes the order's customer the owner and puts the bike in their vehicle history on the contact page. Once sold, a manager records the registration (Not registered → Applied → Registered) and the number plate. Cancelling the order returns the unit to stock and clears the owner and plate.`,
+  },
+  {
     id: "sales-orders",
     title: "Customer orders (purchase orders at the showroom)",
     audience: ["portal"],

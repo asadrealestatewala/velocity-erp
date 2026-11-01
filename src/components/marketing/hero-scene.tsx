@@ -12,13 +12,13 @@ const MODULES = [
   { icon: Receipt, label: "Finance", sub: "Ledger and vouchers" },
 ];
 
-// Static positions used for the fallback and until the 3D scene takes over.
-const STATIC_POS = [
-  { left: "14%", top: "18%" },
-  { left: "84%", top: "20%" },
-  { left: "90%", top: "58%" },
-  { left: "50%", top: "90%" },
-  { left: "8%", top: "62%" },
+// Fixed, non-overlapping slots around the stage (edges anchored so cards never collide).
+const SLOTS = [
+  "left-0 top-[2%]",
+  "right-0 top-[2%]",
+  "left-0 top-[22%]",
+  "right-0 top-[22%]",
+  "left-1/2 bottom-0 -translate-x-1/2",
 ];
 
 /**
@@ -28,7 +28,6 @@ const STATIC_POS = [
  */
 export function HeroScene() {
   const hostRef = useRef<HTMLDivElement>(null);
-  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [live, setLive] = useState(false);
 
   useEffect(() => {
@@ -46,9 +45,12 @@ export function HeroScene() {
     const start = () => {
       import("./hero-scene-engine")
         .then(({ startScene }) => {
-          if (cancelled) return;
-          const cards = cardRefs.current.filter((c): c is HTMLDivElement => !!c);
-          const handle = startScene({ host, cards, lowPower });
+          if (cancelled) return null;
+          return startScene({ host, lowPower, carUrl: "/models/car-concept.glb", bikeUrl: "/brand/yadea-g5s.webp" });
+        })
+        .then((handle) => {
+          if (!handle) return;
+          if (cancelled) { handle.dispose(); return; }
           dispose = handle.dispose;
           setLive(true);
         })
@@ -72,16 +74,15 @@ export function HeroScene() {
   }, []);
 
   return (
-    <div ref={hostRef} className="relative mx-auto aspect-[4/3] w-full max-w-xl" role="img" aria-label="A car and an electric scooter on a showroom turntable, surrounded by ERP modules: inventory, sales, service, parts and finance">
+    <div ref={hostRef} className="relative mx-auto aspect-[4/3] w-full max-w-xl" role="img" aria-label="A car and an electric scooter in a showroom, surrounded by ERP modules: inventory, sales, service, parts and finance">
       {!live && (
-        <Image src="/brand/yadea-g5s.webp" alt="" width={640} height={480} className="absolute inset-x-[15%] inset-y-[10%] h-auto w-[70%] drop-shadow-2xl" priority />
+        <Image src="/brand/yadea-g5s.webp" alt="" width={640} height={480} className="absolute left-[15%] top-[12%] h-auto w-[70%] drop-shadow-2xl" priority />
       )}
       {MODULES.map((m, i) => (
         <div
           key={m.label}
-          ref={(el) => { cardRefs.current[i] = el; }}
-          style={live ? undefined : { ...STATIC_POS[i], transform: "translate(-50%,-50%)" }}
-          className="absolute flex items-center gap-2 rounded-xl border border-ink-100 bg-white/90 px-3 py-2 shadow-md will-change-transform"
+          style={{ animationDelay: `${i * -1.1}s` }}
+          className={`hero-float absolute z-10 flex items-center gap-2 rounded-xl border border-ink-100 bg-white/95 px-3 py-2 shadow-md ${SLOTS[i]}`}
         >
           <span className="flex size-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><m.icon className="size-4" aria-hidden /></span>
           <span className="leading-tight">
@@ -90,6 +91,11 @@ export function HeroScene() {
           </span>
         </div>
       ))}
+      {live && (
+        <p className="absolute -bottom-5 right-0 text-[10px] text-ink-400">
+          Car: &ldquo;Car Concept&rdquo; by Eric Chadwick, Darmstadt Graphics Group, <a className="underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>
+        </p>
+      )}
     </div>
   );
 }

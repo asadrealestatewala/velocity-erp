@@ -419,3 +419,8 @@ html[data-pf-theme="dark"] .pf-logo-dark { display: block; }
 html[data-pf-theme="dark"] .pf-logo-light { display: none; }
 html[data-pf] .pf-bare:focus-visible { outline: none; }
 html[data-pf] kbd { font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 2px 5px; border-radius: 4px; border: 1px solid var(--pf-border); background: var(--pf-sunken); color: var(--pf-muted); }
+
+/* Public hero: gentle float for the ERP module cards (not used in the platform console). */
+@keyframes hero-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
+.hero-float { animation: hero-float 5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .hero-float { animation: none; } }

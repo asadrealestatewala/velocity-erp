@@ -310,6 +310,20 @@ export const PAGES: PageDoc[] = [
     keywords: ["stock", "showroom", "quantity", "low stock", "reorder", "bikes", "spare parts"],
   },
   {
+    id: "portal-stock-transfers", workspace: "portal", label: "Stock Transfers", path: "/portal/stock-transfers", perm: "inventory.view",
+    summary: "Move bikes and spare parts between the outlets of your group; stock joins the receiver when they confirm it arrived.",
+    inside: ["Tiles: transfers arriving at this outlet and on their way from it.", "Table: transfer number, from, to, units, status (In transit / Received / Cancelled / Rejected), date.", "Open a transfer (/portal/stock-transfers/[id]) for its lines and quantities received."],
+    actions: ["New transfer (managers): pick the outlet, items and quantities; stock leaves your inventory at once", "Receive (managers of the destination): confirm what arrived; a short delivery returns the difference to the sender", "Cancel (sender) or Reject (receiver) while in transit; the stock goes back to the sender"],
+    keywords: ["transfer", "move stock", "branch", "outlet", "send stock", "in transit"],
+  },
+  {
+    id: "portal-stock-counts", workspace: "portal", label: "Stock Counts", path: "/portal/stock-counts", perm: "inventory.view",
+    summary: "Count what is on the shelves and correct the system's stock to match.",
+    inside: ["Table: count number, title, items, status (In progress / Completed / Cancelled), who started it, date.", "Open a count (/portal/stock-counts/[id]) to enter counted quantities against what the system expected."],
+    actions: ["Start count (managers): snapshots the expected quantities; only one count can be open at a time", "Save progress, then Close count & apply to correct every difference (items left blank are not changed)", "Cancel count: no stock changes"],
+    keywords: ["stock count", "stocktake", "stock take", "audit", "physical count", "variance", "recount"],
+  },
+  {
     id: "portal-vehicles", workspace: "portal", label: "Vehicles", path: "/portal/vehicles", perm: "inventory.view",
     summary: "Every bike by chassis number: its owner, status and number plate.",
     inside: ["Search by chassis, engine number, plate or owner; filter by status (in stock, sold, damaged).", "Table: chassis, model, engine number, status, owner, plate, date added."],

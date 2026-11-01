@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { getSettings } from "@/server/settings";
+import { sweepLowStock } from "@/server/services/inventory";
 import { centralUserIdsWith, dealershipUserIds, deliverOutbox, notify } from "./notifications";
 
 /**
@@ -116,6 +117,9 @@ export async function runScheduledJobs() {
     receiptReminders++;
   }
 
+  // 4b. Low-stock safety net (items that fell to their reorder level any way other than a tracked deduction)
+  const lowStock = await sweepLowStock();
+
   // 5. Email delivery (SKIPPED without SMTP — never reported as sent)
   const email = await deliverOutbox(200);
 
@@ -123,5 +127,5 @@ export async function runScheduledJobs() {
   await db.session.deleteMany({ where: { expiresAt: { lt: now } } });
   await db.rateLimitBucket.deleteMany({ where: { windowStart: { lt: new Date(now.getTime() - 24 * 3600_000) } } });
 
-  return { reminders, overdue, upcomingTestDrives, lateDeliveries, receiptReminders, email };
+  return { reminders, overdue, upcomingTestDrives, lateDeliveries, receiptReminders, lowStock, email };
 }

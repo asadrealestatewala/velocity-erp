@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { LifeBuoy } from "lucide-react";
 import { Badge, Card, CardHeader, EmptyState, PageHeader } from "@/components/ui/misc";
-import { TableWrap } from "@/components/ui/table";
+import { Pagination, parseListParams, TableWrap } from "@/components/ui/table";
 import { FilterTabs, SearchBox } from "@/components/platform/list";
 import { SavedViews } from "@/components/platform/saved-views";
 import { ActionForm } from "@/components/platform/console";
+import { BulkTickets } from "@/components/platform/bulk-tickets";
+import { SelectAll } from "@/components/platform/select-all";
 import { createTicketAction } from "@/server/actions/platform-support";
 import { requireAdminPage } from "@/server/platform/admin-auth";
 import { platformDb } from "@/server/platform/client";
@@ -16,11 +18,12 @@ export const metadata = { title: "Support tickets" };
 
 const VIEWS = [{ key: "open", label: "Open" }, { key: "mine", label: "Assigned to me" }, { key: "unassigned", label: "Unassigned" }, { key: "overdue", label: "Overdue" }, { key: "done", label: "Resolved & closed" }];
 
-export default async function SupportPage({ searchParams }: { searchParams: Promise<{ view?: string; q?: string }> }) {
+export default async function SupportPage({ searchParams }: { searchParams: Promise<{ view?: string; q?: string; page?: string; pageSize?: string }> }) {
   const me = await requireAdminPage("support.manage");
   const sp = await searchParams;
   const view = VIEWS.some((v) => v.key === sp.view) ? sp.view! : "open";
   const q = sp.q?.trim() || undefined;
+  const { page, pageSize, skip } = parseListParams(sp);
   const now = new Date();
   const num = q && /^#?\d+$/.test(q) ? Number(q.replace("#", "")) : null;
   const search = q ? { OR: [{ subject: { contains: q, mode: "insensitive" as const } }, { requesterEmail: { contains: q, mode: "insensitive" as const } }, { tenant: { is: { name: { contains: q, mode: "insensitive" as const } } } }, ...(num !== null ? [{ number: num }] : [])] } : {};
@@ -32,7 +35,7 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
     : { status: { in: TICKET_OPEN } };
   const db = platformDb();
   const [tickets, counts] = await Promise.all([
-    db.supportTicket.findMany({ where: { ...whereFor(view), ...search }, orderBy: view === "done" ? { updatedAt: "desc" } : [{ firstResponseDueAt: "asc" }], take: 100, include: { tenant: { select: { name: true, slug: true } } } }),
+    db.supportTicket.findMany({ where: { ...whereFor(view), ...search }, orderBy: view === "done" ? { updatedAt: "desc" } : [{ firstResponseDueAt: "asc" }, { id: "asc" }], skip, take: pageSize, include: { tenant: { select: { name: true, slug: true } } } }),
     Promise.all(VIEWS.map((v) => db.supportTicket.count({ where: { ...whereFor(v.key), ...search } }))),
   ]);
   const href = (v: string) => `/platform/support?${new URLSearchParams({ view: v, ...(q ? { q } : {}) })}`;
@@ -42,24 +45,26 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
       <FilterTabs label="Ticket views" active={view} tabs={VIEWS.map((v, i) => ({ key: v.key, label: v.label, count: counts[i], href: href(v.key) }))} />
       <SearchBox id="ticket-q" label="Search" action="/platform/support" q={q} placeholder="Subject, customer, email or ticket number" keep={{ view }} clearHref={href(view)} />
       <SavedViews storageKey="support" />
-      <TableWrap>
-        <thead><tr className="text-left text-xs font-semibold uppercase text-ink-500"><th className="px-4 py-2.5">#</th><th className="px-4 py-2.5">Subject</th><th className="px-4 py-2.5">Customer</th><th className="px-4 py-2.5">Priority</th><th className="px-4 py-2.5">Status</th><th className="px-4 py-2.5">First reply</th><th className="px-4 py-2.5">Owner</th></tr></thead>
+      <BulkTickets />
+      <TableWrap stack footer={<Pagination base="/platform/support" params={{ view, q, pageSize: sp.pageSize }} page={page} pageSize={pageSize} total={counts[VIEWS.findIndex((v) => v.key === view)] ?? 0} />}>
+        <thead><tr className="text-left text-xs font-semibold uppercase text-ink-500"><th className="w-8 px-4 py-2.5"><SelectAll label="Select all tickets on this page" /></th><th className="px-4 py-2.5">#</th><th className="px-4 py-2.5">Subject</th><th className="px-4 py-2.5">Customer</th><th className="px-4 py-2.5">Priority</th><th className="px-4 py-2.5">Status</th><th className="px-4 py-2.5">First reply</th><th className="px-4 py-2.5">Owner</th></tr></thead>
         <tbody className="divide-y divide-ink-100 text-sm">
           {tickets.map((t) => {
             const sla = slaState(t, now);
             return (
               <tr key={t.id}>
-                <td className="px-4 py-2.5">{t.number}</td>
+                <td className="px-4 py-2.5"><input type="checkbox" name="ids" value={t.id} aria-label={`Select ticket ${t.number}`} /></td>
+                <td className="px-4 py-2.5" data-label="Ticket">#{t.number}</td>
                 <td className="px-4 py-2.5"><Link className="font-medium text-brand-600 hover:underline" href={`/platform/support/${t.id}`}>{t.subject}</Link><div className="text-xs text-ink-500">{fmtDateTime(t.createdAt)} · {t.source.toLowerCase()}</div></td>
-                <td className="px-4 py-2.5">{t.tenant?.name ?? t.requesterEmail ?? "—"}</td>
-                <td className="px-4 py-2.5"><Badge tone={PRIORITY_TONE[t.priority]}>{t.priority.toLowerCase()}</Badge></td>
-                <td className="px-4 py-2.5"><Badge tone={STATUS_TONE[t.status]}>{STATUS_LABEL[t.status]}</Badge></td>
-                <td className="px-4 py-2.5"><Badge tone={SLA_TONE[sla]}>{SLA_LABEL[sla]}</Badge>{sla === "ok" || sla === "due_soon" || sla === "overdue" ? <div className="text-xs text-ink-500">by {fmtDateTime(t.firstResponseDueAt)}</div> : null}</td>
-                <td className="px-4 py-2.5">{t.assigneeName ?? <span className="text-ink-400">unassigned</span>}</td>
+                <td className="px-4 py-2.5" data-label="Customer">{t.tenant?.name ?? t.requesterEmail ?? "—"}</td>
+                <td className="px-4 py-2.5" data-label="Priority"><Badge tone={PRIORITY_TONE[t.priority]}>{t.priority.toLowerCase()}</Badge></td>
+                <td className="px-4 py-2.5" data-label="Status"><Badge tone={STATUS_TONE[t.status]}>{STATUS_LABEL[t.status]}</Badge></td>
+                <td className="px-4 py-2.5" data-label="First reply"><Badge tone={SLA_TONE[sla]}>{SLA_LABEL[sla]}</Badge>{sla === "ok" || sla === "due_soon" || sla === "overdue" ? <div className="text-xs text-ink-500">by {fmtDateTime(t.firstResponseDueAt)}</div> : null}</td>
+                <td className="px-4 py-2.5" data-label="Owner">{t.assigneeName ?? <span className="text-ink-400">unassigned</span>}</td>
               </tr>
             );
           })}
-          {!tickets.length && <tr><td colSpan={7}><EmptyState icon={LifeBuoy} title={q ? "No tickets match this search" : "No tickets here"} description={q ? "Try a different word or check another view." : view === "open" ? "Every customer question has been answered. New tickets appear here." : "Nothing in this view right now."} action={q ? <Link href={href(view)} className="link text-sm">Clear search</Link> : undefined} /></td></tr>}
+          {!tickets.length && <tr><td colSpan={8}><EmptyState icon={LifeBuoy} title={q ? "No tickets match this search" : "No tickets here"} description={q ? "Try a different word or check another view." : view === "open" ? "Every customer question has been answered. New tickets appear here." : "Nothing in this view right now."} action={q ? <Link href={href(view)} className="link text-sm">Clear search</Link> : undefined} /></td></tr>}
         </tbody>
       </TableWrap>
       <Card className="mt-6">

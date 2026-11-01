@@ -126,6 +126,8 @@ model Tenant {
   @@index([status])
   @@index([subStatus])
   @@index([deletionScheduledFor])
+  @@index([createdAt])
+  @@index([trialEndsAt])
 }
 
 model Plan {
@@ -228,6 +230,7 @@ model SubscriptionHistory {
   tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, at])
+  @@index([at])
 }
 
 model Invoice {
@@ -251,6 +254,8 @@ model Invoice {
   refunds     Refund[]
 
   @@index([tenantId, issuedAt])
+  @@index([status, paidAt])
+  @@index([issuedAt])
 }
 
 /// Every refund is also a numbered credit note (CN-00001) that can be downloaded as a PDF.
@@ -268,6 +273,7 @@ model Refund {
   invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId])
+  @@index([at])
 }
 
 /// A payment a customer says they made (bank/wallet) or a provider reported. References are single-use per method.

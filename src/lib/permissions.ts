@@ -43,6 +43,12 @@ export const PERMISSIONS = {
   "inventory.view_all": { group: "Inventory", description: "View every dealership's inventory (central)" },
   "salesorders.manage": { group: "Inventory", description: "Create, confirm and cancel customer sales orders (deducts stock)" },
 
+  // ── Sales documents (quotations, tax invoices, customer returns)
+  "quotations.manage": { group: "Sales documents", description: "Create quotations and convert accepted ones into customer orders" },
+  "invoices.manage": { group: "Sales documents", description: "Issue tax invoices for confirmed orders, record payment and void invoices" },
+  "returns.manage": { group: "Sales documents", description: "Record customer returns against an invoice" },
+  "returns.approve": { group: "Sales documents", description: "Approve or reject customer returns (restocks items and records the refund)" },
+
   // ── After-sales service
   "service.view": { group: "Service", description: "View service bookings, workshop job cards and warranty claims of the dealership" },
   "service.manage": { group: "Service", description: "Book services, open and progress job cards, consume spare parts on a job (deducts stock)" },
@@ -88,6 +94,7 @@ export const DEALER_ONLY_PERMISSIONS: PermissionKey[] = [
   "portal.access", "leads.assign_team", "team.manage", "inventory.view", "inventory.manage", "salesorders.manage",
   "procurement.order", "ledger.pay", "vouchers.manage", "dealerdocs.upload",
   "service.view", "service.manage", "warranty.manage",
+  "quotations.manage", "invoices.manage", "returns.manage", "returns.approve",
 ];
 
 /**
@@ -109,6 +116,14 @@ export const DEFAULT_GRANT_UPGRADES: { id: string; grants: Record<string, Permis
     id: "2026-10-procurement-bike-models",
     grants: { PROCUREMENT: ["bikemodels.manage"] },
   },
+  {
+    id: "2026-11-sales-documents",
+    grants: {
+      DEALER_MANAGER: ["quotations.manage", "invoices.manage", "returns.manage", "returns.approve"],
+      DEALERSHIP_HEAD: ["quotations.manage", "invoices.manage", "returns.manage", "returns.approve"],
+      DEALER_REP: ["quotations.manage", "invoices.manage", "returns.manage"],
+    },
+  },
 ];
 
 /** What a dealership manager can do inside each dealership they manage (a Dealerships Head has the same powers across all of theirs). */
@@ -120,6 +135,7 @@ const DEALERSHIP_MANAGER_PERMISSIONS: PermissionKey[] = [
       "inventory.view", "inventory.manage", "salesorders.manage", "procurement.order", "ledger.view", "ledger.pay",
       "vouchers.manage", "dealerdocs.upload", "messages.send", "assistant.use", "assistant.write",
       "service.view", "service.manage", "warranty.manage",
+      "quotations.manage", "invoices.manage", "returns.manage", "returns.approve",
     ];
 
 export const DEFAULT_ROLES: {
@@ -196,7 +212,7 @@ export const DEFAULT_ROLES: {
       "portal.access", "contacts.view", "contacts.create", "contacts.edit", "leads.change_stage",
       "testdrives.view", "testdrives.manage", "tasks.manage", "notes.manage", "documents.view", "documents.manage",
       "inventory.view", "salesorders.manage", "messages.send", "assistant.use", "assistant.write",
-      "service.view",
+      "service.view", "quotations.manage", "invoices.manage", "returns.manage",
     ],
   },
 ];

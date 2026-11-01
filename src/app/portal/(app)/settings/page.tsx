@@ -4,7 +4,7 @@ import { dealershipIds, managedDealershipIds, requirePortalPage } from "@/server
 import { Badge, Card, CardHeader, DescriptionList, PageHeader } from "@/components/ui/misc";
 import { DEALERSHIP_STATUS } from "@/lib/constants";
 import { humanize } from "@/lib/utils";
-import { DealershipSettingsForm } from "./settings-form";
+import { DealershipSettingsForm, DealershipTaxForm } from "./settings-form";
 
 export const metadata = { title: "Dealership settings" };
 
@@ -26,6 +26,7 @@ export default async function PortalSettingsPage() {
               <DescriptionList cols={3} items={[
                 { label: "Legal name", value: d.legalName }, { label: "City", value: d.city.name }, { label: "Province", value: d.province?.name },
                 { label: "Address", value: d.address }, { label: "Postal code", value: d.postalCode },
+                { label: "NTN", value: d.ntn }, { label: "STRN", value: d.strn },
                 { label: "Eligible models", value: d.bikeModels.filter((b) => b.bikeModel.isActive).map((b) => b.bikeModel.name).join(", ") || "None configured" },
               ]} />
               <p className="mt-4 text-xs text-ink-400">Status, lead assignment, eligible models and identity details are managed by YADEA. Contact your YADEA account manager for changes.</p>
@@ -35,6 +36,12 @@ export default async function PortalSettingsPage() {
             <Card>
               <CardHeader title="Operational settings" description="Editable by dealership managers" />
               <DealershipSettingsForm id={d.id} initial={{ contactName: d.contactName, phone: d.phone, email: d.email, repsSeeAllLeads: d.repsSeeAllLeads, testDriveSlotCapacity: d.testDriveSlotCapacity, operatingHours: d.operatingHours as Record<string, { open: string; close: string; closed?: boolean }> }} />
+            </Card>
+          )}
+          {managed.includes(d.id) && (
+            <Card>
+              <CardHeader title="Tax details" description="Printed as the seller on invoices you issue from now on" />
+              <DealershipTaxForm id={d.id} initial={{ ntn: d.ntn, strn: d.strn }} />
             </Card>
           )}
         </div>

@@ -317,6 +317,33 @@ export const PAGES: PageDoc[] = [
     keywords: ["chassis", "vin", "engine number", "number plate", "registration", "vehicle history"],
   },
   {
+    id: "portal-quotations", workspace: "portal", label: "Quotations", path: "/portal/quotations", perm: "inventory.view",
+    summary: "Priced offers for customers. An accepted quotation converts into a draft customer order; nothing is deducted from stock.",
+    inside: ["Filters: search (customer, phone or QT number), status (draft, sent, accepted, rejected, converted).", "Open a quotation (/portal/quotations/[id]) to mark it sent, accepted or rejected, convert it to an order, or download the PDF."],
+    actions: ["New quotation: pick a contact or type a name, add items, prices, discount and a validity date", "Convert to order (creates a draft order)", "Download the PDF"],
+    keywords: ["quote", "quotation", "estimate", "offer", "proforma"],
+  },
+  {
+    id: "portal-quotation-new", workspace: "portal", sidebar: false, label: "New quotation", path: "/portal/quotations/new", perm: "quotations.manage",
+    summary: "Price an offer for a customer (Quotations → New quotation).",
+    inside: ["Choose the contact or type a name, add bikes and spare parts, edit prices, add a discount and an optional valid-until date."],
+    keywords: ["new quote", "create quotation"],
+  },
+  {
+    id: "portal-invoices", workspace: "portal", label: "Invoices", path: "/portal/invoices", perm: "inventory.view",
+    summary: "Tax invoices for confirmed customer orders, with the seller's and buyer's NTN/STRN and sales tax.",
+    inside: ["Filters: search (buyer, NTN or INV number), status (unpaid, paid, void).", "Open an invoice (/portal/invoices/[id]) for items, tax, seller and buyer details, returns and a PDF download."],
+    actions: ["Issue an invoice from a confirmed order's page", "Mark paid, void, or record a customer return", "Download the PDF"],
+    keywords: ["invoice", "tax invoice", "ntn", "strn", "gst", "sales tax", "bill"],
+  },
+  {
+    id: "portal-returns", workspace: "portal", label: "Returns & Refunds", path: "/portal/returns", perm: "inventory.view",
+    summary: "Customer returns against invoices. A manager approves a return to restock the items and record the refund.",
+    inside: ["Filters: search (RET or INV number), status (awaiting approval, refunded, rejected).", "Open a return (/portal/returns/[id]) to approve with a refund method, reject, or download the refund note PDF."],
+    actions: ["Approve & refund (managers)", "Reject", "Download the PDF"],
+    keywords: ["return", "refund", "credit note", "send back", "defective"],
+  },
+  {
     id: "portal-sales-orders", workspace: "portal", label: "Customer Orders", path: "/portal/sales-orders", perm: "inventory.view",
     summary: "Purchase orders you raise for customers; confirming one deducts stock automatically.",
     inside: ["Filters: search (customer, phone or SO number), status (draft, confirmed, cancelled).", "Open an order (/portal/sales-orders/[id]) for lines, totals, the stock impact and a PDF download."],

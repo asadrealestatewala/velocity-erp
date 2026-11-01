@@ -11,7 +11,7 @@ import { releaseVehiclesForOrder } from "@/server/services/vehicles";
 export type SalesLineInput = { itemKey: string; quantity: number; unitPrice: number };
 
 /** Merge duplicate lines for the same item (quantities add; the later price wins) and resolve item snapshots. */
-async function buildLines(tx: Tx, lines: SalesLineInput[]) {
+export async function buildLines(tx: Tx, lines: SalesLineInput[]) {
   const merged = new Map<string, SalesLineInput>();
   for (const l of lines) {
     const prev = merged.get(l.itemKey);
@@ -108,6 +108,8 @@ export async function cancelSalesOrder(tx: Tx, orderId: string, userId: string, 
   const order = await tx.salesOrder.findUnique({ where: { id: orderId }, include: { lines: true } });
   if (!order) throw notFound("Order not found.");
   const wasConfirmed = order.status === "CONFIRMED";
+  const invoice = await tx.invoice.findFirst({ where: { salesOrderId: orderId, status: { not: "VOID" } }, select: { number: true } });
+  if (invoice) throw new AppError(`Order SO-${order.number} has invoice INV-${invoice.number}. Void the invoice before cancelling the order.`, "CONFLICT");
   const claimed = await tx.salesOrder.updateMany({
     where: { id: orderId, status: { in: ["DRAFT", "CONFIRMED"] } },
     data: { status: "CANCELLED", cancelledAt: new Date(), cancelReason: reason ?? null },

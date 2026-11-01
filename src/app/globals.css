@@ -424,3 +424,5 @@ html[data-pf] kbd { font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monosp
 @keyframes hero-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
 .hero-float { animation: hero-float 5s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .hero-float { animation: none; } }
+.hero-bike { transition: transform 0.25s ease-out; will-change: transform; }
+@media (prefers-reduced-motion: reduce) { .hero-bike { transition: none; } }

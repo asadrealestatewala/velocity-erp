@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Boxes, Wrench, Receipt, ShoppingCart, Cog } from "lucide-react";
 
 const MODULES = [
@@ -12,72 +12,59 @@ const MODULES = [
   { icon: Receipt, label: "Finance", sub: "Ledger and vouchers" },
 ];
 
-// Fixed, non-overlapping slots around the stage (edges anchored so cards never collide).
+// Fixed, non-overlapping slots around the bike (edges anchored so cards never collide).
 const SLOTS = [
-  "left-0 top-[2%]",
-  "right-0 top-[2%]",
-  "left-0 top-[22%]",
-  "right-0 top-[22%]",
+  "left-0 top-[4%]",
+  "right-0 top-[4%]",
+  "left-0 bottom-[16%]",
+  "right-0 bottom-[16%]",
   "left-1/2 bottom-0 -translate-x-1/2",
 ];
 
 /**
- * Hero visual: a lazily loaded three.js showroom (car + scooter turntable) with
- * orbiting ERP module cards. Falls back to the static product image when the
- * user prefers reduced motion, WebGL is unavailable, or loading fails.
+ * Hero visual: the real product photo with a soft glow, ground shadow and a gentle pointer tilt,
+ * surrounded by floating ERP module cards. No JS runs for touch devices or when the user prefers
+ * reduced motion; the layout is identical, just still.
  */
 export function HeroScene() {
-  const hostRef = useRef<HTMLDivElement>(null);
-  const [live, setLive] = useState(false);
+  const stageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const host = hostRef.current;
-    if (!host) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    let canvas = document.createElement("canvas");
-    if (!(canvas.getContext("webgl2") || canvas.getContext("webgl"))) return;
-    canvas = null as never;
-
-    let dispose: (() => void) | undefined;
-    let cancelled = false;
-    const lowPower = window.matchMedia("(max-width: 768px), (pointer: coarse)").matches || (navigator.hardwareConcurrency ?? 8) <= 4;
-
-    const start = () => {
-      import("./hero-scene-engine")
-        .then(({ startScene }) => {
-          if (cancelled) return null;
-          return startScene({ host, lowPower, carUrl: "/models/car-concept.glb", bikeUrl: "/brand/yadea-g5s.webp" });
-        })
-        .then((handle) => {
-          if (!handle) return;
-          if (cancelled) { handle.dispose(); return; }
-          dispose = handle.dispose;
-          setLive(true);
-        })
-        .catch(() => {});
+    const stage = stageRef.current;
+    if (!stage) return;
+    if (!window.matchMedia("(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)").matches) return;
+    const onMove = (e: PointerEvent) => {
+      const r = stage.getBoundingClientRect();
+      const x = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width - 0.5) * 2));
+      const y = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height - 0.5) * 2));
+      stage.style.setProperty("--tilt-y", `${x * 7}deg`);
+      stage.style.setProperty("--tilt-x", `${-y * 4}deg`);
+      stage.style.setProperty("--shift-x", `${x * 10}px`);
     };
-    // Load once the hero is near the viewport and the browser is idle.
-    const io = new IntersectionObserver(([e]) => {
-      if (!e.isIntersecting) return;
-      io.disconnect();
-      if ("requestIdleCallback" in window) window.requestIdleCallback(start, { timeout: 1500 });
-      else setTimeout(start, 200);
-    }, { rootMargin: "200px" });
-    io.observe(host);
-
+    const onLeave = () => {
+      stage.style.setProperty("--tilt-y", "0deg");
+      stage.style.setProperty("--tilt-x", "0deg");
+      stage.style.setProperty("--shift-x", "0px");
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    document.addEventListener("pointerleave", onLeave);
     return () => {
-      cancelled = true;
-      io.disconnect();
-      dispose?.();
-      setLive(false);
+      window.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerleave", onLeave);
     };
   }, []);
 
   return (
-    <div ref={hostRef} className="relative mx-auto aspect-[4/3] w-full max-w-xl" role="img" aria-label="A car and an electric scooter in a showroom, surrounded by ERP modules: inventory, sales, service, parts and finance">
-      {!live && (
-        <Image src="/brand/yadea-g5s.webp" alt="" width={640} height={480} className="absolute left-[15%] top-[12%] h-auto w-[70%] drop-shadow-2xl" priority />
-      )}
+    <div ref={stageRef} className="relative mx-auto aspect-[4/3] w-full max-w-xl [perspective:900px]" role="img" aria-label="An electric scooter surrounded by ERP modules: inventory, sales, service, parts and finance">
+      {/* glow and ground shadow */}
+      <div aria-hidden className="absolute left-1/2 top-[48%] size-[78%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(238_108_0/0.18),transparent)]" />
+      <div aria-hidden className="absolute bottom-[26%] left-1/2 h-[7%] w-[56%] -translate-x-1/2 rounded-[50%] bg-ink-900/25 blur-xl" />
+      <div
+        className="hero-bike absolute left-[16%] top-[17%] w-[68%]"
+        style={{ transform: "translateX(var(--shift-x,0px)) rotateY(var(--tilt-y,0deg)) rotateX(var(--tilt-x,0deg))" }}
+      >
+        <Image src="/brand/yadea-g5s.webp" alt="" width={1400} height={886} sizes="(min-width: 1024px) 400px, 70vw" className="h-auto w-full drop-shadow-2xl" priority />
+      </div>
       {MODULES.map((m, i) => (
         <div
           key={m.label}
@@ -91,11 +78,6 @@ export function HeroScene() {
           </span>
         </div>
       ))}
-      {live && (
-        <p className="absolute -bottom-5 right-0 text-[10px] text-ink-400">
-          Car: &ldquo;Car Concept&rdquo; by Eric Chadwick, Darmstadt Graphics Group, <a className="underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>
-        </p>
-      )}
     </div>
   );
 }

@@ -37,6 +37,8 @@ export const PORTAL_NAV: NavItem[] = [
   { label: "Test Drives", href: "/portal/test-drives", icon: "bike", section: "Work" },
   { label: "Tasks & Follow-ups", href: "/portal/tasks", icon: "check-square" },
   { label: "Inventory", href: "/portal/inventory", icon: "boxes", perm: "inventory.view", section: "Showroom" },
+  { label: "Stock Transfers", href: "/portal/stock-transfers", icon: "truck", perm: "inventory.view" },
+  { label: "Stock Counts", href: "/portal/stock-counts", icon: "clipboard-list", perm: "inventory.view" },
   { label: "Vehicles", href: "/portal/vehicles", icon: "bike", perm: "inventory.view" },
   { label: "Customer Orders", href: "/portal/sales-orders", icon: "clipboard-list", perm: "inventory.view" },
   { label: "Stock Orders", href: "/portal/stock-orders", icon: "truck", perm: "procurement.order" },

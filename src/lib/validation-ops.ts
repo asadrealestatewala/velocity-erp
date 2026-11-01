@@ -254,3 +254,22 @@ export const vehicleRegistrationSchema = z
     registeredAt: optDate,
   })
   .refine((v) => v.registrationStatus !== "REGISTERED" || !!v.plateNumber, { path: ["plateNumber"], message: "Enter the number plate" });
+
+// ── Stock transfers and counts
+export const stockTransferSchema = z.object({
+  toDealershipId: z.string().min(1, "Choose an outlet"),
+  note: optStr(300),
+  lines: z.array(z.object({ itemId: z.string().min(1), quantity: qty })).min(1, "Add at least one item").max(100),
+});
+export const transferReceiveSchema = z.object({
+  transferId: z.string().min(1),
+  /** lineId → quantity that actually arrived; omitted lines are taken as received in full. */
+  received: z.record(z.string(), z.coerce.number().int().min(0).max(100_000)).optional(),
+});
+export const transferCloseSchema = z.object({ transferId: z.string().min(1), kind: z.enum(["CANCEL", "REJECT"]), reason: optStr(300) });
+
+export const stockCountStartSchema = z.object({ title: optStr(120), note: optStr(300) });
+export const stockCountSaveSchema = z.object({
+  countId: z.string().min(1),
+  entries: z.array(z.object({ lineId: z.string().min(1), counted: z.preprocess((v) => (v === "" || v == null ? null : v), z.coerce.number().int("Whole numbers only").min(0).max(1_000_000).nullable()), note: optStr(200) })).max(1000),
+});

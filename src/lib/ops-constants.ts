@@ -33,6 +33,19 @@ export const ORDER_PRIORITY: Record<string, StatusMeta> = {
   URGENT: { label: "Urgent", tone: "red" },
 };
 
+export const TRANSFER_STATUS: Record<string, StatusMeta> = {
+  IN_TRANSIT: { label: "In transit", tone: "violet" },
+  RECEIVED: { label: "Received", tone: "green" },
+  CANCELLED: { label: "Cancelled", tone: "gray" },
+  REJECTED: { label: "Rejected", tone: "red" },
+};
+
+export const STOCK_COUNT_STATUS: Record<string, StatusMeta> = {
+  IN_PROGRESS: { label: "In progress", tone: "amber" },
+  COMPLETED: { label: "Completed", tone: "green" },
+  CANCELLED: { label: "Cancelled", tone: "gray" },
+};
+
 export const LEDGER_TYPE: Record<string, StatusMeta> = {
   INVOICE: { label: "Invoice", tone: "blue" },
   PAYMENT: { label: "Payment", tone: "green" },
@@ -86,6 +99,9 @@ export const INVENTORY_REASON: Record<string, string> = {
   ADJUSTMENT: "Stock adjustment",
   RETURN: "Customer return",
   DAMAGE: "Damaged / written off",
+  TRANSFER_OUT: "Transferred to another outlet",
+  TRANSFER_IN: "Transfer received / returned",
+  COUNT_VARIANCE: "Stock count correction",
 };
 
 export const PAYMENT_METHOD_LABEL = { CASH: "Cash", BANK_TRANSFER: "Bank transfer", CARD: "Card", CHEQUE: "Cheque", MOBILE_WALLET: "Mobile wallet", OTHER: "Other" } as const;

@@ -150,3 +150,17 @@ export async function stockableCatalog() {
   ];
 }
 export type CatalogItem = Awaited<ReturnType<typeof stockableCatalog>>[number];
+
+/**
+ * Daily safety net for low-stock alerts: finds every item at or below a (non-zero) reorder level and alerts its
+ * showroom's managers. Uses the same once-per-item-per-day dedupe key as the live alert, so nobody is told twice.
+ */
+export async function sweepLowStock() {
+  const rows = await db.$queryRaw<{ id: string; dealershipId: string }[]>`
+    SELECT i."id", i."dealershipId" FROM "InventoryItem" i JOIN "Dealership" d ON d."id" = i."dealershipId"
+    WHERE i."reorderLevel" > 0 AND i."quantity" <= i."reorderLevel" AND d."status" = 'ACTIVE' LIMIT 2000`;
+  const byDealership = new Map<string, string[]>();
+  for (const r of rows) byDealership.set(r.dealershipId, [...(byDealership.get(r.dealershipId) ?? []), r.id]);
+  for (const [dealershipId, ids] of byDealership) await db.$transaction((tx) => warnIfLow(tx, dealershipId, ids));
+  return rows.length;
+}

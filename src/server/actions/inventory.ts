@@ -67,8 +67,12 @@ export async function setReorderLevelAction(dealershipId: string, input: z.input
     const v = reorderLevelSchema.parse(input);
     const item = await db.inventoryItem.findFirst({ where: { id: v.itemId, dealershipId } });
     if (!item) throw notFound("Inventory item not found.");
-    await db.inventoryItem.update({ where: { id: item.id }, data: { reorderLevel: v.reorderLevel } });
-    await audit({ userId: user.id, dealershipId, action: "inventory.reorder_level_set", entityType: "InventoryItem", entityId: item.id, changes: { reorderLevel: { from: item.reorderLevel, to: v.reorderLevel } } });
+    await db.$transaction(async (tx) => {
+      await tx.inventoryItem.update({ where: { id: item.id }, data: { reorderLevel: v.reorderLevel } });
+      // Raising the level above the current quantity makes the item low right now — say so immediately.
+      await warnIfLow(tx, dealershipId, [item.id]);
+      await audit({ userId: user.id, dealershipId, action: "inventory.reorder_level_set", entityType: "InventoryItem", entityId: item.id, changes: { reorderLevel: { from: item.reorderLevel, to: v.reorderLevel } } }, tx);
+    });
     return { ok: true as const, message: "Reorder level saved." };
   });
 }

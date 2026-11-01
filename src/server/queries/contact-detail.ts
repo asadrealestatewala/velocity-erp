@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import type { CurrentUser } from "@/server/auth/session";
+import { vehiclesForContact } from "@/server/services/vehicles";
 import { can, childScope, contactScope, isCentral, leadScope, taskScope, testDriveScope } from "@/server/authz";
 
 export async function getContactDetail(user: CurrentUser, id: string, selectedLeadId?: string) {
@@ -28,7 +29,7 @@ export async function getContactDetail(user: CurrentUser, id: string, selectedLe
   // Central users see everything; dealership users only child records of their own dealership(s).
   const childWhere = { contactId: id, ...child };
 
-  const [activities, tasks, notes, documents, payments, testDrives, stageHistory, assignmentHistory, submissions, avatar] = await Promise.all([
+  const [activities, tasks, notes, documents, payments, testDrives, stageHistory, assignmentHistory, submissions, avatar, vehicles] = await Promise.all([
     db.activity.findMany({ where: childWhere, orderBy: { occurredAt: "desc" }, take: 200, include: { user: { select: { name: true } } } }),
     can(user, "tasks.manage")
       ? db.task.findMany({ where: { AND: [{ contactId: id }, taskScope(user)] }, orderBy: [{ status: "asc" }, { dueAt: "asc" }], include: { assignedTo: { select: { id: true, name: true } } } })
@@ -55,9 +56,10 @@ export async function getContactDetail(user: CurrentUser, id: string, selectedLe
       ? db.formSubmission.findMany({ where: { contactId: id }, orderBy: { createdAt: "desc" }, include: { form: { select: { name: true } } } })
       : Promise.resolve([]),
     contact.avatarFileId ? Promise.resolve(contact.avatarFileId) : Promise.resolve(null),
+    vehiclesForContact(user, id),
   ]);
 
-  return { contact, leads, lead, activities, tasks, notes, documents, payments, testDrives, stageHistory, assignmentHistory, submissions, avatarFileId: avatar };
+  return { contact, leads, lead, activities, tasks, notes, documents, payments, testDrives, stageHistory, assignmentHistory, submissions, avatarFileId: avatar, vehicles };
 }
 
 export type ContactDetail = NonNullable<Awaited<ReturnType<typeof getContactDetail>>>;

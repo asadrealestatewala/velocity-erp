@@ -195,6 +195,27 @@ export async function ContactDetailView({ user, id, base, leadParam }: { user: C
           )}
 
           <Card>
+            <CardHeader title="Vehicles" description={`${data.vehicles.length} owned`} />
+            {data.vehicles.length ? (
+              <ul className="divide-y divide-ink-100">
+                {data.vehicles.map((v) => (
+                  <li key={v.id} className="flex flex-wrap items-center gap-3 px-5 py-3 text-sm">
+                    <Bike className="h-4 w-4 text-ink-400" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-ink-900">{v.bikeModel.name}{v.color ? ` · ${v.color}` : ""}</p>
+                      <p className="font-mono text-xs text-ink-500">{v.chassisNumber}{v.engineNumber ? ` · ${v.engineNumber}` : ""}</p>
+                      <p className="text-xs text-ink-500">{v.soldAt ? `Sold ${fmtDate(v.soldAt)}` : ""}{v.salesOrder ? ` · SO-${v.salesOrder.number}` : ""}</p>
+                    </div>
+                    {v.plateNumber ? <Badge tone="green">{v.plateNumber}</Badge> : <Badge tone="gray">{humanize(v.registrationStatus)}</Badge>}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="px-5 py-6 text-sm text-ink-400">No vehicles recorded for this customer.</p>
+            )}
+          </Card>
+
+          <Card>
             <CardHeader title="Test drives" description={`${data.testDrives.length} booking(s)`} />
             {data.testDrives.length ? (
               <ul className="divide-y divide-ink-100">

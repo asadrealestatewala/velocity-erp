@@ -116,6 +116,12 @@ model User {
   goals                 Goal[]
 
   movementsMade        InventoryMovement[]        @relation("MovementBy")
+  serviceBookingsAssigned ServiceBooking[]        @relation("ServiceBookingAssignee")
+  serviceBookingsCreated  ServiceBooking[]        @relation("ServiceBookingCreator")
+  jobCardsAssigned        JobCard[]               @relation("JobCardTechnician")
+  jobCardsCreated         JobCard[]               @relation("JobCardCreator")
+  warrantyClaimsRaised    WarrantyClaim[]         @relation("WarrantyClaimRaiser")
+  warrantyClaimsReviewed  WarrantyClaim[]         @relation("WarrantyClaimReviewer")
   salesOrdersCreated   SalesOrder[]               @relation("SalesOrderCreator")
   salesOrdersConfirmed SalesOrder[]               @relation("SalesOrderConfirmer")
   procRequested        ProcurementOrder[]         @relation("ProcRequester")
@@ -255,6 +261,9 @@ model Dealership {
   goals              Goal[]
   inventory          InventoryItem[]
   inventoryMovements InventoryMovement[]
+  serviceBookings    ServiceBooking[]
+  jobCards           JobCard[]
+  warrantyClaims     WarrantyClaim[]
   salesOrders        SalesOrder[]
   procurementOrders  ProcurementOrder[]
   ledgerEntries      LedgerEntry[]
@@ -468,6 +477,9 @@ model Contact {
   testDrives  TestDriveBooking[]
   submissions FormSubmission[]
   messages    Message[]
+  serviceBookings ServiceBooking[]
+  jobCards        JobCard[]
+  warrantyClaims  WarrantyClaim[]
   salesOrders SalesOrder[]
 
   @@index([phoneNormalized])
@@ -1295,6 +1307,7 @@ model Product {
   updatedAt     DateTime @updatedAt
 
   imageFile        StoredFile?            @relation(fields: [imageFileId], references: [id])
+  jobCardParts     JobCardPart[]
   inventory        InventoryItem[]
   salesLines       SalesOrderLine[]
   procurementLines ProcurementOrderLine[]
@@ -1331,6 +1344,8 @@ enum InventoryReason {
   ADJUSTMENT
   RETURN
   DAMAGE
+  SERVICE_USE
+  SERVICE_RETURN
 }
 
 /// Append-only stock ledger — every change to InventoryItem.quantity has exactly one movement.
@@ -1780,4 +1795,167 @@ model PasswordResetToken {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// ───────────────────────────── After-sales service: bookings, job cards, warranty ─────────────────────────────
+// The vehicle is deliberately a loose snapshot (label / plate / chassis as text) so this module does not depend on
+// per-unit vehicle identity; a nullable vehicle reference can be added later without reshaping these tables.
+
+enum ServiceBookingStatus {
+  REQUESTED
+  CONFIRMED
+  CHECKED_IN
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+/// A customer's appointment at the workshop. Checking in opens a job card.
+model ServiceBooking {
+  id             String               @id @default(cuid())
+  number         Int                  @unique @default(autoincrement())
+  dealershipId   String
+  contactId      String?
+  customerName   String
+  customerPhone  String?
+  vehicleLabel   String?
+  plateNumber    String?
+  chassisNo      String?
+  serviceType    String
+  scheduledAt    DateTime
+  status         ServiceBookingStatus @default(REQUESTED)
+  notes          String?
+  assignedUserId String?
+  createdById    String
+  cancelReason   String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  dealership   Dealership @relation(fields: [dealershipId], references: [id])
+  contact      Contact?   @relation(fields: [contactId], references: [id])
+  assignedUser User?      @relation("ServiceBookingAssignee", fields: [assignedUserId], references: [id])
+  createdBy    User       @relation("ServiceBookingCreator", fields: [createdById], references: [id])
+  jobCard      JobCard?
+
+  @@index([dealershipId, status, scheduledAt])
+  @@index([contactId])
+}
+
+enum JobCardStatus {
+  OPEN
+  IN_PROGRESS
+  AWAITING_PARTS
+  COMPLETED
+  DELIVERED
+  CANCELLED
+}
+
+/// A workshop job on one vehicle. Parts added to it are deducted from the showroom's stock.
+model JobCard {
+  id            String        @id @default(cuid())
+  number        Int           @unique @default(autoincrement())
+  dealershipId  String
+  bookingId     String?       @unique
+  contactId     String?
+  customerName  String
+  customerPhone String?
+  vehicleLabel  String?
+  plateNumber   String?
+  chassisNo     String?
+  odometerKm    Int?
+  complaint     String
+  diagnosis     String?
+  workDone      String?
+  status        JobCardStatus @default(OPEN)
+  // Warranty jobs are not billed to the customer: labour and parts are charged to the manufacturer via a claim.
+  isWarranty    Boolean       @default(false)
+  technicianId  String?
+  labourCharge  Decimal       @default(0) @db.Decimal(14, 2)
+  partsTotal    Decimal       @default(0) @db.Decimal(14, 2)
+  discount      Decimal       @default(0) @db.Decimal(14, 2)
+  total         Decimal       @default(0) @db.Decimal(14, 2)
+  currency      String        @default("PKR")
+  openedAt      DateTime      @default(now())
+  completedAt   DateTime?
+  deliveredAt   DateTime?
+  cancelledAt   DateTime?
+  cancelReason  String?
+  createdById   String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  dealership Dealership      @relation(fields: [dealershipId], references: [id])
+  booking    ServiceBooking? @relation(fields: [bookingId], references: [id])
+  contact    Contact?        @relation(fields: [contactId], references: [id])
+  technician User?           @relation("JobCardTechnician", fields: [technicianId], references: [id])
+  createdBy  User            @relation("JobCardCreator", fields: [createdById], references: [id])
+  parts      JobCardPart[]
+  claims     WarrantyClaim[]
+
+  @@index([dealershipId, status, openedAt])
+  @@index([contactId])
+  @@index([plateNumber])
+}
+
+/// A spare part consumed on a job card. Removing the line returns the part to stock.
+model JobCardPart {
+  id        String   @id @default(cuid())
+  jobCardId String
+  productId String
+  name      String
+  code      String?
+  quantity  Int
+  unitPrice Decimal  @db.Decimal(12, 2)
+  lineTotal Decimal  @db.Decimal(14, 2)
+  createdAt DateTime @default(now())
+
+  jobCard JobCard         @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id])
+  claims  WarrantyClaim[]
+
+  @@index([jobCardId])
+}
+
+enum WarrantyClaimStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+/// A dealership's request to be reimbursed by YADEA for warranty work. Reviewed by central staff.
+model WarrantyClaim {
+  id                 String              @id @default(cuid())
+  number             Int                 @unique @default(autoincrement())
+  dealershipId       String
+  jobCardId          String
+  jobCardPartId      String?
+  contactId          String?
+  customerName       String
+  vehicleLabel       String?
+  plateNumber        String?
+  chassisNo          String?
+  failureDescription String
+  claimAmount        Decimal             @db.Decimal(14, 2)
+  approvedAmount     Decimal?            @db.Decimal(14, 2)
+  currency           String              @default("PKR")
+  status             WarrantyClaimStatus @default(DRAFT)
+  submittedAt        DateTime?
+  reviewNote         String?
+  reviewedById       String?
+  reviewedAt         DateTime?
+  createdById        String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  dealership  Dealership   @relation(fields: [dealershipId], references: [id])
+  jobCard     JobCard      @relation(fields: [jobCardId], references: [id])
+  jobCardPart JobCardPart? @relation(fields: [jobCardPartId], references: [id], onDelete: SetNull)
+  contact     Contact?     @relation(fields: [contactId], references: [id])
+  createdBy   User         @relation("WarrantyClaimRaiser", fields: [createdById], references: [id])
+  reviewedBy  User?        @relation("WarrantyClaimReviewer", fields: [reviewedById], references: [id])
+
+  @@index([dealershipId, status])
+  @@index([jobCardId])
+  @@index([status, submittedAt])
 }

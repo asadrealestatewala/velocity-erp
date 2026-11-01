@@ -22,6 +22,8 @@ export const NOTIFICATION_TYPES = {
   LEDGER_UPDATE: "Ledger / payment update",
   DOCUMENT_SHARED: "Document shared with you",
   MESSAGE_RECEIVED: "New customer message",
+  WARRANTY_SUBMITTED: "New warranty claim",
+  WARRANTY_REVIEWED: "Warranty claim decision",
 } as const;
 export type NotificationType = keyof typeof NOTIFICATION_TYPES;
 

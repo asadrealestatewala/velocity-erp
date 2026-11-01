@@ -80,6 +80,8 @@ export const INVENTORY_REASON: Record<string, string> = {
   OPENING_STOCK: "Opening stock",
   SALE: "Customer sale",
   SALE_CANCELLED: "Sale cancelled",
+  SERVICE_USE: "Used on a job card",
+  SERVICE_RETURN: "Returned from a job card",
   PROCUREMENT_RECEIPT: "Received from YADEA",
   ADJUSTMENT: "Stock adjustment",
   RETURN: "Customer return",
@@ -109,3 +111,51 @@ export function parseItemKey(key: string): { bikeModelId: string } | { productId
   if (key.startsWith("P:") && key.length > 2) return { productId: key.slice(2) };
   return null;
 }
+
+// ── After-sales service
+
+export const SERVICE_BOOKING_STATUS: Record<string, StatusMeta> = {
+  REQUESTED: { label: "Requested", tone: "amber" },
+  CONFIRMED: { label: "Confirmed", tone: "blue" },
+  CHECKED_IN: { label: "Checked in", tone: "violet" },
+  COMPLETED: { label: "Completed", tone: "green" },
+  CANCELLED: { label: "Cancelled", tone: "gray" },
+  NO_SHOW: { label: "No-show", tone: "red" },
+};
+/** Where a booking may go next. CHECKED_IN is reached only by opening a job card. */
+export const SERVICE_BOOKING_FLOW: Record<string, string[]> = {
+  REQUESTED: ["CONFIRMED", "CANCELLED", "NO_SHOW"],
+  CONFIRMED: ["CANCELLED", "NO_SHOW"],
+  CHECKED_IN: [],
+  COMPLETED: [],
+  CANCELLED: [],
+  NO_SHOW: [],
+};
+
+export const SERVICE_TYPES = ["Free service", "Periodic service", "Repair", "Battery / charging check", "Warranty inspection", "Accident / body work", "Other"] as const;
+
+export const JOB_CARD_STATUS: Record<string, StatusMeta> = {
+  OPEN: { label: "Open", tone: "blue" },
+  IN_PROGRESS: { label: "In progress", tone: "violet" },
+  AWAITING_PARTS: { label: "Awaiting parts", tone: "amber" },
+  COMPLETED: { label: "Ready for delivery", tone: "green" },
+  DELIVERED: { label: "Delivered", tone: "gray" },
+  CANCELLED: { label: "Cancelled", tone: "gray" },
+};
+/** Parts, labour and details can only change while the job is being worked on. */
+export const JOB_CARD_EDITABLE = ["OPEN", "IN_PROGRESS", "AWAITING_PARTS"] as const;
+export const JOB_CARD_FLOW: Record<string, string[]> = {
+  OPEN: ["IN_PROGRESS", "AWAITING_PARTS", "COMPLETED", "CANCELLED"],
+  IN_PROGRESS: ["AWAITING_PARTS", "COMPLETED", "CANCELLED"],
+  AWAITING_PARTS: ["IN_PROGRESS", "COMPLETED", "CANCELLED"],
+  COMPLETED: ["DELIVERED", "IN_PROGRESS"],
+  DELIVERED: [],
+  CANCELLED: [],
+};
+
+export const WARRANTY_CLAIM_STATUS: Record<string, StatusMeta> = {
+  DRAFT: { label: "Draft", tone: "gray" },
+  SUBMITTED: { label: "Submitted", tone: "blue" },
+  APPROVED: { label: "Approved", tone: "green" },
+  REJECTED: { label: "Rejected", tone: "red" },
+};

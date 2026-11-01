@@ -79,10 +79,10 @@ model User {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  role        Role                   @relation(fields: [roleId], references: [id])
-  department  Department?            @relation(fields: [departmentId], references: [id])
-  sessions    Session[]
-  memberships DealershipMembership[]
+  role           Role                   @relation(fields: [roleId], references: [id])
+  department     Department?            @relation(fields: [departmentId], references: [id])
+  sessions       Session[]
+  memberships    DealershipMembership[]
   passwordResets PasswordResetToken[]
 
   ownedContacts         Contact[]                  @relation("ContactOwner")
@@ -115,28 +115,32 @@ model User {
   filesUploaded         StoredFile[]
   goals                 Goal[]
 
-  movementsMade        InventoryMovement[]        @relation("MovementBy")
-  serviceBookingsAssigned ServiceBooking[]        @relation("ServiceBookingAssignee")
-  serviceBookingsCreated  ServiceBooking[]        @relation("ServiceBookingCreator")
-  jobCardsAssigned        JobCard[]               @relation("JobCardTechnician")
-  jobCardsCreated         JobCard[]               @relation("JobCardCreator")
-  warrantyClaimsRaised    WarrantyClaim[]         @relation("WarrantyClaimRaiser")
-  warrantyClaimsReviewed  WarrantyClaim[]         @relation("WarrantyClaimReviewer")
-  salesOrdersCreated   SalesOrder[]               @relation("SalesOrderCreator")
-  salesOrdersConfirmed SalesOrder[]               @relation("SalesOrderConfirmer")
-  procRequested        ProcurementOrder[]         @relation("ProcRequester")
-  procHandled          ProcurementOrder[]         @relation("ProcHandler")
-  procReceived         ProcurementOrder[]         @relation("ProcReceiver")
-  procHistory          ProcurementStatusHistory[] @relation("ProcHistoryBy")
-  ledgerRecorded       LedgerEntry[]              @relation("LedgerRecorder")
-  ledgerVerified       LedgerEntry[]              @relation("LedgerVerifier")
-  vouchersCreated      ExpenseVoucher[]           @relation("VoucherCreator")
-  vouchersReviewed     ExpenseVoucher[]           @relation("VoucherReviewer")
-  voucherFiles         VoucherAttachment[]        @relation("VoucherAttachmentUploader")
-  dealerDocsUploaded   DealershipDocument[]       @relation("DealerDocUploader")
-  messagesSent         Message[]                  @relation("MessageSender")
-  assistantActions     AssistantAction[]          @relation("AssistantActionUser")
-  knowledgeEntries     KnowledgeEntry[]           @relation("KnowledgeAuthor")
+  movementsMade           InventoryMovement[]        @relation("MovementBy")
+  serviceBookingsAssigned ServiceBooking[]           @relation("ServiceBookingAssignee")
+  serviceBookingsCreated  ServiceBooking[]           @relation("ServiceBookingCreator")
+  jobCardsAssigned        JobCard[]                  @relation("JobCardTechnician")
+  jobCardsCreated         JobCard[]                  @relation("JobCardCreator")
+  warrantyClaimsRaised    WarrantyClaim[]            @relation("WarrantyClaimRaiser")
+  warrantyClaimsReviewed  WarrantyClaim[]            @relation("WarrantyClaimReviewer")
+  salesOrdersCreated      SalesOrder[]               @relation("SalesOrderCreator")
+  salesOrdersConfirmed    SalesOrder[]               @relation("SalesOrderConfirmer")
+  quotationsCreated       Quotation[]                @relation("QuotationCreator")
+  invoicesCreated         Invoice[]                  @relation("InvoiceCreator")
+  salesReturnsCreated     SalesReturn[]              @relation("SalesReturnCreator")
+  salesReturnsHandled     SalesReturn[]              @relation("SalesReturnProcessor")
+  procRequested           ProcurementOrder[]         @relation("ProcRequester")
+  procHandled             ProcurementOrder[]         @relation("ProcHandler")
+  procReceived            ProcurementOrder[]         @relation("ProcReceiver")
+  procHistory             ProcurementStatusHistory[] @relation("ProcHistoryBy")
+  ledgerRecorded          LedgerEntry[]              @relation("LedgerRecorder")
+  ledgerVerified          LedgerEntry[]              @relation("LedgerVerifier")
+  vouchersCreated         ExpenseVoucher[]           @relation("VoucherCreator")
+  vouchersReviewed        ExpenseVoucher[]           @relation("VoucherReviewer")
+  voucherFiles            VoucherAttachment[]        @relation("VoucherAttachmentUploader")
+  dealerDocsUploaded      DealershipDocument[]       @relation("DealerDocUploader")
+  messagesSent            Message[]                  @relation("MessageSender")
+  assistantActions        AssistantAction[]          @relation("AssistantActionUser")
+  knowledgeEntries        KnowledgeEntry[]           @relation("KnowledgeAuthor")
 
   @@index([roleId])
 }
@@ -213,6 +217,9 @@ model Dealership {
   name                  String
   type                  DealershipType   @default(DEALERSHIP)
   legalName             String?
+  // Tax identity printed on invoices (NTN = National Tax Number, STRN = Sales Tax Registration No.).
+  ntn                   String?
+  strn                  String?
   parentId              String?
   contactName           String?
   email                 String?
@@ -238,6 +245,9 @@ model Dealership {
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
 
+  quotations         Quotation[]
+  invoices           Invoice[]
+  salesReturns       SalesReturn[]
   parent             Dealership?             @relation("DealershipParent", fields: [parentId], references: [id])
   children           Dealership[]            @relation("DealershipParent")
   province           Province?               @relation(fields: [provinceId], references: [id])
@@ -463,27 +473,29 @@ model Contact {
   createdAt              DateTime    @default(now())
   updatedAt              DateTime    @updatedAt
 
-  city        City?              @relation(fields: [cityId], references: [id])
-  province    Province?          @relation(fields: [provinceId], references: [id])
-  avatarFile  StoredFile?        @relation("ContactAvatar", fields: [avatarFileId], references: [id])
-  source      LeadSource?        @relation(fields: [sourceId], references: [id])
-  owner       User?              @relation("ContactOwner", fields: [ownerId], references: [id])
-  createdBy   User?              @relation("ContactCreatedBy", fields: [createdById], references: [id])
-  currentLead Lead?              @relation("ContactCurrentLead", fields: [currentLeadId], references: [id])
-  leads       Lead[]             @relation("ContactLeads")
-  activities  Activity[]
-  tasks       Task[]
-  notes       Note[]
-  documents   Document[]
-  payments    Payment[]
-  testDrives  TestDriveBooking[]
-  submissions FormSubmission[]
-  messages    Message[]
+  city            City?              @relation(fields: [cityId], references: [id])
+  province        Province?          @relation(fields: [provinceId], references: [id])
+  avatarFile      StoredFile?        @relation("ContactAvatar", fields: [avatarFileId], references: [id])
+  source          LeadSource?        @relation(fields: [sourceId], references: [id])
+  owner           User?              @relation("ContactOwner", fields: [ownerId], references: [id])
+  createdBy       User?              @relation("ContactCreatedBy", fields: [createdById], references: [id])
+  currentLead     Lead?              @relation("ContactCurrentLead", fields: [currentLeadId], references: [id])
+  leads           Lead[]             @relation("ContactLeads")
+  quotations      Quotation[]
+  invoices        Invoice[]
+  activities      Activity[]
+  tasks           Task[]
+  notes           Note[]
+  documents       Document[]
+  payments        Payment[]
+  testDrives      TestDriveBooking[]
+  submissions     FormSubmission[]
+  messages        Message[]
   serviceBookings ServiceBooking[]
   jobCards        JobCard[]
   warrantyClaims  WarrantyClaim[]
-  salesOrders SalesOrder[]
-  vehicles    Vehicle[]
+  salesOrders     SalesOrder[]
+  vehicles        Vehicle[]
 
   @@index([phoneNormalized])
   @@index([emailNormalized])
@@ -1410,6 +1422,8 @@ model SalesOrder {
   confirmedBy User?            @relation("SalesOrderConfirmer", fields: [confirmedById], references: [id])
   lines       SalesOrderLine[]
   vehicles    Vehicle[]
+  quotation   Quotation?
+  invoices    Invoice[]
 
   @@index([dealershipId, status, orderDate])
   @@index([contactId])
@@ -1768,22 +1782,21 @@ model KnowledgeEntry {
   createdBy User? @relation("KnowledgeAuthor", fields: [createdById], references: [id])
 }
 
-
 // ───────────────────────────── Accounts: invitations and password reset ─────────────────────────────
 
 /// One-time invitation link. Only the SHA-256 of the token is stored; a newer invite to the same address replaces the older one.
 model UserInvitation {
-  id           String    @id @default(cuid())
-  email        String
-  name         String?
-  roleId       String
-  tokenHash    String    @unique
-  expiresAt    DateTime
-  invitedById  String?
-  acceptedAt   DateTime?
-  revokedAt    DateTime?
-  createdAt    DateTime  @default(now())
-  role         Role      @relation(fields: [roleId], references: [id])
+  id          String    @id @default(cuid())
+  email       String
+  name        String?
+  roleId      String
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  invitedById String?
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  role        Role      @relation(fields: [roleId], references: [id])
 
   @@index([email])
 }
@@ -2018,4 +2031,197 @@ model Vehicle {
   @@index([dealershipId, status])
   @@index([ownerContactId])
   @@index([salesOrderId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Sales documents: quotations → customer orders → tax invoices → returns & refunds
+// ─────────────────────────────────────────────────────────────
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  CONVERTED
+}
+
+/// A priced offer to a customer. Does not touch stock. Converting it creates a draft SalesOrder with the same lines.
+/// "Expired" is derived from validUntil, never stored.
+model Quotation {
+  id               String          @id @default(cuid())
+  number           Int             @unique @default(autoincrement())
+  dealershipId     String
+  contactId        String?
+  leadId           String?
+  customerName     String?
+  status           QuotationStatus @default(DRAFT)
+  quoteDate        DateTime        @default(now())
+  validUntil       DateTime?
+  notes            String?
+  subtotal         Decimal         @db.Decimal(14, 2)
+  discount         Decimal         @default(0) @db.Decimal(14, 2)
+  total            Decimal         @db.Decimal(14, 2)
+  currency         String          @default("PKR")
+  createdById      String
+  sentAt           DateTime?
+  respondedAt      DateTime?
+  rejectReason     String?
+  convertedOrderId String?         @unique
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  dealership     Dealership      @relation(fields: [dealershipId], references: [id])
+  contact        Contact?        @relation(fields: [contactId], references: [id])
+  createdBy      User            @relation("QuotationCreator", fields: [createdById], references: [id])
+  convertedOrder SalesOrder?     @relation(fields: [convertedOrderId], references: [id])
+  lines          QuotationLine[]
+
+  @@index([dealershipId, status, quoteDate])
+  @@index([contactId])
+}
+
+/// Item snapshot (bikeModelId/productId are plain references, not constraints, so history survives catalogue changes).
+model QuotationLine {
+  id          String  @id @default(cuid())
+  quotationId String
+  bikeModelId String?
+  productId   String?
+  name        String
+  code        String?
+  quantity    Int
+  unitPrice   Decimal @db.Decimal(12, 2)
+  lineTotal   Decimal @db.Decimal(14, 2)
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@index([quotationId])
+}
+
+enum InvoiceStatus {
+  ISSUED
+  PAID
+  VOID
+}
+
+/// A tax invoice raised for a confirmed customer order. Seller and buyer identity are snapshotted at issue time.
+model Invoice {
+  id            String        @id @default(cuid())
+  number        Int           @unique @default(autoincrement())
+  dealershipId  String
+  salesOrderId  String
+  contactId     String?
+  status        InvoiceStatus @default(ISSUED)
+  invoiceDate   DateTime      @default(now())
+  dueDate       DateTime?
+  // Seller (the dealership) snapshot
+  sellerName    String
+  sellerNtn     String?
+  sellerStrn    String?
+  sellerAddress String?
+  // Buyer snapshot
+  buyerName     String
+  buyerNtn      String?
+  buyerCnic     String?
+  buyerAddress  String?
+  buyerPhone    String?
+  subtotal      Decimal       @db.Decimal(14, 2)
+  discount      Decimal       @default(0) @db.Decimal(14, 2)
+  taxRate       Decimal       @default(0) @db.Decimal(5, 2)
+  taxAmount     Decimal       @default(0) @db.Decimal(14, 2)
+  total         Decimal       @db.Decimal(14, 2)
+  currency      String        @default("PKR")
+  notes         String?
+  createdById   String
+  paidAt        DateTime?
+  paymentMethod String?
+  voidedAt      DateTime?
+  voidReason    String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  dealership Dealership    @relation(fields: [dealershipId], references: [id])
+  salesOrder SalesOrder    @relation(fields: [salesOrderId], references: [id])
+  contact    Contact?      @relation(fields: [contactId], references: [id])
+  createdBy  User          @relation("InvoiceCreator", fields: [createdById], references: [id])
+  lines      InvoiceLine[]
+  returns    SalesReturn[]
+
+  @@index([dealershipId, status, invoiceDate])
+  @@index([salesOrderId])
+  @@index([contactId])
+}
+
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  bikeModelId String?
+  productId   String?
+  name        String
+  code        String?
+  quantity    Int
+  unitPrice   Decimal @db.Decimal(12, 2)
+  lineTotal   Decimal @db.Decimal(14, 2)
+
+  invoice Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  returns SalesReturnLine[]
+
+  @@index([invoiceId])
+}
+
+enum ReturnStatus {
+  PENDING
+  COMPLETED
+  REJECTED
+}
+
+enum RefundMethod {
+  CASH
+  BANK_TRANSFER
+  CARD
+  CHEQUE
+  MOBILE_WALLET
+  STORE_CREDIT
+}
+
+/// A customer sending goods back against an invoice. Completing it restocks the items (optional) and records the refund.
+model SalesReturn {
+  id            String        @id @default(cuid())
+  number        Int           @unique @default(autoincrement())
+  dealershipId  String
+  invoiceId     String
+  status        ReturnStatus  @default(PENDING)
+  reason        String
+  restock       Boolean       @default(true)
+  refundMethod  RefundMethod?
+  refundAmount  Decimal       @db.Decimal(14, 2)
+  currency      String        @default("PKR")
+  createdById   String
+  processedById String?
+  processedAt   DateTime?
+  rejectReason  String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  dealership  Dealership        @relation(fields: [dealershipId], references: [id])
+  invoice     Invoice           @relation(fields: [invoiceId], references: [id])
+  createdBy   User              @relation("SalesReturnCreator", fields: [createdById], references: [id])
+  processedBy User?             @relation("SalesReturnProcessor", fields: [processedById], references: [id])
+  lines       SalesReturnLine[]
+
+  @@index([dealershipId, status, createdAt])
+  @@index([invoiceId])
+}
+
+model SalesReturnLine {
+  id            String  @id @default(cuid())
+  returnId      String
+  invoiceLineId String
+  quantity      Int
+  amount        Decimal @db.Decimal(14, 2)
+
+  salesReturn SalesReturn @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  invoiceLine InvoiceLine @relation(fields: [invoiceLineId], references: [id])
+
+  @@index([returnId])
+  @@index([invoiceLineId])
 }

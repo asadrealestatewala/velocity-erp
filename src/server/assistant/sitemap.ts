@@ -303,6 +303,13 @@ export const PAGES: PageDoc[] = [
     keywords: ["stock", "showroom", "quantity", "low stock", "reorder", "bikes", "spare parts"],
   },
   {
+    id: "portal-vehicles", workspace: "portal", label: "Vehicles", path: "/portal/vehicles", perm: "inventory.view",
+    summary: "Every bike by chassis number: its owner, status and number plate.",
+    inside: ["Search by chassis, engine number, plate or owner; filter by status (in stock, sold, damaged).", "Table: chassis, model, engine number, status, owner, plate, date added."],
+    actions: ["Add vehicle (managers): chassis, engine number, colour", "Assign to order: link an in-stock unit to a confirmed customer order", "Registration (managers): applied or registered, with the number plate"],
+    keywords: ["chassis", "vin", "engine number", "number plate", "registration", "vehicle history"],
+  },
+  {
     id: "portal-sales-orders", workspace: "portal", label: "Customer Orders", path: "/portal/sales-orders", perm: "inventory.view",
     summary: "Purchase orders you raise for customers; confirming one deducts stock automatically.",
     inside: ["Filters: search (customer, phone or SO number), status (draft, confirmed, cancelled).", "Open an order (/portal/sales-orders/[id]) for lines, totals, the stock impact and a PDF download."],

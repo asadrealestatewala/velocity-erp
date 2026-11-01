@@ -36,6 +36,7 @@ export const PORTAL_NAV: NavItem[] = [
   { label: "Test Drives", href: "/portal/test-drives", icon: "bike", section: "Work" },
   { label: "Tasks & Follow-ups", href: "/portal/tasks", icon: "check-square" },
   { label: "Inventory", href: "/portal/inventory", icon: "boxes", perm: "inventory.view", section: "Showroom" },
+  { label: "Vehicles", href: "/portal/vehicles", icon: "bike", perm: "inventory.view" },
   { label: "Customer Orders", href: "/portal/sales-orders", icon: "clipboard-list", perm: "inventory.view" },
   { label: "Stock Orders", href: "/portal/stock-orders", icon: "truck", perm: "procurement.order" },
   { label: "Account Ledger", href: "/portal/ledger", icon: "wallet", perm: "ledger.view", section: "Accounts" },

@@ -155,3 +155,31 @@ export const knowledgeSchema = z.object({
 export type KnowledgeInput = z.input<typeof knowledgeSchema>;
 
 export { phoneSchema };
+
+// ── Vehicle units (chassis / engine / number plate)
+export const normalizeChassis = (v: string) => v.toUpperCase().replace(/\s+/g, "");
+export const normalizePlate = (v: string) => v.toUpperCase().replace(/\s+/g, " ").trim();
+const chassis = z
+  .string({ message: "Enter the chassis number" })
+  .transform(normalizeChassis)
+  .pipe(z.string().regex(/^[A-Z0-9-]{5,30}$/, "Letters, digits and dashes only (5–30 characters)"));
+const plate = z.string().transform(normalizePlate).pipe(z.string().regex(/^[A-Z0-9][A-Z0-9 -]{1,14}$/, "Enter a valid number plate"));
+
+export const vehicleAddSchema = z.object({
+  bikeModelId: z.string().min(1, "Choose a model"),
+  chassisNumber: chassis,
+  engineNumber: optStr(40),
+  color: optStr(40),
+  note: optStr(300),
+});
+
+export const vehicleAssignSchema = z.object({ vehicleId: z.string().min(1), salesOrderId: z.string().min(1) });
+
+export const vehicleRegistrationSchema = z
+  .object({
+    vehicleId: z.string().min(1),
+    registrationStatus: z.enum(["NOT_REGISTERED", "APPLIED", "REGISTERED"]),
+    plateNumber: z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? null : v), plate.nullable().optional()),
+    registeredAt: optDate,
+  })
+  .refine((v) => v.registrationStatus !== "REGISTERED" || !!v.plateNumber, { path: ["plateNumber"], message: "Enter the number plate" });

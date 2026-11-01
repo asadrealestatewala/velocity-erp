@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Bike } from "lucide-react";
 import { db } from "@/lib/db";
 import { activeDealershipId, can, requirePortalPage } from "@/server/authz";
@@ -63,7 +64,7 @@ export default async function VehiclesPage({ searchParams }: { searchParams: Pro
         <tbody className="divide-y divide-ink-100 bg-white">
           {rows.map((v) => (
             <tr key={v.id} className="hover:bg-ink-50/50">
-              <td className="td font-mono text-xs font-medium text-ink-900">{v.chassisNumber}</td>
+              <td className="td font-mono text-xs font-medium text-ink-900"><Link className="link" href={`/portal/vehicles/${v.id}`}>{v.chassisNumber}</Link></td>
               <td className="td">{v.bikeModel.name}{v.color ? <span className="text-ink-400"> · {v.color}</span> : null}</td>
               <td className="td font-mono text-xs">{v.engineNumber ?? "—"}</td>
               <td className="td"><Badge tone={STATUS[v.status].tone}>{STATUS[v.status].label}</Badge></td>

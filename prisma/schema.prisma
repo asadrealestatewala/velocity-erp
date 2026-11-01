@@ -1822,6 +1822,8 @@ model ServiceBooking {
   contactId      String?
   customerName   String
   customerPhone  String?
+  // Link to the Vehicle record when the chassis/plate matches one; the text snapshot below stays as the fallback.
+  vehicleId      String?
   vehicleLabel   String?
   plateNumber    String?
   chassisNo      String?
@@ -1837,12 +1839,14 @@ model ServiceBooking {
 
   dealership   Dealership @relation(fields: [dealershipId], references: [id])
   contact      Contact?   @relation(fields: [contactId], references: [id])
+  vehicle      Vehicle?   @relation(fields: [vehicleId], references: [id])
   assignedUser User?      @relation("ServiceBookingAssignee", fields: [assignedUserId], references: [id])
   createdBy    User       @relation("ServiceBookingCreator", fields: [createdById], references: [id])
   jobCard      JobCard?
 
   @@index([dealershipId, status, scheduledAt])
   @@index([contactId])
+  @@index([vehicleId])
 }
 
 enum JobCardStatus {
@@ -1863,6 +1867,7 @@ model JobCard {
   contactId     String?
   customerName  String
   customerPhone String?
+  vehicleId     String?
   vehicleLabel  String?
   plateNumber   String?
   chassisNo     String?
@@ -1891,6 +1896,7 @@ model JobCard {
   dealership Dealership      @relation(fields: [dealershipId], references: [id])
   booking    ServiceBooking? @relation(fields: [bookingId], references: [id])
   contact    Contact?        @relation(fields: [contactId], references: [id])
+  vehicle    Vehicle?        @relation(fields: [vehicleId], references: [id])
   technician User?           @relation("JobCardTechnician", fields: [technicianId], references: [id])
   createdBy  User            @relation("JobCardCreator", fields: [createdById], references: [id])
   parts      JobCardPart[]
@@ -1899,6 +1905,7 @@ model JobCard {
   @@index([dealershipId, status, openedAt])
   @@index([contactId])
   @@index([plateNumber])
+  @@index([vehicleId])
 }
 
 /// A spare part consumed on a job card. Removing the line returns the part to stock.
@@ -2005,6 +2012,8 @@ model Vehicle {
   bikeModel    BikeModel   @relation(fields: [bikeModelId], references: [id])
   salesOrder   SalesOrder? @relation(fields: [salesOrderId], references: [id])
   ownerContact Contact?    @relation(fields: [ownerContactId], references: [id])
+  serviceBookings ServiceBooking[]
+  jobCards        JobCard[]
 
   @@index([dealershipId, status])
   @@index([ownerContactId])

@@ -3,7 +3,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 // The app is server-rendered (Next.js server actions + cookie sessions), so the native shell loads the hosted
 // deployment rather than a static export. Set VELOCITY_APP_URL to the production origin before `npx cap sync`.
 // For the Android emulator against a local dev server use http://10.0.2.2:3000 (cleartext is allowed only for that).
-const url = process.env.VELOCITY_APP_URL || "https://velocity-erp.vercel.app";
+const url = process.env.VELOCITY_APP_URL || "https://velocityerp.co";
 
 const config: CapacitorConfig = {
   appId: "com.velocityerp.app",

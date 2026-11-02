@@ -1,4 +1,5 @@
 "use client";
+import { TableScroll } from "@/components/ui/table";
 import { useEffect, useState } from "react";
 import { History, Minus, Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -149,7 +150,7 @@ export function MovementsDialog({ dealershipId, item }: { dealershipId: string; 
       ) : rows.length === 0 ? (
         <p className="text-sm text-ink-500">No stock movements yet.</p>
       ) : (
-        <div className="scrollbar-thin relative overflow-x-auto">
+        <TableScroll>
           <table className="w-full min-w-[520px] text-sm">
             <thead className="bg-ink-50/60"><tr><th className="th">When</th><th className="th">Change</th><th className="th text-right">Qty</th><th className="th text-right">After</th><th className="th">By</th></tr></thead>
             <tbody className="divide-y divide-ink-100">
@@ -164,7 +165,7 @@ export function MovementsDialog({ dealershipId, item }: { dealershipId: string; 
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
     </Dialog>
   );

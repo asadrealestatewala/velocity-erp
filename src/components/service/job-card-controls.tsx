@@ -1,4 +1,5 @@
 "use client";
+import { TableScroll } from "@/components/ui/table";
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -113,7 +114,7 @@ export function PartsPanel({ job, parts, stock, editable }: { job: JobDetails; p
           </Dialog>
         )}
       />
-      <div className="scrollbar-thin relative overflow-x-auto">
+      <TableScroll>
         <table className="w-full min-w-[520px]">
           <thead className="bg-ink-50/60"><tr><th className="th">Part</th><th className="th text-right">Qty</th><th className="th text-right">Unit price</th><th className="th text-right">Line total</th>{editable && <th className="th w-10"><span className="sr-only">Remove</span></th>}</tr></thead>
           <tbody className="divide-y divide-ink-100">
@@ -135,7 +136,7 @@ export function PartsPanel({ job, parts, stock, editable }: { job: JobDetails; p
             <tr><td colSpan={3} className="td text-right font-semibold text-ink-900">{job.isWarranty ? "Customer pays (warranty)" : "Total"}</td><td className="td text-right text-base font-bold tabular-nums">{fmtMoney(job.total, job.currency)}</td>{editable && <td />}</tr>
           </tfoot>
         </table>
-      </div>
+      </TableScroll>
     </Card>
   );
 }

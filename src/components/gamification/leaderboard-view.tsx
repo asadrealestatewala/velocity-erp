@@ -5,7 +5,7 @@ import type { CurrentUser } from "@/server/auth/session";
 import { dealershipIds, isCentral } from "@/server/authz";
 import { getLeaderboard } from "@/server/services/analytics";
 import { EmptyState, PageHeader, ProgressBar } from "@/components/ui/misc";
-import { withParams } from "@/components/ui/table";
+import { withParams, TableScroll } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
 export async function LeaderboardView({ user, base, params }: { user: CurrentUser; base: string; params: Record<string, string | undefined> }) {
@@ -63,7 +63,7 @@ export async function LeaderboardView({ user, base, params }: { user: CurrentUse
               ))}
             </div>
           )}
-          <div className="card relative overflow-x-auto">
+          <TableScroll className="card">
             <table className="w-full min-w-[760px] text-sm">
               <thead className="bg-ink-50/60">
                 <tr>
@@ -88,7 +88,7 @@ export async function LeaderboardView({ user, base, params }: { user: CurrentUse
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
           <p className="mt-3 text-xs text-ink-400">Score = 40% conversion rate + 30% on-time follow-up rate + 30% points per assigned lead (capped). Points are awarded once per lead/task event and can&apos;t be farmed by repeating actions.</p>
         </>
       )}

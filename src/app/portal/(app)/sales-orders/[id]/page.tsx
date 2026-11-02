@@ -1,3 +1,4 @@
+import { TableScroll } from "@/components/ui/table";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Download } from "lucide-react";
@@ -36,7 +37,7 @@ export default async function SalesOrderPage({ params }: { params: Promise<{ id:
       <div className="grid gap-6 xl:grid-cols-3">
         <Card className="xl:col-span-2">
           <CardHeader title="Items" />
-          <div className="scrollbar-thin relative overflow-x-auto">
+          <TableScroll>
             <table className="w-full min-w-[560px]">
               <thead className="bg-ink-50/60"><tr><th className="th">Item</th><th className="th">Code</th><th className="th text-right">Qty</th><th className="th text-right">Unit price</th><th className="th text-right">Line total</th></tr></thead>
               <tbody className="divide-y divide-ink-100">
@@ -56,7 +57,7 @@ export default async function SalesOrderPage({ params }: { params: Promise<{ id:
                 <tr><td colSpan={4} className="td text-right font-semibold text-ink-900">Total</td><td className="td text-right text-base font-bold tabular-nums">{fmtMoney(order.total.toString(), order.currency)}</td></tr>
               </tfoot>
             </table>
-          </div>
+          </TableScroll>
         </Card>
         <div className="space-y-6">
           <Card>

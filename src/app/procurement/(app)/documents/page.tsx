@@ -1,3 +1,4 @@
+import { TableScroll } from "@/components/ui/table";
 import Link from "next/link";
 import { Award, FileBadge2 } from "lucide-react";
 import { db } from "@/lib/db";
@@ -26,7 +27,7 @@ export default async function DocumentsOverviewPage() {
       <PageHeader title="Documents & certificates" description="Each dealership's registration papers, and the achievement certificates YADEA has issued. Open a dealership to upload or issue documents." breadcrumbs={[{ label: "Procurement", href: "/procurement/dashboard" }, { label: "Documents" }]} />
       <Card className="mb-6">
         <CardHeader title="Document status by dealership" />
-        <div className="scrollbar-thin relative overflow-x-auto">
+        <TableScroll>
           <table className="w-full min-w-[640px]">
             <thead className="bg-ink-50/60"><tr><th className="th">Dealership</th><th className="th">Registration certificate</th><th className="th text-right">Documents</th><th className="th text-right">Certificates issued</th><th className="th">Expiring / expired</th></tr></thead>
             <tbody className="divide-y divide-ink-100">
@@ -47,7 +48,7 @@ export default async function DocumentsOverviewPage() {
               })}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       </Card>
       <Card>
         <CardHeader title="Recently added" />

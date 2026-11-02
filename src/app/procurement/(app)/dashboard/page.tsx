@@ -1,3 +1,4 @@
+import { TableScroll } from "@/components/ui/table";
 import Link from "next/link";
 import { AlertTriangle, Banknote, CheckCircle2, ClipboardList, FileClock, PackageCheck, Receipt, Truck, Wallet } from "lucide-react";
 import { startOfMonth } from "date-fns";
@@ -101,7 +102,7 @@ export default async function ProcurementDashboard() {
 
       <Card>
         <CardHeader title="Recent order activity" />
-        <div className="scrollbar-thin relative overflow-x-auto">
+        <TableScroll>
           <table className="w-full min-w-[640px]">
             <thead className="bg-ink-50/60"><tr><th className="th">Order</th><th className="th">Dealership</th><th className="th text-right">Value</th><th className="th">Status</th><th className="th">Dispatch</th><th className="th">Expected</th><th className="th">Updated</th></tr></thead>
             <tbody className="divide-y divide-ink-100">
@@ -119,7 +120,7 @@ export default async function ProcurementDashboard() {
               {recent.length === 0 && <tr><td colSpan={7}><EmptyState icon={ClipboardList} title="No orders yet" description="Dealership stock orders will appear here once they are placed." /></td></tr>}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       </Card>
     </>
   );

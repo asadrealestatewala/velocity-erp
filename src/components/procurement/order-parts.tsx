@@ -1,3 +1,4 @@
+import { TableScroll } from "@/components/ui/table";
 import { Check, CircleDot } from "lucide-react";
 import { Badge } from "@/components/ui/misc";
 import { DISPATCH_FLOW, DISPATCH_STATUS, PROCUREMENT_STATUS } from "@/lib/ops-constants";
@@ -51,7 +52,7 @@ type Line = { id: string; name: string; code: string | null; quantity: number; u
 
 export function OrderLines({ lines, currency, subtotal, showReceived }: { lines: Line[]; currency: string; subtotal: { toString(): string }; showReceived?: boolean }) {
   return (
-    <div className="scrollbar-thin relative overflow-x-auto">
+    <TableScroll>
       <table className="w-full min-w-[560px]">
         <thead className="bg-ink-50/60">
           <tr><th className="th">Item</th><th className="th">Code</th><th className="th text-right">Ordered</th>{showReceived && <th className="th text-right">Received</th>}<th className="th text-right">Unit price</th><th className="th text-right">Line total</th></tr>
@@ -72,7 +73,7 @@ export function OrderLines({ lines, currency, subtotal, showReceived }: { lines:
           <tr><td colSpan={showReceived ? 5 : 4} className="td text-right font-semibold text-ink-900">Total</td><td className="td text-right text-base font-bold tabular-nums">{Number(subtotal.toString()) > 0 ? fmtMoney(subtotal.toString(), currency) : "To be confirmed"}</td></tr>
         </tfoot>
       </table>
-    </div>
+    </TableScroll>
   );
 }
 

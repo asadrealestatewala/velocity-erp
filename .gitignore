@@ -25,3 +25,17 @@ scripts/*.tmp
 
 # pg_dump backups from npm run platform:backup
 /backups/
+
+# Mobile (Capacitor)
+android/local.properties
+android/.gradle/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/
+ios/App/Pods/
+ios/App/build/
+ios/DerivedData/
+*.keystore
+*.jks
+*.p12
+*.mobileprovision

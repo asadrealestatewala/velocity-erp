@@ -281,7 +281,7 @@ export function AppShell({
         </div>
       )}
 
-      <header className="sticky top-0 z-30 flex h-[72px] items-center gap-3 border-b border-ink-200/80 bg-white/85 px-4 backdrop-blur-md sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-30 flex h-[calc(72px+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] items-center gap-3 border-b border-ink-200/80 bg-white/85 px-4 backdrop-blur-md sm:px-6 lg:px-8">
         <span aria-hidden className="hairline-gradient pointer-events-none absolute inset-x-0 -bottom-px h-px" />
         <button className="rounded-md p-2 text-ink-600 hover:bg-ink-100 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu">
           <MenuIcon className="h-5 w-5" />

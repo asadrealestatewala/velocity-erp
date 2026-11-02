@@ -103,7 +103,7 @@
 }
 
 @layer base {
-  html { -webkit-text-size-adjust: 100%; }
+  html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
   body {
     @apply bg-ink-50 text-ink-900 antialiased;
     font-feature-settings: "calt", "kern";
@@ -426,3 +426,12 @@ html[data-pf] kbd { font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monosp
 @media (prefers-reduced-motion: reduce) { .hero-float { animation: none; } }
 .hero-bike { transition: transform 0.25s ease-out; will-change: transform; }
 @media (prefers-reduced-motion: reduce) { .hero-bike { transition: none; } }
+
+/* Phones and the installed app: notches/home bar, no iOS focus-zoom, comfortable tap targets, no rubber-band flash. */
+body { overscroll-behavior-y: none; padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+@media (pointer: coarse) {
+  .input, input, select, textarea { font-size: 16px; }
+  button, [role="button"], a.btn, summary { min-height: 40px; }
+}
+main { padding-bottom: max(1.5rem, env(safe-area-inset-bottom)); }
+@media (max-width: 640px) { table { word-break: break-word; } }

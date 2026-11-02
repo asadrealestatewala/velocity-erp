@@ -8,12 +8,14 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "sw
 export const metadata: Metadata = {
   title: { default: "Velocity ERP", template: "%s · Velocity ERP" },
   description: "YADEA customer, lead and dealership management platform",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "Velocity", statusBarStyle: "black-translucent" },
   icons: { icon: "/brand/velocity-app-icon.png", apple: "/brand/velocity-app-icon.png" },
   // The CRM, portals and sign-in pages are internal; only published public forms (which set their own robots) are indexable.
   robots: { index: false, follow: false },
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#150f0d" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#150f0d" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

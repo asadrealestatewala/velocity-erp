@@ -30,6 +30,7 @@ export function SiteShell({ children, path }: { children: React.ReactNode; path:
             <Link href="/pricing" className="hover:underline">Pricing</Link>
             <Link href="/legal/terms" className="hover:underline">Terms</Link>
             <Link href="/legal/privacy" className="hover:underline">Privacy</Link>
+            <Link href="/download" className="hover:underline">Get the app</Link>
             <Link href="/signup" className="hover:underline">Create a workspace</Link>
           </nav>
         </div>

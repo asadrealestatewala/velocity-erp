@@ -1,4 +1,5 @@
 "use client";
+import { TableScroll } from "@/components/ui/table";
 import { useState } from "react";
 import { ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -41,8 +42,8 @@ export function CountSheet({ dealershipId, countId, lines }: { dealershipId: str
   const invalid = lines.some((l) => vals[l.id] !== "" && (!Number.isInteger(Number(vals[l.id])) || Number(vals[l.id]) < 0));
   return (
     <div className="space-y-4">
-      <div className="table-wrap overflow-x-auto rounded-xl border border-ink-200 bg-white">
-        <table className="w-full text-sm">
+      <TableScroll className="rounded-xl border border-ink-200 bg-white">
+        <table className="w-full min-w-[560px] text-sm">
           <thead className="bg-ink-50/60"><tr><th className="th">Item</th><th className="th">Code</th><th className="th text-right">Expected</th><th className="th text-right">Counted</th><th className="th text-right">Difference</th></tr></thead>
           <tbody className="divide-y divide-ink-100">
             {lines.map((l) => {
@@ -60,7 +61,7 @@ export function CountSheet({ dealershipId, countId, lines }: { dealershipId: str
             })}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-600">{counted} of {lines.length} counted · {diffs} difference{diffs === 1 ? "" : "s"}. Items you leave blank are not changed.</p>
         <div className="flex gap-2">

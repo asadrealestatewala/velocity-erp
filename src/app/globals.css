@@ -104,6 +104,9 @@
 
 @layer base {
   html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
+  /* A grid item defaults to min-width:auto, so a wide table inside an implicit-column grid stretched the whole page sideways on phones.
+     :where() keeps specificity at zero, so any explicit min-w-* still wins; tables then scroll inside their own TableScroll. */
+  main :where(.grid) > * { min-width: 0; }
   body {
     @apply bg-ink-50 text-ink-900 antialiased;
     font-feature-settings: "calt", "kern";

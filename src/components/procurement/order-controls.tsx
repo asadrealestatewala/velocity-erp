@@ -1,4 +1,5 @@
 "use client";
+import { TableScroll } from "@/components/ui/table";
 import { useState } from "react";
 import { Check, Truck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,7 @@ export function ApproveOrderDialog({ orderId, number, lines, currency, defaultDa
       }
     >
       <div className="space-y-4">
-        <div className="scrollbar-thin overflow-x-auto rounded-lg border border-ink-200">
+        <TableScroll className="rounded-lg border border-ink-200">
           <table className="w-full min-w-[480px] text-sm">
             <thead className="bg-ink-50/60"><tr><th className="th">Item</th><th className="th text-right">Qty</th><th className="th text-right">Unit price ({currency})</th><th className="th text-right">Line total</th></tr></thead>
             <tbody className="divide-y divide-ink-100">
@@ -50,7 +51,7 @@ export function ApproveOrderDialog({ orderId, number, lines, currency, defaultDa
             </tbody>
             <tfoot><tr><td colSpan={3} className="td text-right font-semibold">Order total</td><td className="td text-right font-bold tabular-nums">{fmtMoney(total, currency)}</td></tr></tfoot>
           </table>
-        </div>
+        </TableScroll>
         {unpriced && <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">Some lines have no price. They will be invoiced at 0 unless you enter a price.</p>}
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Expected delivery date" error={fieldErrors.expectedDeliveryDate}>{(p) => <Input {...p} type="date" value={date} onChange={(e) => setDate(e.target.value)} />}</Field>

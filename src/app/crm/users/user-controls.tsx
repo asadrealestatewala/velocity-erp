@@ -1,4 +1,5 @@
 "use client";
+import { TableScroll } from "@/components/ui/table";
 import { Fragment, useState } from "react";
 import { Copy, KeyRound, Pencil, Plus, ShieldOff } from "lucide-react";
 import { toast } from "sonner";
@@ -92,9 +93,9 @@ export function PermissionMatrix({ roles, permissions, myRoleKey, isSuper, myPer
   const groups = [...new Set(permissions.map((p) => p.group))];
   const locked = (r: (typeof roles)[number]) => r.key === "SUPER_ADMIN" || r.key === myRoleKey;
   return (
-    <div className="overflow-x-auto">
+    <TableScroll>
       <table className="w-full min-w-[900px] text-sm">
-        <thead className="sticky top-0 bg-white">
+        <thead className="bg-white">
           <tr className="border-b border-ink-200">
             <th className="th">Permission</th>
             {roles.map((r) => (
@@ -142,7 +143,7 @@ export function PermissionMatrix({ roles, permissions, myRoleKey, isSuper, myPer
           </tr>
         </tbody>
       </table>
-    </div>
+    </TableScroll>
   );
 }
 

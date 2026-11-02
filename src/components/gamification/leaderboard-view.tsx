@@ -63,7 +63,7 @@ export async function LeaderboardView({ user, base, params }: { user: CurrentUse
               ))}
             </div>
           )}
-          <div className="card overflow-x-auto">
+          <div className="card relative overflow-x-auto">
             <table className="w-full min-w-[760px] text-sm">
               <thead className="bg-ink-50/60">
                 <tr>

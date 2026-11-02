@@ -42,7 +42,7 @@ export default async function LedgerOverviewPage({ searchParams }: { searchParam
         {queue.length === 0 ? (
           <EmptyState icon={Wallet} title="Nothing to verify" description="Payments dealerships report — with proof attached — will appear here." />
         ) : (
-          <div className="scrollbar-thin overflow-x-auto">
+          <div className="scrollbar-thin relative overflow-x-auto">
             <table className="w-full min-w-[820px]">
               <thead className="bg-ink-50/60"><tr><th className="th">Dealership</th><th className="th">Paid on</th><th className="th text-right">Amount</th><th className="th">Method / reference</th><th className="th">Applies to</th><th className="th">Proof</th>{manage && <th className="th"><span className="sr-only">Decision</span></th>}</tr></thead>
               <tbody className="divide-y divide-ink-100">
@@ -72,7 +72,7 @@ export default async function LedgerOverviewPage({ searchParams }: { searchParam
 
       <Card>
         <CardHeader title="Dealer balances" description={`${fmtMoney(receivable)} outstanding across all dealerships`} />
-        <div className="scrollbar-thin overflow-x-auto">
+        <div className="scrollbar-thin relative overflow-x-auto">
           <table className="w-full min-w-[640px]">
             <thead className="bg-ink-50/60"><tr><th className="th">Dealership</th><th className="th">City</th><th className="th text-right">Invoiced</th><th className="th text-right">Paid &amp; verified</th><th className="th text-right">Balance owed</th><th className="th text-right">Awaiting verification</th></tr></thead>
             <tbody className="divide-y divide-ink-100">

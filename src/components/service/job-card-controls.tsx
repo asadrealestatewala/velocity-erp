@@ -113,7 +113,7 @@ export function PartsPanel({ job, parts, stock, editable }: { job: JobDetails; p
           </Dialog>
         )}
       />
-      <div className="scrollbar-thin overflow-x-auto">
+      <div className="scrollbar-thin relative overflow-x-auto">
         <table className="w-full min-w-[520px]">
           <thead className="bg-ink-50/60"><tr><th className="th">Part</th><th className="th text-right">Qty</th><th className="th text-right">Unit price</th><th className="th text-right">Line total</th>{editable && <th className="th w-10"><span className="sr-only">Remove</span></th>}</tr></thead>
           <tbody className="divide-y divide-ink-100">

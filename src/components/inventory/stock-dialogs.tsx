@@ -149,7 +149,7 @@ export function MovementsDialog({ dealershipId, item }: { dealershipId: string; 
       ) : rows.length === 0 ? (
         <p className="text-sm text-ink-500">No stock movements yet.</p>
       ) : (
-        <div className="scrollbar-thin overflow-x-auto">
+        <div className="scrollbar-thin relative overflow-x-auto">
           <table className="w-full min-w-[520px] text-sm">
             <thead className="bg-ink-50/60"><tr><th className="th">When</th><th className="th">Change</th><th className="th text-right">Qty</th><th className="th text-right">After</th><th className="th">By</th></tr></thead>
             <tbody className="divide-y divide-ink-100">

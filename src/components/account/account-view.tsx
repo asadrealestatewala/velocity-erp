@@ -44,7 +44,7 @@ export function AccountView({ user, types, prefs, mustChange, emailConfigured, t
       </Card>
       <Card className="lg:col-span-2" id="notifications">
         <CardHeader title="Notification preferences" description={emailConfigured ? "Email is delivered through the configured SMTP provider." : "Email delivery is not configured on this server — only in-app notifications are delivered."} />
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-ink-50/60"><tr><th className="th">Event</th><th className="th text-center">In-app</th><th className="th text-center">Email</th></tr></thead>
             <tbody className="divide-y divide-ink-100">

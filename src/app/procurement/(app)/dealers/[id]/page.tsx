@@ -109,7 +109,7 @@ async function StockTab({ dealershipId }: { dealershipId: string }) {
   if (stock.length === 0) return <div className="card"><EmptyState icon={Boxes} title="No stock recorded" description="This dealership hasn't added its showroom inventory yet." /></div>;
   return (
     <div className="card overflow-hidden">
-      <div className="scrollbar-thin overflow-x-auto">
+      <div className="scrollbar-thin relative overflow-x-auto">
         <table className="w-full min-w-[560px]">
           <thead className="bg-ink-50/60"><tr><th className="th">Item</th><th className="th">Type</th><th className="th text-right">In stock</th><th className="th text-right">Reorder level</th><th className="th">Status</th><th className="th">Updated</th></tr></thead>
           <tbody className="divide-y divide-ink-100">
@@ -138,7 +138,7 @@ async function OrdersTab({ dealershipId }: { dealershipId: string }) {
   if (orders.length === 0) return <div className="card"><EmptyState icon={ClipboardList} title="No orders yet" /></div>;
   return (
     <div className="card overflow-hidden">
-      <div className="scrollbar-thin overflow-x-auto">
+      <div className="scrollbar-thin relative overflow-x-auto">
         <table className="w-full min-w-[700px]">
           <thead className="bg-ink-50/60"><tr><th className="th">Order</th><th className="th">Placed</th><th className="th text-right">Units</th><th className="th text-right">Value</th><th className="th">Status</th><th className="th">Dispatch</th><th className="th">Expected</th></tr></thead>
           <tbody className="divide-y divide-ink-100">

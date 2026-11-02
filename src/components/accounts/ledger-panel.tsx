@@ -55,7 +55,7 @@ export async function LedgerPanel({
         {stmt.rows.length === 0 ? (
           <EmptyState icon={Wallet} title="No ledger entries" description={mode === "dealer" ? "Invoices for your stock orders and your payments will be listed here." : "Entries appear when an order is dispatched or a payment is recorded."} />
         ) : (
-          <div className="scrollbar-thin overflow-x-auto">
+          <div className="scrollbar-thin relative overflow-x-auto">
             <table className="w-full min-w-[860px]">
               <thead className="bg-ink-50/60">
                 <tr><th className="th">Date</th><th className="th">Entry</th><th className="th">Type</th><th className="th">Reference</th><th className="th">Description</th><th className="th text-right">Debit</th><th className="th text-right">Credit</th><th className="th text-right">Balance</th><th className="th">Status</th>{mode === "central" && canManage && <th className="th"><span className="sr-only">Actions</span></th>}</tr>

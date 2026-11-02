@@ -36,7 +36,7 @@ export default async function SalesOrderPage({ params }: { params: Promise<{ id:
       <div className="grid gap-6 xl:grid-cols-3">
         <Card className="xl:col-span-2">
           <CardHeader title="Items" />
-          <div className="scrollbar-thin overflow-x-auto">
+          <div className="scrollbar-thin relative overflow-x-auto">
             <table className="w-full min-w-[560px]">
               <thead className="bg-ink-50/60"><tr><th className="th">Item</th><th className="th">Code</th><th className="th text-right">Qty</th><th className="th text-right">Unit price</th><th className="th text-right">Line total</th></tr></thead>
               <tbody className="divide-y divide-ink-100">

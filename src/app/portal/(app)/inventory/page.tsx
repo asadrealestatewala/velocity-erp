@@ -23,14 +23,17 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
   const [stock, catalog] = await Promise.all([listShowroomStock(dealershipId), manage ? stockableCatalog() : Promise.resolve([])]);
   const bikes = stock.filter((s) => s.kind === "BIKE");
   const parts = stock.filter((s) => s.kind === "PART");
-  const rows = tab === "bikes" ? bikes : parts;
+  const onlyLow = sp(params.state) === "low";
+  const needsAttention = (s: (typeof stock)[number]) => stockState(s.quantity, s.reorderLevel) !== "OK";
+  const rows = (tab === "bikes" ? bikes : parts).filter((s) => !onlyLow || needsAttention(s));
   const stocked = new Set(stock.map((s) => s.key));
   const addable = catalog.filter((c) => !stocked.has(c.key)).map((c) => ({ key: c.key, kind: c.kind, name: c.name, code: c.code }));
   const low = stock.filter((s) => stockState(s.quantity, s.reorderLevel) === "LOW").length;
   const out = stock.filter((s) => stockState(s.quantity, s.reorderLevel) === "OUT").length;
   const units = (list: typeof stock) => list.reduce((n, s) => n + s.quantity, 0);
 
-  const tabHref = (t: string) => `/portal/inventory?type=${t}${sp(params.dealership) ? `&dealership=${dealershipId}` : ""}`;
+  const tabHref = (t: string) => `/portal/inventory?type=${t}${onlyLow ? "&state=low" : ""}${sp(params.dealership) ? `&dealership=${dealershipId}` : ""}`;
+  const lowHref = `/portal/inventory?type=${tab}${onlyLow ? "" : "&state=low"}${sp(params.dealership) ? `&dealership=${dealershipId}` : ""}`;
 
   return (
     <>
@@ -53,6 +56,15 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
         <StatCard label="Low stock" value={low} icon={AlertTriangle} tone="amber" hint="At or below reorder level" />
         <StatCard label="Out of stock" value={out} icon={PackageX} tone="red" hint="Needs replenishing" />
       </div>
+
+      {low + out > 0 && (
+        <p className="mb-4 flex flex-wrap items-center gap-x-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <span><b>{low + out}</b> item{low + out === 1 ? " needs" : "s need"} replenishing ({out} out of stock, {low} low).</span>
+          <Link href={lowHref} className="link font-medium">{onlyLow ? "Show all items" : "Show only these"}</Link>
+          {can(user, "procurement.order") && <Link href="/portal/stock-orders/new?low=1" className="link font-medium">Order from YADEA</Link>}
+          {manage && <Link href="/portal/stock-transfers" className="link font-medium">Transfer from another outlet</Link>}
+        </p>
+      )}
 
       <div className="mb-4 inline-flex rounded-lg bg-ink-100 p-1 text-sm font-medium" role="tablist" aria-label="Inventory type">
         {([["bikes", "Bike models", bikes.length], ["parts", "Spare parts", parts.length]] as const).map(([t, label, n]) => (

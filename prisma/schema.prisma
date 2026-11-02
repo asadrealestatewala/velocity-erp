@@ -116,6 +116,9 @@ model User {
   goals                 Goal[]
 
   movementsMade        InventoryMovement[]        @relation("MovementBy")
+  transfersCreated     StockTransfer[]            @relation("TransferCreatedBy")
+  transfersReceived    StockTransfer[]            @relation("TransferReceivedBy")
+  stockCountsStarted   StockCount[]               @relation("CountStartedBy")
   serviceBookingsAssigned ServiceBooking[]        @relation("ServiceBookingAssignee")
   serviceBookingsCreated  ServiceBooking[]        @relation("ServiceBookingCreator")
   jobCardsAssigned        JobCard[]               @relation("JobCardTechnician")
@@ -262,6 +265,9 @@ model Dealership {
   inventory          InventoryItem[]
   vehicles           Vehicle[]
   inventoryMovements InventoryMovement[]
+  transfersOut       StockTransfer[]         @relation("TransferFrom")
+  transfersIn        StockTransfer[]         @relation("TransferTo")
+  stockCounts        StockCount[]
   serviceBookings    ServiceBooking[]
   jobCards           JobCard[]
   warrantyClaims     WarrantyClaim[]
@@ -1333,6 +1339,8 @@ model InventoryItem {
   bikeModel  BikeModel?          @relation(fields: [bikeModelId], references: [id])
   product    Product?            @relation(fields: [productId], references: [id])
   movements  InventoryMovement[]
+  transferLines StockTransferLine[]
+  countLines    StockCountLine[]
 
   @@unique([dealershipId, bikeModelId])
   @@unique([dealershipId, productId])
@@ -1349,6 +1357,9 @@ enum InventoryReason {
   DAMAGE
   SERVICE_USE
   SERVICE_RETURN
+  TRANSFER_OUT
+  TRANSFER_IN
+  COUNT_VARIANCE
 }
 
 /// Append-only stock ledger — every change to InventoryItem.quantity has exactly one movement.
@@ -1372,6 +1383,97 @@ model InventoryMovement {
   @@index([itemId, createdAt])
   @@index([dealershipId, createdAt])
   @@index([refType, refId])
+}
+
+enum StockTransferStatus {
+  IN_TRANSIT
+  RECEIVED
+  CANCELLED
+  REJECTED
+}
+
+/// Stock moved between two outlets. Sending deducts the source immediately; the destination adds it on receipt.
+/// A cancelled / rejected transfer returns the stock to the source.
+model StockTransfer {
+  id               String              @id @default(cuid())
+  number           Int                 @unique @default(autoincrement())
+  fromDealershipId String
+  toDealershipId   String
+  status           StockTransferStatus @default(IN_TRANSIT)
+  note             String?
+  resolutionNote   String?
+  createdById      String
+  receivedById     String?
+  sentAt           DateTime            @default(now())
+  resolvedAt       DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  from       Dealership          @relation("TransferFrom", fields: [fromDealershipId], references: [id])
+  to         Dealership          @relation("TransferTo", fields: [toDealershipId], references: [id])
+  createdBy  User                @relation("TransferCreatedBy", fields: [createdById], references: [id])
+  receivedBy User?               @relation("TransferReceivedBy", fields: [receivedById], references: [id])
+  lines      StockTransferLine[]
+
+  @@index([fromDealershipId, status])
+  @@index([toDealershipId, status])
+}
+
+model StockTransferLine {
+  id               String  @id @default(cuid())
+  transferId       String
+  /// The sender's stock row; the receiver's row is created/resolved from its bike model / part.
+  itemId           String
+  bikeModelId      String?
+  productId        String?
+  quantity         Int
+  /// Quantity actually received (set on receipt; may be less than sent).
+  receivedQuantity Int?
+
+  transfer StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  item     InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@index([transferId])
+}
+
+enum StockCountStatus {
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+/// A physical stock take (audit) of one outlet. Lines snapshot the expected quantity; completing applies the variances.
+model StockCount {
+  id           String           @id @default(cuid())
+  number       Int              @unique @default(autoincrement())
+  dealershipId String
+  status       StockCountStatus @default(IN_PROGRESS)
+  title        String?
+  note         String?
+  startedById  String
+  completedAt  DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  dealership Dealership       @relation(fields: [dealershipId], references: [id])
+  startedBy  User             @relation("CountStartedBy", fields: [startedById], references: [id])
+  lines      StockCountLine[]
+
+  @@index([dealershipId, status])
+}
+
+model StockCountLine {
+  id               String  @id @default(cuid())
+  countId          String
+  itemId           String
+  expectedQuantity Int
+  countedQuantity  Int?
+  note             String?
+
+  count StockCount    @relation(fields: [countId], references: [id], onDelete: Cascade)
+  item  InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@unique([countId, itemId])
 }
 
 enum SalesOrderStatus {

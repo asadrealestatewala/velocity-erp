@@ -17,6 +17,7 @@ export const NOTIFICATION_TYPES = {
   DEALERSHIP_ONBOARDING: "Dealership onboarding",
   MILESTONE: "Performance milestone",
   STOCK_LOW: "Low showroom stock",
+  STOCK_TRANSFER: "Stock transfer between outlets",
   PROCUREMENT_NEW: "New dealership stock order",
   PROCUREMENT_UPDATE: "Stock order update",
   LEDGER_UPDATE: "Ledger / payment update",

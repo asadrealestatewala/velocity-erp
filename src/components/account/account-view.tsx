@@ -1,4 +1,5 @@
 "use client";
+import { TableScroll } from "@/components/ui/table";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/misc";
@@ -44,8 +45,8 @@ export function AccountView({ user, types, prefs, mustChange, emailConfigured, t
       </Card>
       <Card className="lg:col-span-2" id="notifications">
         <CardHeader title="Notification preferences" description={emailConfigured ? "Email is delivered through the configured SMTP provider." : "Email delivery is not configured on this server — only in-app notifications are delivered."} />
-        <div className="relative overflow-x-auto">
-          <table className="w-full text-sm">
+        <TableScroll>
+          <table className="w-full min-w-[600px] text-sm">
             <thead className="bg-ink-50/60"><tr><th className="th">Event</th><th className="th text-center">In-app</th><th className="th text-center">Email</th></tr></thead>
             <tbody className="divide-y divide-ink-100">
               {Object.entries(types).map(([k, label]) => (
@@ -57,7 +58,7 @@ export function AccountView({ user, types, prefs, mustChange, emailConfigured, t
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
         <div className="flex justify-end border-t border-ink-100 px-5 py-3"><Button loading={save.pending} onClick={() => save.run(p)}>Save preferences</Button></div>
       </Card>
     </div>

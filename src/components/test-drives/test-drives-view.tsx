@@ -8,7 +8,7 @@ import { can, isCentral, testDriveScope } from "@/server/authz";
 import { lookups, opt } from "@/server/lookups";
 import { FilterBar } from "@/components/filters/filter-bar";
 import { Badge, EmptyState, PageHeader } from "@/components/ui/misc";
-import { Pagination, TableWrap, withParams } from "@/components/ui/table";
+import { Pagination, TableWrap, withParams, TableScroll } from "@/components/ui/table";
 import { cn, fmtDateTime, fmtTime, fullName, isoDay } from "@/lib/utils";
 import { TEST_DRIVE_STATUS } from "@/lib/constants";
 import { TestDriveStatusControl } from "./status-control";
@@ -87,7 +87,7 @@ export async function TestDrivesView({ user, base, params }: { user: CurrentUser
             <h2 className="font-semibold">{format(month, "MMMM yyyy")}</h2>
             <Link href={withParams(listBase, params, { month: format(addMonths(month, 1), "yyyy-MM") })} className="rounded-lg p-1.5 hover:bg-ink-100" aria-label="Next month"><ChevronRight className="h-5 w-5" /></Link>
           </div>
-          <div className="scrollbar-thin relative overflow-x-auto">
+          <TableScroll>
             <div className="grid min-w-[760px] grid-cols-7">
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => <div key={d} className="border-b border-ink-100 px-2 py-2 text-xs font-semibold text-ink-500 uppercase">{d}</div>)}
               {Array.from({ length: Math.round((gridEnd.getTime() - gridStart.getTime()) / 86400_000) }, (_, i) => addDays(gridStart, i)).map((day) => {
@@ -114,7 +114,7 @@ export async function TestDrivesView({ user, base, params }: { user: CurrentUser
                 );
               })}
             </div>
-          </div>
+          </TableScroll>
           <div className="flex flex-wrap gap-4 border-t border-ink-100 px-4 py-2.5 text-xs text-ink-500">
             <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-amber-200" />Awaiting confirmation</span>
             <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded bg-blue-200" />Confirmed</span>

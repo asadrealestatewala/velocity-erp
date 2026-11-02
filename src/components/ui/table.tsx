@@ -4,13 +4,22 @@ import { cn } from "@/lib/utils";
 
 const STACK = "max-sm:[&_thead]:sr-only max-sm:[&_tbody>tr]:block max-sm:[&_tbody>tr]:px-4 max-sm:[&_tbody>tr]:py-3 max-sm:[&_tbody>tr>td]:flex max-sm:[&_tbody>tr>td]:justify-between max-sm:[&_tbody>tr>td]:gap-3 max-sm:[&_tbody>tr>td]:px-0 max-sm:[&_tbody>tr>td]:py-1 max-sm:[&_tbody>tr>td[data-label]]:before:content-[attr(data-label)] max-sm:[&_tbody>tr>td[data-label]]:before:text-xs max-sm:[&_tbody>tr>td[data-label]]:before:text-ink-500 max-sm:[&_tbody>tr>td[data-label]]:before:shrink-0 max-sm:[&_tbody>tr>td[data-label]]:text-right";
 
+/**
+ * The one horizontal scroller for every table. The <table> (header and body together) lives inside it, so they always
+ * move as one. `min-w-0 max-w-full` stops a wide table stretching a grid/flex parent into page-level scrolling, and
+ * `overscroll-x-contain` keeps a sideways swipe from also dragging the page or triggering back-navigation.
+ */
+export function TableScroll({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={cn("scrollbar-thin relative min-w-0 max-w-full overflow-x-auto overscroll-x-contain", className)}>{children}</div>;
+}
+
 /** `stack` turns each row into a labelled card below 640px (cells need a data-label), so nothing scrolls sideways on a phone. */
 export function TableWrap({ children, className, footer, stack }: { children: React.ReactNode; className?: string; footer?: React.ReactNode; stack?: boolean }) {
   return (
-    <div className={cn("card overflow-hidden", className)}>
-      <div className="scrollbar-thin relative overflow-x-auto">
+    <div className={cn("card min-w-0 max-w-full overflow-hidden", className)}>
+      <TableScroll>
         <table className={cn("w-full divide-y divide-ink-100 [&_thead]:bg-ink-50/70 [&_tbody>tr]:transition-colors [&_tbody>tr:hover]:bg-brand-50/40", stack ? `${STACK} sm:min-w-[720px]` : "min-w-[720px]")}>{children}</table>
-      </div>
+      </TableScroll>
       {footer}
     </div>
   );

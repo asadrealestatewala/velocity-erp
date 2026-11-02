@@ -41,7 +41,7 @@ export function CountSheet({ dealershipId, countId, lines }: { dealershipId: str
   const invalid = lines.some((l) => vals[l.id] !== "" && (!Number.isInteger(Number(vals[l.id])) || Number(vals[l.id]) < 0));
   return (
     <div className="space-y-4">
-      <div className="table-wrap overflow-x-auto rounded-xl border border-ink-200 bg-white">
+      <div className="table-wrap relative overflow-x-auto rounded-xl border border-ink-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-ink-50/60"><tr><th className="th">Item</th><th className="th">Code</th><th className="th text-right">Expected</th><th className="th text-right">Counted</th><th className="th text-right">Difference</th></tr></thead>
           <tbody className="divide-y divide-ink-100">

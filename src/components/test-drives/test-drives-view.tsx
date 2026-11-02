@@ -87,7 +87,7 @@ export async function TestDrivesView({ user, base, params }: { user: CurrentUser
             <h2 className="font-semibold">{format(month, "MMMM yyyy")}</h2>
             <Link href={withParams(listBase, params, { month: format(addMonths(month, 1), "yyyy-MM") })} className="rounded-lg p-1.5 hover:bg-ink-100" aria-label="Next month"><ChevronRight className="h-5 w-5" /></Link>
           </div>
-          <div className="scrollbar-thin overflow-x-auto">
+          <div className="scrollbar-thin relative overflow-x-auto">
             <div className="grid min-w-[760px] grid-cols-7">
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => <div key={d} className="border-b border-ink-100 px-2 py-2 text-xs font-semibold text-ink-500 uppercase">{d}</div>)}
               {Array.from({ length: Math.round((gridEnd.getTime() - gridStart.getTime()) / 86400_000) }, (_, i) => addDays(gridStart, i)).map((day) => {

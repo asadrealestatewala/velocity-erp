@@ -51,7 +51,7 @@ type Line = { id: string; name: string; code: string | null; quantity: number; u
 
 export function OrderLines({ lines, currency, subtotal, showReceived }: { lines: Line[]; currency: string; subtotal: { toString(): string }; showReceived?: boolean }) {
   return (
-    <div className="scrollbar-thin overflow-x-auto">
+    <div className="scrollbar-thin relative overflow-x-auto">
       <table className="w-full min-w-[560px]">
         <thead className="bg-ink-50/60">
           <tr><th className="th">Item</th><th className="th">Code</th><th className="th text-right">Ordered</th>{showReceived && <th className="th text-right">Received</th>}<th className="th text-right">Unit price</th><th className="th text-right">Line total</th></tr>

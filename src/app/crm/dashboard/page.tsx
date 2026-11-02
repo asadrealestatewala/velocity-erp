@@ -240,7 +240,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       <Card className="mt-4">
         <CardHeader title="Dealership performance" description="Normalised rates for the selected period — compare outlets of different sizes fairly" action={<Link href="/crm/reports" className="text-xs font-medium text-brand-600 hover:underline">Full report →</Link>} />
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full min-w-[760px] text-sm">
             <thead className="bg-ink-50/70">
               <tr>

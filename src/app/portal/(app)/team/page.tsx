@@ -39,7 +39,7 @@ export default async function TeamPage() {
           <div key={d.id} className="mb-6 grid gap-4 xl:grid-cols-3">
             <Card className="xl:col-span-2">
               <CardHeader title={d.name} description="Per-representative activity" />
-              <div className="overflow-x-auto">
+              <div className="relative overflow-x-auto">
                 <table className="w-full min-w-[720px] text-sm">
                   <thead className="bg-ink-50/60"><tr><th className="th">Member</th><th className="th text-right">Leads assigned</th><th className="th text-right">Contacted</th><th className="th text-right">Converted</th><th className="th text-right">Test drives</th><th className="th text-right">On-time follow-ups</th><th className="th text-right">Overdue</th><th className="th text-right">Points</th></tr></thead>
                   <tbody className="divide-y divide-ink-100">

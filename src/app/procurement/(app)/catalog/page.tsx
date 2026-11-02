@@ -31,7 +31,7 @@ export default async function CatalogPage() {
 
       <Card className="mb-6">
         <CardHeader title="Bike models" description={manageModels ? "Add and edit bike models here, and set the prices dealers pay." : "Set the prices dealers pay. Models are added by an administrator under CRM → Bike models."} />
-        <div className="scrollbar-thin overflow-x-auto">
+        <div className="scrollbar-thin relative overflow-x-auto">
           <table className="w-full min-w-[640px]">
             <thead className="bg-ink-50/60"><tr><th className="th">Model</th><th className="th">Code</th><th className="th text-right">Retail price</th><th className="th text-right">Dealer price</th><th className="th">Status</th><th className="th"><span className="sr-only">Actions</span></th></tr></thead>
             <tbody className="divide-y divide-ink-100">
@@ -53,7 +53,7 @@ export default async function CatalogPage() {
 
       <Card>
         <CardHeader title="Spare parts" description={`${parts.length} part${parts.length === 1 ? "" : "s"} in the catalogue`} />
-        <div className="scrollbar-thin overflow-x-auto">
+        <div className="scrollbar-thin relative overflow-x-auto">
           <table className="w-full min-w-[760px]">
             <thead className="bg-ink-50/60"><tr><th className="th">Part</th><th className="th">SKU</th><th className="th">Category</th><th className="th text-right">Retail price</th><th className="th text-right">Dealer price</th><th className="th">Status</th><th className="th"><span className="sr-only">Edit</span></th></tr></thead>
             <tbody className="divide-y divide-ink-100">

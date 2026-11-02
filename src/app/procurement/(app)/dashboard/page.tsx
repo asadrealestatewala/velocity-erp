@@ -101,7 +101,7 @@ export default async function ProcurementDashboard() {
 
       <Card>
         <CardHeader title="Recent order activity" />
-        <div className="scrollbar-thin overflow-x-auto">
+        <div className="scrollbar-thin relative overflow-x-auto">
           <table className="w-full min-w-[640px]">
             <thead className="bg-ink-50/60"><tr><th className="th">Order</th><th className="th">Dealership</th><th className="th text-right">Value</th><th className="th">Status</th><th className="th">Dispatch</th><th className="th">Expected</th><th className="th">Updated</th></tr></thead>
             <tbody className="divide-y divide-ink-100">

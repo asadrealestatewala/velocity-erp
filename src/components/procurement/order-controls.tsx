@@ -35,7 +35,7 @@ export function ApproveOrderDialog({ orderId, number, lines, currency, defaultDa
       }
     >
       <div className="space-y-4">
-        <div className="scrollbar-thin overflow-x-auto rounded-lg border border-ink-200">
+        <div className="scrollbar-thin relative overflow-x-auto rounded-lg border border-ink-200">
           <table className="w-full min-w-[480px] text-sm">
             <thead className="bg-ink-50/60"><tr><th className="th">Item</th><th className="th text-right">Qty</th><th className="th text-right">Unit price ({currency})</th><th className="th text-right">Line total</th></tr></thead>
             <tbody className="divide-y divide-ink-100">

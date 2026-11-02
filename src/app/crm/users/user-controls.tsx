@@ -92,7 +92,7 @@ export function PermissionMatrix({ roles, permissions, myRoleKey, isSuper, myPer
   const groups = [...new Set(permissions.map((p) => p.group))];
   const locked = (r: (typeof roles)[number]) => r.key === "SUPER_ADMIN" || r.key === myRoleKey;
   return (
-    <div className="overflow-x-auto">
+    <div className="relative overflow-x-auto">
       <table className="w-full min-w-[900px] text-sm">
         <thead className="sticky top-0 bg-white">
           <tr className="border-b border-ink-200">

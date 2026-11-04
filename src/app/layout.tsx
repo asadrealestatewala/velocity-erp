@@ -10,7 +10,13 @@ export const metadata: Metadata = {
   description: "YADEA customer, lead and dealership management platform",
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "Velocity", statusBarStyle: "black-translucent" },
-  icons: { icon: "/brand/velocity-app-icon.png", apple: "/brand/velocity-app-icon.png" },
+  icons: {
+    icon: [
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   // The CRM, portals and sign-in pages are internal; only published public forms (which set their own robots) are indexable.
   robots: { index: false, follow: false },
 };

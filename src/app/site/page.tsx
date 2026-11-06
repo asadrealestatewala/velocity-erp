@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { fmtMoney } from "@/lib/utils";
 import { fmtDate } from "@/lib/utils";
 import { getSiteEntries, parsePairs, parseRows, publishedWebsite, siteBase } from "@/server/website";
+import { ShowroomList } from "./showroom-list";
 import { HeroSlider } from "./hero-slider";
 
 const SPEC_ROWS: [string, string[]][] = [
@@ -35,7 +36,7 @@ export default async function SitePage() {
       ? db.bikeModel.findMany({ where: { isActive: true, availability: { not: "DISCONTINUED" } }, orderBy: { displayOrder: "asc" }, select: { id: true, name: true, category: true, description: true, imageFileId: true, price: true, currency: true, specifications: true } })
       : [],
     s.showShowrooms
-      ? db.dealership.findMany({ where: { status: "ACTIVE", acceptsLeads: true }, orderBy: { name: "asc" }, select: { id: true, name: true, address: true, phone: true } })
+      ? db.dealership.findMany({ where: { status: "ACTIVE", acceptsLeads: true }, orderBy: { name: "asc" }, select: { id: true, name: true, address: true, phone: true, latitude: true, longitude: true, city: { select: { name: true } } } })
       : [],
   ]);
   const c = s.primaryColor;
@@ -282,15 +283,7 @@ export default async function SitePage() {
       {showrooms.length > 0 && (
         <section id="showrooms" className="mx-auto max-w-5xl px-5 py-10 sm:py-14">
           <h2 className="text-2xl font-bold">Showrooms</h2>
-          <ul className="mt-6 grid gap-4 sm:grid-cols-2">
-            {showrooms.map((d) => (
-              <li key={d.id} className="rounded-2xl border border-neutral-200 p-4">
-                <p className="font-semibold">{d.name}</p>
-                {d.address && <p className="text-sm text-neutral-600">{d.address}</p>}
-                {d.phone && <p className="text-sm"><a href={`tel:${d.phone}`} style={{ color: c }}>{d.phone}</a></p>}
-              </li>
-            ))}
-          </ul>
+          <ShowroomList color={c} items={showrooms.map((d) => ({ id: d.id, name: d.name, city: d.city.name, address: d.address ?? "", phone: d.phone ?? "", lat: d.latitude == null ? null : Number(d.latitude), lng: d.longitude == null ? null : Number(d.longitude) }))} />
         </section>
       )}
 

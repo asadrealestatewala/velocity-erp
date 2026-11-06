@@ -19,17 +19,31 @@ const NUM = /^\d[\d,.]*$/;
 const SUFFIX = /^(\+|%|k|m|K|M)$/;
 const isLabel = (s: string) => s.length > 1 && s.length <= 60 && !/^(#{2,3} |- |> |!\[)/.test(s) && !NUM.test(s) && !SUFFIX.test(s) && !/[.!?]$/.test(s);
 
+/** Reads one stat starting at blocks[j]: "label, number[, +]" or "number[, +], label". Returns the stat and how many blocks it used. */
+function readStat(blocks: string[], j: number): { stat: Stat; used: number } | null {
+  const a = blocks[j], b = blocks[j + 1], c = blocks[j + 2];
+  if (a === undefined || b === undefined) return null;
+  if (NUM.test(a)) {
+    // number first: "36", "+", "Distributors"
+    if (SUFFIX.test(b) && c !== undefined && isLabel(c)) return { stat: { label: c, value: a, suffix: b }, used: 3 };
+    if (isLabel(b)) return { stat: { label: b, value: a, suffix: "" }, used: 2 };
+    return null;
+  }
+  if (isLabel(a) && NUM.test(b)) {
+    const hasSuffix = c !== undefined && SUFFIX.test(c);
+    return { stat: { label: a, value: b, suffix: hasSuffix ? c : "" }, used: hasSuffix ? 3 : 2 };
+  }
+  return null;
+}
+const isZero = (v: string) => Number(v.replace(/,/g, "")) === 0;
+
 function group(blocks: string[]): Node[] {
   const out: Node[] = [];
   let i = 0;
   while (i < blocks.length) {
     const items: Stat[] = [];
     let j = i;
-    while (j + 1 < blocks.length && isLabel(blocks[j]) && NUM.test(blocks[j + 1])) {
-      const hasSuffix = j + 2 < blocks.length && SUFFIX.test(blocks[j + 2]);
-      items.push({ label: blocks[j], value: blocks[j + 1], suffix: hasSuffix ? blocks[j + 2] : "" });
-      j += hasSuffix ? 3 : 2;
-    }
+    for (let r = readStat(blocks, j); r; r = readStat(blocks, j)) { items.push(r.stat); j += r.used; }
     // "## Heading", optional text, then a [button: Label](url) block => centered call-to-action card
     const h = /^## (.+)$/.exec(blocks[i]);
     if (h) {
@@ -39,7 +53,8 @@ function group(blocks: string[]): Node[] {
       if (btn) { out.push({ t: "cta", title: h[1], text: hasText ? blocks[i + 1] : "", label: btn[1], href: btn[2] }); i += hasText ? 3 : 2; continue; }
     }
     // a lone label+number is far more likely to be prose than a stat; need at least two
-    if (items.length >= 2) { out.push({ t: "stats", items }); i = j; } else { out.push({ t: "block", text: blocks[i] }); i++; }
+    // Figures that are still 0 are placeholders, so they are left out rather than shown as "0".
+    if (items.length >= 2) { const shown = items.filter((x) => !isZero(x.value)); if (shown.length) out.push({ t: "stats", items: shown }); i = j; } else { out.push({ t: "block", text: blocks[i] }); i++; }
   }
   return out;
 }
@@ -77,8 +92,15 @@ function chunk(blocks: string[]): Chunk[] {
   return out;
 }
 
+/** A block of short single lines that includes a number ("36 / + / Distributors") is really separate stat blocks. */
+function splitTokens(b: string): string[] {
+  const lines = b.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 2 || !lines.some((l) => NUM.test(l)) || !lines.every((l) => l.length <= 60 && !/^(#{2,3} |- |> |!\[|\[button)/.test(l))) return [b];
+  return lines;
+}
+
 export function EntryBody({ body }: { body: string }) {
-  const blocks = body.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
+  const blocks = body.replace(/\r\n?/g, "\n").split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean).flatMap(splitTokens);
   return (
     <div className="space-y-5 text-[17px] leading-8 text-neutral-700">
       {chunk(blocks).map((c, ci) => c.faq ? <FaqList key={`f${ci}`} items={c.items.map((x) => ({ q: x.q, a: x.a.join("\n\n") }))} /> : <Plain key={`p${ci}`} blocks={c.blocks} />)}
@@ -92,10 +114,10 @@ function Plain({ blocks }: { blocks: string[] }) {
       {group(blocks).map((n, i) => {
         if (n.t === "stats") {
           return (
-            <div key={i} className="my-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
+            <div key={i} className="my-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-[repeat(auto-fit,minmax(11rem,1fr))]">
               {n.items.map((s, k) => (
                 <div key={k} className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-5 text-center shadow-sm" style={{ borderTop: "4px solid var(--site)" }}>
-                  <p className="text-3xl font-extrabold leading-none sm:text-4xl" style={{ color: "var(--site)" }}>{fmt(s.value)}{s.suffix}</p>
+                  <p className="whitespace-nowrap text-3xl font-extrabold leading-none tabular-nums sm:text-4xl" data-sm-count style={{ color: "var(--site)" }}>{fmt(s.value)}{s.suffix}</p>
                   <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-neutral-600 sm:text-sm">{s.label}</p>
                 </div>
               ))}

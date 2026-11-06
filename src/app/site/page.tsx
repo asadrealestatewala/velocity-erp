@@ -195,11 +195,11 @@ export default async function SitePage() {
       )}
 
       {blocks.map(([title, text, points, label, link, image], k) => (
-        <section key={title} className={`px-5 py-12 sm:py-16 ${k % 2 === 0 ? "bg-neutral-900 text-white" : "bg-white text-neutral-900"}`}>
+        <section key={title} className={`px-5 py-12 sm:py-16 ${k % 2 === 0 ? "bg-neutral-50 text-neutral-900" : "bg-white text-neutral-900"}`}>
           <div className={`mx-auto grid max-w-5xl items-center gap-8 ${image ? "md:grid-cols-2" : ""}`}>
             <div>
               <h2 className="text-2xl font-extrabold sm:text-3xl">{title}</h2>
-              {text && <p className={`mt-4 ${k % 2 === 0 ? "text-neutral-300" : "text-neutral-600"}`}>{text}</p>}
+              {text && <p className="mt-4 text-neutral-600">{text}</p>}
               {points && (
                 <ul className="mt-5 flex flex-wrap gap-2">
                   {points.split(";").map((x) => x.trim()).filter(Boolean).map((x) => (
@@ -232,18 +232,18 @@ export default async function SitePage() {
       )}
 
       {highlights.length > 0 && darkWhy && (
-        <section id="why" className="bg-neutral-800 px-5 py-14 text-white">
+        <section id="why" className="bg-neutral-50 px-5 py-14 text-neutral-900">
           <div className="mx-auto max-w-5xl">
             <h2 className="text-2xl font-bold">{s.highlightsTitle}</h2>
-            {s.highlightsIntro && <p className="mt-4 max-w-2xl text-neutral-200">{s.highlightsIntro}</p>}
+            {s.highlightsIntro && <p className="mt-4 max-w-2xl text-neutral-600">{s.highlightsIntro}</p>}
             <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {highlights.map((x) => (
-                <details key={x.a} className="group rounded-xl bg-black p-6">
+                <details key={x.a} className="group rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
                     <h3 className="text-lg font-semibold">{x.a}</h3>
-                    <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white text-xl font-bold leading-none text-black group-open:rotate-45">+</span>
+                    <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-xl font-bold leading-none text-white group-open:rotate-45" style={{ backgroundColor: c }}>+</span>
                   </summary>
-                  <p className="mt-4 text-sm text-neutral-300">{x.b}</p>
+                  <p className="mt-4 text-sm text-neutral-600">{x.b}</p>
                 </details>
               ))}
             </div>
@@ -269,19 +269,19 @@ export default async function SitePage() {
       )}
 
       {impact.length > 0 && (
-        <section id="impact" className="bg-neutral-800 px-5 py-14 text-white">
+        <section id="impact" className="bg-white px-5 py-14 text-neutral-900">
           <div className="mx-auto max-w-5xl">
             {s.impactTitle && <h2 className="text-center text-3xl font-extrabold">{s.impactTitle}</h2>}
             <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {impact.map(([value, label, image]) => (
-                <div key={value} className="relative flex min-h-56 flex-col justify-center overflow-hidden rounded-3xl bg-black p-6">
+                <div key={value} className="relative flex min-h-56 flex-col justify-center overflow-hidden rounded-3xl border border-neutral-200 bg-neutral-50 p-6">
                   {image && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
+                    <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-15" />
                   )}
                   <div className="relative">
                     <p className="text-2xl font-extrabold sm:text-3xl" style={{ color: c }}>{value}</p>
-                    <p className="mt-2 text-neutral-100">{label}</p>
+                    <p className="mt-2 text-neutral-700">{label}</p>
                   </div>
                 </div>
               ))}

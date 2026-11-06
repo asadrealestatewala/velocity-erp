@@ -332,7 +332,7 @@
    Calm, flat, dense. Velocity brand: charcoal wordmark + one magenta accent (the logo gradient is only
    ever used in the logo itself). Scoped to .pf, and to html[data-pf] for portalled UI (dialogs, menus).
    Motion: none by default. Only colour changes ease in (<=100ms); nothing moves, lifts, scales or loops. */
-html[data-pf] {
+html[data-pf], html:not([data-pf]) .pf {
   --pf-bg: #f7f7f8;
   --pf-surface: #ffffff;
   --pf-sunken: #f1f1f3;

@@ -189,6 +189,13 @@ export const PAGES: PageDoc[] = [
     keywords: ["history", "log", "security", "who changed", "tracking"],
   },
   {
+    id: "crm-website", workspace: "crm", label: "Website", path: "/crm/website", perm: "settings.manage",
+    summary: "Build and publish your workspace's public website (home page with models, showrooms and contact).",
+    inside: ["Business name, headline, colours, about text and contact details.", "Switches for showing bike models and showrooms, and which forms the buttons open.", "The public address is /site (or /w/<workspace>/site)."],
+    actions: ["Edit the website content", "Publish or unpublish the website", "Open the live website"],
+    keywords: ["website", "site builder", "landing page", "public site", "homepage"],
+  },
+  {
     id: "crm-settings", workspace: "crm", label: "Settings", path: "/crm/settings", perm: "settings.manage",
     summary: "Business rules — nothing is hard-coded.",
     inside: [

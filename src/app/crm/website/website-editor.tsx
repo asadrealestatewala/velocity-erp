@@ -29,7 +29,12 @@ export function WebsiteEditor({ initial, forms, appUrl, addresses }: { initial: 
   );
   return (
     <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); run(f); }}>
-      <Checkbox label={<span><strong>Published</strong> — anyone with the link can see the website at <code>/site</code></span>} checked={f.published} onChange={(e) => set("published", e.target.checked)} />
+      <div className={`rounded-xl border p-4 text-sm ${initial.published ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+        <p className="font-semibold">{initial.published ? "Your website is live" : "Your website is ready but not published yet"}</p>
+        <p className="mt-1 text-ink-700">Your free website address: <a className="font-mono underline" href={addresses.subdomain ?? `${appUrl}/w/${addresses.slug}/site`} target="_blank" rel="noreferrer">{addresses.subdomain ?? `${appUrl}/w/${addresses.slug}/site`}</a></p>
+        {!initial.published && <p className="mt-1 text-ink-700">Review the details below, then tick <strong>Published</strong> and save to put it online.</p>}
+      </div>
+      <Checkbox label={<span><strong>Published</strong> — anyone with the link can see the website</span>} checked={f.published} onChange={(e) => set("published", e.target.checked)} />
       <div className="grid gap-4 md:grid-cols-2">
         {text("siteName", "Business name", { required: true })}
         {text("tagline", "Tagline")}

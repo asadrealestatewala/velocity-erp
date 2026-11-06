@@ -26,6 +26,7 @@ export function ContentEditor({ initial }: { initial: SiteEntry[] }) {
             <Field label="Date">{(p) => <Input {...p} type="date" value={x.date} onChange={(e) => upd(i, { date: e.target.value })} />}</Field>
           </div>
           <Field label="Short summary">{(p) => <Input {...p} value={x.summary} onChange={(e) => upd(i, { summary: e.target.value })} />}</Field>
+          <Field label="Cover photo link" help="Optional. Shown behind the heading. An https:// link or a path such as /brand/about-cover.jpg.">{(p) => <Input {...p} value={x.cover ?? ""} onChange={(e) => upd(i, { cover: e.target.value })} />}</Field>
           <Field label="Text" help={"Plain text. A blank line starts a new paragraph. Start a line with \"## \" for a heading, or with \"- \" for a bullet list."}>{(p) => <Textarea {...p} rows={8} value={x.body} onChange={(e) => upd(i, { body: e.target.value })} />}</Field>
           <div className="flex items-center justify-between">
             <div className="flex flex-wrap gap-6">

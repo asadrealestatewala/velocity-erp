@@ -19,7 +19,7 @@ export default async function SitePageEntry({ params }: Props) {
   if (!e) notFound();
   return (
     <article>
-      <header className="px-5 py-14 text-center text-white sm:py-20" style={{ background: "linear-gradient(135deg, var(--site), #171717)" }}>
+      <header className="px-5 py-14 text-center text-white sm:py-20" style={{ background: e.cover ? `linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,.55)), url("${e.cover.replace(/["()\\]/g, "")}") center / cover` : "linear-gradient(135deg, var(--site), #171717)" }}>
         <h1 className="mx-auto max-w-3xl text-3xl font-extrabold tracking-tight sm:text-5xl">{e.title}</h1>
         {e.summary && <p className="mx-auto mt-4 max-w-2xl text-base text-white/85 sm:text-lg">{e.summary}</p>}
       </header>

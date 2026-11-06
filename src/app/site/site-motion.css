@@ -7,6 +7,11 @@
 .sm-dots { color: #717071; } /* brand dark grey */
 @media (min-width: 1280px) { .sm-dots { display: flex; } }
 
+/* Reduced-motion visitors: opacity-only fade, no movement. */
+.sm-lite [data-sm]:not(.sm-in) { opacity: 0; }
+.sm-lite [data-sm].sm-in { animation: sm-fade .6s ease-out var(--sm-d, 0ms) backwards; }
+@keyframes sm-fade { from { opacity: 0; } }
+
 @media (prefers-reduced-motion: no-preference) {
   html:has(.sm-on) { scroll-behavior: smooth; scroll-padding-top: 4.5rem; }
 

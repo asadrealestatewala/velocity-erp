@@ -34,7 +34,20 @@ export type WebsiteConfig = {
   programsText: string; // "Title | Short description" (finance / lease options)
   socialsText: string; // "Facebook | https://..."
   navLinksText: string; // extra header links: "Support | /forms/contact"
+  /** Heading and intro of the dark "Why us" section (highlightsText items become expandable cards). */
+  highlightsTitle: string;
+  highlightsIntro: string;
+  /** "Our impact" section: "value | label | optional image link" per line. */
+  impactTitle: string;
+  impactText: string;
+  /** Info cards (stores, support...): "Title | text | link" per line. */
+  cardsText: string;
 };
+
+/** Parse "a | b | c" lines into trimmed columns. */
+export function parseRows(text: string): string[][] {
+  return text.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => l.split("|").map((c) => c.trim()));
+}
 
 /** Parse "a | b" lines into pairs. */
 export function parsePairs(text: string): { a: string; b: string }[] {
@@ -71,6 +84,11 @@ export const DEFAULT_WEBSITE: WebsiteConfig = {
   programsText: "",
   socialsText: "",
   navLinksText: "",
+  highlightsTitle: "",
+  highlightsIntro: "",
+  impactTitle: "",
+  impactText: "",
+  cardsText: "",
 };
 
 const KEY = "website";

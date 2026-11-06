@@ -37,6 +37,11 @@ const schema = z.object({
   programsText: z.string().max(3000),
   socialsText: z.string().max(1000),
   navLinksText: z.string().max(1000),
+  highlightsTitle: z.string().trim().max(100),
+  highlightsIntro: z.string().trim().max(500),
+  impactTitle: z.string().trim().max(100),
+  impactText: z.string().max(2000),
+  cardsText: z.string().max(2000),
 });
 
 export async function saveWebsiteAction(input: z.input<typeof schema>) {

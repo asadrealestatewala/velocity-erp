@@ -44,6 +44,7 @@ export function WebsiteEditor({ initial, forms, appUrl, addresses }: { initial: 
         {text("heroTitle", "Headline", { required: true })}
         {text("heroSubtitle", "Sub-headline")}
         {text("heroImageUrl", "Hero image link", { help: "An https:// link or a path such as /brand/hero-dealership.jpg. Leave empty for a plain colour." })}
+        {text("logoUrl", "Logo link", { help: "Shown in the header. An https:// link or a path such as /brand/yadea-vi-logo.png. Leave empty to show the business name." })}
         {text("primaryColor", "Brand colour", { help: "Hex colour, e.g. #e11d2e" })}
       </div>
       <Field label="About your business" error={fieldErrors.about}>{(p) => <Textarea {...p} rows={4} value={f.about} onChange={(e) => set("about", e.target.value)} />}</Field>

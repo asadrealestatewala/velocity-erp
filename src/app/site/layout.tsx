@@ -20,7 +20,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
     ...entries.filter((e) => e.kind === "page" && e.inMenu !== false).map((e) => ({ label: e.title, href: `${base}/p/${e.slug}` })),
     ...(hasPosts ? [{ label: "Blog", href: `${base}/blog` }] : []),
     ...parsePairs(s.navLinksText).map((l) => ({ label: l.a, href: l.b || "#" })),
-    { label: "Contact", href: "#contact" },
+    { label: "Contact", href: `${base}/#contact` },
   ];
   const testDrive = s.testDriveFormSlug ? `/forms/${s.testDriveFormSlug}` : null;
   const wa = s.whatsapp.replace(/\D/g, "");

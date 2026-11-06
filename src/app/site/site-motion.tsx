@@ -12,7 +12,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
  */
 
 const REVEAL = [
-  "section h2", "section h3",
+  "section h1", "section h2", "section h3",
   "section > div > p", "section > p", "section > div > div > p",
   "section .grid > *", "section .snap-x > *", "section details", "section li",
   "section .flex-wrap > a", "section form", "section blockquote", "section table",
@@ -30,14 +30,15 @@ export function SiteMotion() {
   const [active, setActive] = useState("");
 
   useIsoLayoutEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // Visitors with "reduce motion" (Windows: animation effects off) get gentle fade-ins only: no movement, parallax, counters or progress bar.
+    const lite = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const root = document.querySelector<HTMLElement>("[data-site-root]");
     if (!root) return;
     const cleanups: (() => void)[] = [];
     const inView = (el: Element) => { const r = el.getBoundingClientRect(); return r.top < innerHeight * 0.95 && r.bottom > 0; };
 
     // 1. Headlines: split h1 into masked words that rise in one after another.
-    root.querySelectorAll<HTMLElement>("h1").forEach((h) => {
+    if (!lite) root.querySelectorAll<HTMLElement>("h1").forEach((h) => {
       if (h.closest("[aria-roledescription=carousel]") || h.childElementCount > 0) return;
       const text = h.textContent?.trim() ?? "";
       if (!text) return;
@@ -68,9 +69,10 @@ export function SiteMotion() {
       el.setAttribute("data-sm", el.tagName === "IMG" ? "img" : "up");
     });
     root.classList.add("sm-on");
+    root.classList.toggle("sm-lite", lite);
 
     // 3. Count-up numbers (stat tiles and impact figures).
-    const counters = Array.from(root.querySelectorAll<HTMLElement>("section dl dt, #impact .relative > p:first-child, [data-sm-count]"))
+    const counters = lite ? [] : Array.from(root.querySelectorAll<HTMLElement>("section dl dt, #impact .relative > p:first-child, [data-sm-count]"))
       .filter((el) => el.childElementCount === 0 && COUNT_RE.test(el.textContent ?? ""));
     const runCount = (el: HTMLElement) => {
       const m = COUNT_RE.exec(el.dataset.smFinal ?? "")!;
@@ -114,19 +116,21 @@ export function SiteMotion() {
         if (heroImg && hero && y < hero.offsetTop + hero.offsetHeight) heroImg.style.transform = `translate3d(0, ${(y - hero.offsetTop) * 0.14}px, 0) scale(1.06)`;
       });
     };
-    addEventListener("scroll", onScroll, { passive: true }); onScroll();
-    cleanups.push(() => { removeEventListener("scroll", onScroll); cancelAnimationFrame(raf); });
+    if (!lite) {
+      addEventListener("scroll", onScroll, { passive: true }); onScroll();
+      cleanups.push(() => { removeEventListener("scroll", onScroll); cancelAnimationFrame(raf); });
+    }
 
     // 6. Section dot navigator (desktop) for sections that have an id.
     const secs = Array.from(root.querySelectorAll<HTMLElement>("section[id]"));
-    if (secs.length > 1) {
+    if (!lite && secs.length > 1) {
       setDots(secs.map((s) => ({ id: s.id, label: s.querySelector("h2")?.textContent?.trim() || s.id })));
       const so = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) setActive(e.target.id); }), { rootMargin: "-45% 0px -50% 0px" });
       secs.forEach((s) => so.observe(s)); cleanups.push(() => so.disconnect());
     }
 
     targets.forEach((el) => { if (inView(el)) el.classList.add("sm-in"); });
-    return () => { cleanups.forEach((f) => f()); root.classList.remove("sm-on"); };
+    return () => { cleanups.forEach((f) => f()); root.classList.remove("sm-on", "sm-lite"); };
   }, []);
 
   return (

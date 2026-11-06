@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { fmtMoney } from "@/lib/utils";
-import { parsePairs, parseRows, publishedWebsite, siteBase } from "@/server/website";
+import { fmtDate, fmtMoney } from "@/lib/utils";
+import { getSiteEntries, parsePairs, parseRows, publishedWebsite, siteBase } from "@/server/website";
+import { HeroSlider } from "./hero-slider";
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await publishedWebsite();
@@ -14,7 +15,7 @@ export default async function SitePage() {
   const base = await siteBase();
   const [models, showrooms] = await Promise.all([
     s.showModels
-      ? db.bikeModel.findMany({ where: { isActive: true, availability: { not: "DISCONTINUED" } }, orderBy: { displayOrder: "asc" }, select: { id: true, name: true, category: true, description: true, imageFileId: true, price: true, currency: true } })
+      ? db.bikeModel.findMany({ where: { isActive: true, availability: { not: "DISCONTINUED" } }, orderBy: { displayOrder: "asc" }, select: { id: true, name: true, category: true, description: true, imageFileId: true, price: true, currency: true, specifications: true } })
       : [],
     s.showShowrooms
       ? db.dealership.findMany({ where: { status: "ACTIVE", acceptsLeads: true }, orderBy: { name: "asc" }, select: { id: true, name: true, address: true, phone: true } })
@@ -29,16 +30,21 @@ export default async function SitePage() {
   const impact = parseRows(s.impactText);
   const cards = parseRows(s.cardsText);
   const darkWhy = !!s.highlightsTitle;
+  const slides = parseRows(s.heroSlidesText).filter((r) => r[0]).map(([image, link, alt]) => ({ image: image!, link: link ? (link.startsWith("/#") ? `${base}${link}` : link) : undefined, alt: alt || s.heroTitle }));
+  const blocks = parseRows(s.featureBlocksText);
+  const posts = s.insightsTitle ? (await getSiteEntries()).filter((e) => e.kind === "post" && e.published).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3) : [];
+  const keySpecs = (spec: unknown) => Object.entries((spec ?? {}) as Record<string, unknown>).filter(([, v]) => (typeof v === "string" || typeof v === "number") && v !== "").slice(0, 4);
   const btn = "inline-block rounded-full px-5 py-2.5 text-sm sm:px-6 sm:py-3 font-semibold";
 
   return (
     <>
-      {s.heroPlainImage && s.heroImageUrl && (
+      {slides.length > 0 && <HeroSlider slides={slides} color={c} />}
+      {slides.length === 0 && s.heroPlainImage && s.heroImageUrl && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={s.heroImageUrl} alt={s.heroTitle} className="block h-auto w-full" fetchPriority="high" decoding="async" />
       )}
-      <section className={`relative px-5 text-center text-white ${s.heroPlainImage && s.heroImageUrl ? "py-8 sm:py-10" : "py-12 sm:py-20"}`} style={{ backgroundColor: c }}>
-        {s.heroImageUrl && !s.heroPlainImage && (
+      <section className={`relative px-5 text-center text-white ${(s.heroPlainImage && s.heroImageUrl) || slides.length > 0 ? "py-8 sm:py-10" : "py-12 sm:py-20"}`} style={{ backgroundColor: c }}>
+        {s.heroImageUrl && !s.heroPlainImage && slides.length === 0 && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={s.heroImageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-40" decoding="async" />
         )}
@@ -76,6 +82,30 @@ export default async function SitePage() {
                     {m.description && <p className="mt-2 line-clamp-3 text-sm text-neutral-600">{m.description}</p>}
                     {m.price != null && <p className="mt-3 font-bold" style={{ color: c }}>{fmtMoney(m.price.toString(), m.currency)}</p>}
                   </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {s.latestModelsTitle && models.length > 0 && (
+        <section id="latest" className="px-5 py-10 sm:py-14">
+          <div className="mx-auto max-w-5xl">
+            <h2 className="text-2xl font-bold">{s.latestModelsTitle}</h2>
+            <div className="mt-6 flex snap-x gap-4 overflow-x-auto pb-3 [scrollbar-width:thin]">
+              {[...models].reverse().slice(0, 10).map((m) => (
+                <a key={m.id} href={`${base}/models/${m.id}`} className="w-64 shrink-0 snap-start rounded-2xl border border-neutral-200 bg-white p-4 transition hover:shadow-md">
+                  {m.imageFileId && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={`/api/files/${m.imageFileId}`} alt={m.name} className="aspect-[4/3] w-full object-contain" loading="lazy" decoding="async" />
+                  )}
+                  <h3 className="mt-3 font-bold" style={{ color: c }}>{m.name}</h3>
+                  <dl className="mt-2 space-y-1 text-xs text-neutral-600">
+                    {keySpecs(m.specifications).map(([k, v]) => (
+                      <div key={k} className="flex justify-between gap-2 border-b border-neutral-100 pb-1"><dt className="capitalize">{k.replace(/[_-]/g, " ")}</dt><dd className="font-medium text-neutral-900">{String(v)}</dd></div>
+                    ))}
+                  </dl>
                 </a>
               ))}
             </div>
@@ -126,6 +156,28 @@ export default async function SitePage() {
           </div>
         </section>
       )}
+
+      {blocks.map(([title, intro, image, points], n) => (
+        <section key={title} className={n % 2 === 0 ? "bg-neutral-50 px-5 py-12 sm:py-16" : "px-5 py-12 sm:py-16"}>
+          <div className={`mx-auto grid max-w-5xl items-center gap-8 ${image ? "md:grid-cols-2" : ""}`}>
+            <div className={n % 2 === 1 ? "md:order-2" : ""}>
+              <h2 className="text-2xl font-extrabold sm:text-3xl">{title}</h2>
+              {intro && <p className="mt-3 text-neutral-700">{intro}</p>}
+              {points && (
+                <ul className="mt-5 space-y-2">
+                  {points.split(";").map((x) => x.trim()).filter(Boolean).map((x) => (
+                    <li key={x} className="flex gap-3 text-sm"><span aria-hidden className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: c }} /><span>{x}</span></li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            {image && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={image} alt={title} className="w-full rounded-2xl object-cover" loading="lazy" decoding="async" />
+            )}
+          </div>
+        </section>
+      ))}
 
       {cards.length > 0 && (
         <section className="bg-neutral-100 px-5 py-14">
@@ -183,6 +235,24 @@ export default async function SitePage() {
         </section>
       )}
 
+      {posts.length > 0 && (
+        <section id="insights" className="mx-auto max-w-5xl px-5 py-10 sm:py-14">
+          <div className="flex items-end justify-between gap-4">
+            <h2 className="text-2xl font-bold">{s.insightsTitle}</h2>
+            <a href={`${base}/blog`} className="text-sm font-semibold" style={{ color: c }}>All posts →</a>
+          </div>
+          <div className="mt-6 grid gap-5 md:grid-cols-3">
+            {posts.map((p) => (
+              <a key={p.slug} href={`${base}/blog/${p.slug}`} className="block rounded-2xl border border-neutral-200 p-5 transition hover:shadow-md">
+                <p className="text-xs text-neutral-500">{fmtDate(p.date)}</p>
+                <h3 className="mt-2 font-semibold">{p.title}</h3>
+                {p.summary && <p className="mt-2 line-clamp-3 text-sm text-neutral-600">{p.summary}</p>}
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
       {showrooms.length > 0 && (
         <section id="showrooms" className="mx-auto max-w-5xl px-5 py-10 sm:py-14">
           <h2 className="text-2xl font-bold">Showrooms</h2>
@@ -195,6 +265,16 @@ export default async function SitePage() {
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {s.newsletterTitle && (
+        <section id="subscribe" className="px-5 py-12 text-center text-white" style={{ backgroundColor: c }}>
+          <div className="mx-auto max-w-xl">
+            <h2 className="text-2xl font-extrabold">{s.newsletterTitle}</h2>
+            {s.newsletterText && <p className="mt-2 text-sm opacity-90">{s.newsletterText}</p>}
+            {contact && <a href={contact} className={`${btn} mt-5 bg-white`} style={{ color: c }}>Subscribe</a>}
+          </div>
         </section>
       )}
     </>

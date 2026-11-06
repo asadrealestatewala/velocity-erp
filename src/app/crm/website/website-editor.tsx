@@ -64,6 +64,12 @@ export function WebsiteEditor({ initial, forms, appUrl, addresses }: { initial: 
         {area("impactText", "Impact cards", "One per line: value | label | optional image link")}
         {text("impactTitle", "Impact heading")}
         {area("cardsText", "Info cards", "One per line: title | text | link (e.g. /#showrooms)")}
+        {area("heroSlidesText", "Hero slider", "One per line: image link | optional page link | alt text. Replaces the single hero image.")}
+        {text("latestModelsTitle", "“Latest models” heading", { help: "Shows a sliding row of model cards with key specs. Leave empty to hide." })}
+        {area("featureBlocksText", "Feature blocks", "One per line: title | intro | image link | point; point; point")}
+        {text("insightsTitle", "Latest blog posts heading", { help: "Shows the 3 newest posts on the home page. Leave empty to hide." })}
+        {text("newsletterTitle", "Subscribe box heading", { help: "Leave empty to hide." })}
+        {text("newsletterText", "Subscribe box text")}
         {area("programsText", "Finance and lease programs", "One per line: title | description")}
         {area("socialsText", "Social links", "One per line: Facebook | https://...")}
         {area("navLinksText", "Extra menu links", "One per line: label | /forms/slug or https://...")}

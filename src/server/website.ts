@@ -42,6 +42,17 @@ export type WebsiteConfig = {
   impactText: string;
   /** Info cards (stores, support...): "Title | text | link" per line. */
   cardsText: string;
+  /** Hero slider: "image link | optional page link | alt text" per line. Replaces the single hero image when filled. */
+  heroSlidesText: string;
+  /** "Latest models" slider of model cards with key specs; shown when the heading is filled. */
+  latestModelsTitle: string;
+  /** Feature blocks (technology, sustainability...): "Title | intro | image link | point; point; point" per line. */
+  featureBlocksText: string;
+  /** Latest blog posts on the home page; shown when the heading is filled. */
+  insightsTitle: string;
+  /** Subscribe box: heading and text (the button opens the contact form). */
+  newsletterTitle: string;
+  newsletterText: string;
 };
 
 /** Parse "a | b | c" lines into trimmed columns. */
@@ -89,6 +100,12 @@ export const DEFAULT_WEBSITE: WebsiteConfig = {
   impactTitle: "",
   impactText: "",
   cardsText: "",
+  heroSlidesText: "",
+  latestModelsTitle: "",
+  featureBlocksText: "",
+  insightsTitle: "",
+  newsletterTitle: "",
+  newsletterText: "",
 };
 
 const KEY = "website";

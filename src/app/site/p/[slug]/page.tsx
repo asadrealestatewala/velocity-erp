@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getSiteEntries, publishedWebsite } from "@/server/website";
+import { getSiteEntries, publishedWebsite, siteBase } from "@/server/website";
 import { EntryBody } from "../../entry-body";
 import { ShareButton } from "../../share-button";
 
@@ -15,7 +15,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SitePageEntry({ params }: Props) {
   const { slug } = await params;
-  await publishedWebsite();
+  const site = await publishedWebsite();
+  const base = await siteBase();
   const e = await find(slug);
   if (!e) notFound();
   const cover = e.cover && /^(https:\/\/|\/)[^\s"'()]+$/.test(e.cover) ? e.cover : null;
@@ -29,7 +30,29 @@ export default async function SitePageEntry({ params }: Props) {
         {e.summary && <p className={`mx-auto mt-4 max-w-2xl text-base sm:text-lg ${cover ? "font-medium text-neutral-800" : "text-white/85"}`}>{e.summary}</p>}
         <ShareButton title={e.title} light={!!cover} />
       </header>
-      <div className="mx-auto max-w-3xl px-5 py-10 sm:py-14"><EntryBody body={e.body} /></div>
+      <div className="mx-auto max-w-3xl px-5 py-10 sm:py-14">
+        <EntryBody body={e.body} />
+        {site && /support|help|ticket/i.test(e.slug) && <SupportContact phone={site.phone} email={site.email} whatsapp={site.whatsapp} contactHref={site.contactFormSlug ? `/forms/${site.contactFormSlug}` : `${base}/#contact`} />}
+      </div>
     </article>
+  );
+}
+
+/** Real contact options (taken from the website settings) shown under support pages, so "Submit a ticket" always leads somewhere. */
+function SupportContact({ phone, email, whatsapp, contactHref }: { phone: string; email: string; whatsapp: string; contactHref: string }) {
+  const wa = whatsapp.replace(/\D/g, "");
+  const tel = phone.replace(/[^\d+]/g, "");
+  const card = "block rounded-2xl border border-neutral-200 bg-neutral-50 p-5 transition hover:shadow-md";
+  return (
+    <section aria-labelledby="reach-us" className="mt-10 rounded-3xl border border-neutral-200 p-6 sm:p-8">
+      <h2 id="reach-us" className="border-l-4 pl-3 text-2xl font-bold text-neutral-900" style={{ borderColor: "var(--site)" }}>Reach our support team</h2>
+      <p className="mt-3 text-neutral-600">Tell us your name, phone number and bike model and we will come back to you within 48 business hours.</p>
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        {tel && <a href={`tel:${tel}`} className={card}><span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{/111/.test(phone) ? "UAN" : "Call us"}</span><span className="mt-1 block text-xl font-extrabold" style={{ color: "var(--site)" }}>{phone}</span></a>}
+        {email && <a href={`mailto:${email}`} className={card}><span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Email</span><span className="mt-1 block break-all text-xl font-extrabold" style={{ color: "var(--site)" }}>{email}</span></a>}
+        {wa && <a href={`https://wa.me/${wa}`} className={card}><span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">WhatsApp</span><span className="mt-1 block text-xl font-extrabold" style={{ color: "var(--site)" }}>+{wa}</span></a>}
+      </div>
+      <a href={contactHref} className="mt-6 inline-block rounded-full px-7 py-3 text-sm font-semibold text-white shadow-sm" style={{ backgroundColor: "var(--site)" }}>Submit a ticket</a>
+    </section>
   );
 }

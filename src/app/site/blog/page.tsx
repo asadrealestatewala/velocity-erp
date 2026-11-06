@@ -17,15 +17,19 @@ export default async function BlogIndex({ searchParams }: { searchParams: Promis
   const page = Math.min(Math.max(1, Number((await searchParams).p) || 1), pageCount);
   const shown = posts.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   return (
-    <section className="mx-auto max-w-3xl px-5 py-12">
-      <h1 className="text-3xl font-bold">Blog</h1>
+    <section className="mx-auto max-w-5xl px-5 py-12">
+      <h1 className="text-3xl font-extrabold sm:text-4xl">Blog</h1>
+      <div className="mt-2 h-1 w-16 rounded" style={{ backgroundColor: s.primaryColor }} />
       {posts.length === 0 ? <p className="mt-6 text-neutral-600">No posts yet.</p> : (
-        <ul className="mt-6 space-y-6">
+        <ul className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {shown.map((p) => (
-            <li key={p.slug} className="border-b border-neutral-200 pb-6">
-              <p className="text-xs text-neutral-500">{fmtDate(p.date)}</p>
-              <a href={`${base}/blog/${p.slug}`} className="text-xl font-semibold hover:underline" style={{ color: s.primaryColor }}>{p.title}</a>
-              {p.summary && <p className="mt-2 text-neutral-700">{p.summary}</p>}
+            <li key={p.slug} className="flex">
+              <a href={`${base}/blog/${p.slug}`} className="flex w-full flex-col rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md" style={{ borderTop: `4px solid ${s.primaryColor}` }}>
+                <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">{fmtDate(p.date)}</p>
+                <span className="mt-2 text-lg font-semibold leading-snug text-neutral-900">{p.title}</span>
+                {p.summary && <p className="mt-2 line-clamp-3 text-sm text-neutral-600">{p.summary}</p>}
+                <span className="mt-auto pt-4 text-sm font-semibold" style={{ color: s.primaryColor }}>Read more →</span>
+              </a>
             </li>
           ))}
         </ul>

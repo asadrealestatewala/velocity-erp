@@ -20,11 +20,15 @@ export default async function BlogPost({ params }: Props) {
   if (!e) notFound();
   const base = await siteBase();
   return (
-    <article className="mx-auto max-w-3xl px-5 py-12">
-      <a href={`${base}/blog`} className="text-sm text-neutral-500 hover:underline">← All posts</a>
-      <h1 className="mt-4 text-3xl font-bold">{e.title}</h1>
-      <p className="mt-1 text-sm text-neutral-500">{fmtDate(e.date)}</p>
-      <div className="mt-6"><EntryBody body={e.body} /></div>
+    <article>
+      <header className="px-5 py-12 text-white sm:py-16" style={{ background: "linear-gradient(135deg, var(--site), #171717)" }}>
+        <div className="mx-auto max-w-3xl">
+          <a href={`${base}/blog`} className="text-sm text-white/80 hover:underline">← All posts</a>
+          <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">{e.title}</h1>
+          <p className="mt-2 text-sm text-white/80">{fmtDate(e.date)}</p>
+        </div>
+      </header>
+      <div className="mx-auto max-w-3xl px-5 py-10 sm:py-14"><EntryBody body={e.body} /></div>
     </article>
   );
 }

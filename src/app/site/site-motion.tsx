@@ -57,7 +57,7 @@ export function SiteMotion() {
 
     // 2. Tag reveal targets (skip nested ones and anything inside a carousel/header).
     const all = Array.from(root.querySelectorAll<HTMLElement>(`${REVEAL},${IMAGES}`)).filter((el) =>
-      !el.closest("header, [aria-roledescription=carousel], [data-sm-skip]") && !el.hasAttribute("data-sm-h1"));
+      !el.closest("header, [aria-roledescription=carousel], [data-sm-skip]") && !el.hasAttribute("data-sm-h1") && !el.hasAttribute("data-sm-nofx"));
     const set = new Set(all);
     const targets = all.filter((el) => { for (let p = el.parentElement; p; p = p.parentElement) if (set.has(p)) return false; return true; });
     const seen = new Map<Element, number>();

@@ -77,4 +77,19 @@
   /* Accordion (FAQ / why-choose-us): content eases in when opened. */
   .sm-on details[open] > :not(summary) { animation: sm-up .45s cubic-bezier(.16, 1, .3, 1); }
   .sm-on details summary span[aria-hidden] { transition: rotate .35s cubic-bezier(.16, 1, .3, 1); }
+
+  /* Spec callouts around the hero bike: cards slide in from each side and a brand line draws toward the bike. */
+  .sm-on .sm-spec-bike[data-sm="img"].sm-in img { animation: sm-float 6s ease-in-out 1.6s infinite; }
+  @keyframes sm-float { 50% { transform: translateY(-8px); } }
+  .sm-on .sm-callout { position: relative; }
+  .sm-on .sm-callout[data-sm="up"].sm-in { animation: sm-in-l 1s cubic-bezier(.16, 1, .3, 1) var(--sm-d, 0ms) backwards; }
+  .sm-on .sm-callout-r[data-sm="up"].sm-in { animation-name: sm-in-r; }
+  @keyframes sm-in-l { from { opacity: 0; transform: translateX(-60px); } }
+  @keyframes sm-in-r { from { opacity: 0; transform: translateX(60px); } }
+  @media (min-width: 768px) {
+    .sm-on .sm-callout::after { content: ""; position: absolute; top: 50%; height: 2px; width: 0; background: var(--site, #ff5f00); transition: width .8s cubic-bezier(.16, 1, .3, 1) .5s; }
+    .sm-on .sm-callout-l::after { left: 100%; }
+    .sm-on .sm-callout-r::after { right: 100%; }
+    .sm-on .sm-callout.sm-in::after { width: 24px; }
+  }
 }

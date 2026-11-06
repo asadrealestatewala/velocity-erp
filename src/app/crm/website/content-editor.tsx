@@ -27,6 +27,7 @@ export function ContentEditor({ initial }: { initial: SiteEntry[] }) {
           </div>
           <Field label="Short summary">{(p) => <Input {...p} value={x.summary} onChange={(e) => upd(i, { summary: e.target.value })} />}</Field>
           <Field label="Text" help={"Plain text. A blank line starts a new paragraph. Start a line with \"## \" for a heading, or with \"- \" for a bullet list."}>{(p) => <Textarea {...p} rows={8} value={x.body} onChange={(e) => upd(i, { body: e.target.value })} />}</Field>
+          {x.kind === "page" && <Field label="Cover photo address" help="Optional. A link to a photo shown behind the page title. Leave empty for the brand colour header.">{(p) => <Input {...p} value={x.cover ?? ""} placeholder="https://…" onChange={(e) => upd(i, { cover: e.target.value })} />}</Field>}
           <div className="flex items-center justify-between">
             <div className="flex flex-wrap gap-6">
               <Checkbox label="Published" checked={x.published} onChange={(e) => upd(i, { published: e.target.checked })} />

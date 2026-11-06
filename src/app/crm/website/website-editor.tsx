@@ -63,6 +63,7 @@ export function WebsiteEditor({ initial, forms, appUrl, addresses }: { initial: 
         {area("socialsText", "Social links", "One per line: Facebook | https://...")}
         {area("navLinksText", "Extra menu links", "One per line: label | /forms/slug or https://...")}
       </div>
+      <Checkbox label="Show the hero image as a plain banner (use when the artwork already has text on it)" checked={f.heroPlainImage} onChange={(e) => set("heroPlainImage", e.target.checked)} />
       <div className="flex flex-wrap gap-6">
         <Checkbox label="Show bike models" checked={f.showModels} onChange={(e) => set("showModels", e.target.checked)} />
         <Checkbox label="Show “in stock” page" checked={f.showInventory} onChange={(e) => set("showInventory", e.target.checked)} />

@@ -22,7 +22,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
             <img src={s.logoUrl} alt={s.siteName} className="h-8 w-auto" />
           ) : s.siteName}
         </a>
-        <nav className="flex items-center gap-4 text-sm font-medium">
+        <nav className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm font-medium">
           {s.showModels && <a href={`${base}/#models`}>Models</a>}
           {s.showInventory && <a href={`${base}/inventory`}>In stock</a>}
           {s.showShowrooms && <a href={`${base}/#showrooms`}>Showrooms</a>}

@@ -18,6 +18,7 @@ const schema = z.object({
   heroSubtitle: z.string().trim().max(300),
   heroImageUrl: imageUrl,
   logoUrl: imageUrl,
+  heroPlainImage: z.boolean(),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a colour like #e11d2e"),
   about: z.string().trim().max(3000),
   phone: z.string().trim().max(40),

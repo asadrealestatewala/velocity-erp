@@ -677,9 +677,10 @@ export async function changeOwnerEmailAction(id: string, input: z.input<typeof o
     const v = ownerEmailSchema.parse(input);
     const r = await changeOwnerEmail(id, v.email);
     refreshTenant(r.slug);
-    await platformAudit({ admin: a, action: "tenant.owner_email_changed", targetType: "Tenant", targetId: id, reason: v.reason, detail: { slug: r.slug, from: r.from, to: r.to } });
+    await platformAudit({ admin: a, action: "tenant.owner_email_changed", targetType: "Tenant", targetId: id, reason: v.reason, detail: { slug: r.slug, from: r.from, to: r.to, ...(r.repaired ? { repaired: r.repaired } : {}) } });
     const sent = await sendOwnerConfirmation(id, a.email);
-    return { ok: true as const, message: sent.delivered ? `Owner email changed to ${r.to}. A confirmation link was sent there.` : `Owner email changed to ${r.to}. Email isn't set up on this server; confirmation link: ${sent.url}` };
+    const login = r.tempPassword ? ` The owner login did not exist, so it was created with temporary password ${r.tempPassword} (shown once; they must change it at first sign-in). They can also use "Forgot password".` : r.repaired === "relinked" ? " The workspace's administrator login had a different email and was updated." : "";
+    return { ok: true as const, message: (sent.delivered ? `Owner email changed to ${r.to}. A confirmation link was sent there.` : `Owner email changed to ${r.to}. Email isn't set up on this server; confirmation link: ${sent.url}`) + login };
   });
 }
 

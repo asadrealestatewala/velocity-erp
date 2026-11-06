@@ -16,7 +16,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const links: MenuLink[] = [
     ...(s.showModels ? [{ label: "Models", href: `${base}/#models` }] : []),
     ...(s.showInventory ? [{ label: "In stock", href: `${base}/inventory` }] : []),
-    ...(s.showShowrooms ? [{ label: "Showrooms", href: `${base}/#showrooms` }] : []),
+    ...(s.showShowrooms ? [{ label: "Showrooms", href: `${base}/showrooms` }] : []),
     ...entries.filter((e) => e.kind === "page" && e.inMenu !== false).map((e) => ({ label: e.title, href: `${base}/p/${e.slug}` })),
     ...(hasPosts ? [{ label: "Blog", href: `${base}/blog` }] : []),
     ...parsePairs(s.navLinksText).map((l) => ({ label: l.a, href: l.b || "#" })),

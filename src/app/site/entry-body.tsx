@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { FaqList } from "./faq-list";
 
 /**
  * Renders a page or post body written as plain text: "## " / "### " headings, "- " list items,
@@ -9,12 +10,10 @@ import type { ReactNode } from "react";
 type Stat = { label: string; value: string; suffix: string };
 type Node =
   | { t: "stats"; items: Stat[] }
-  | { t: "faq"; items: { q: string; a: string[] }[] }
   | { t: "cta"; title: string; text: string; label: string; href: string }
   | { t: "block"; text: string };
 
 const BUTTON = /^\[button: ?([^\]]+)\]\((https:\/\/[^)\s]+|\/[^)\s]*)\)$/;
-const isQuestion = (s: string) => s.length > 8 && s.length <= 220 && s.endsWith("?") && !s.includes("\n") && !/^(#{2,3} |- |> |!\[)/.test(s);
 
 const NUM = /^\d[\d,.]*$/;
 const SUFFIX = /^(\+|%|k|m|K|M)$/;
@@ -31,25 +30,12 @@ function group(blocks: string[]): Node[] {
       items.push({ label: blocks[j], value: blocks[j + 1], suffix: hasSuffix ? blocks[j + 2] : "" });
       j += hasSuffix ? 3 : 2;
     }
-    // consecutive question blocks followed by answer blocks become an accordion (two or more questions)
-    const faq: { q: string; a: string[] }[] = [];
-    let k = i;
-    while (k < blocks.length && isQuestion(blocks[k])) {
-      const a: string[] = [];
-      let m = k + 1;
-      while (m < blocks.length && !isQuestion(blocks[m]) && !/^#{2,3} /.test(blocks[m]) && !BUTTON.test(blocks[m])) a.push(blocks[m++]);
-      if (a.length === 0) break;
-      faq.push({ q: blocks[k], a });
-      k = m;
-    }
-    if (faq.length >= 2) { out.push({ t: "faq", items: faq }); i = k; continue; }
-    // heading + optional text + button => centered call-to-action card
+    // "## Heading", optional text, then a [button: Label](url) block => centered call-to-action card
     const h = /^## (.+)$/.exec(blocks[i]);
     if (h) {
       const b1 = BUTTON.exec(blocks[i + 1] ?? "");
-      const b2 = BUTTON.exec(blocks[i + 2] ?? "");
-      const hasText = !b1 && b2 && !/^(#{2,3} |- |> |!\[)/.test(blocks[i + 1]);
-      const btn = b1 ?? (hasText ? b2 : null);
+      const hasText = !b1 && !!blocks[i + 1] && !/^(#{2,3} |- |> |!\[)/.test(blocks[i + 1]);
+      const btn = b1 ?? (hasText ? BUTTON.exec(blocks[i + 2] ?? "") : null);
       if (btn) { out.push({ t: "cta", title: h[1], text: hasText ? blocks[i + 1] : "", label: btn[1], href: btn[2] }); i += hasText ? 3 : 2; continue; }
     }
     // a lone label+number is far more likely to be prose than a stat; need at least two
@@ -66,10 +52,43 @@ function inline(text: string): ReactNode {
   return parts.map((p, i) => (p.startsWith("**") && p.endsWith("**") && p.length > 4 ? <strong key={i}>{p.slice(2, -2)}</strong> : p));
 }
 
+type Chunk = { faq: false; blocks: string[] } | { faq: true; items: { q: string; a: string[] }[] };
+const isHeading = (b: string) => /^#{2,3} /.test(b);
+const isQuestion = (b: string) => isHeading(b) && /\?$/.test(b.trim());
+
+/** Headings that end in "?" followed by their answer paragraphs are collected into an interactive FAQ list. */
+function chunk(blocks: string[]): Chunk[] {
+  const out: Chunk[] = [];
+  let i = 0;
+  while (i < blocks.length) {
+    const b = blocks[i];
+    if (isQuestion(b)) {
+      const item = { q: b.replace(/^#{2,3} /, ""), a: [] as string[] };
+      i++;
+      while (i < blocks.length && !isHeading(blocks[i])) item.a.push(blocks[i++]);
+      const last = out[out.length - 1];
+      if (last?.faq) last.items.push(item); else out.push({ faq: true, items: [item] });
+    } else {
+      const last = out[out.length - 1];
+      if (last && !last.faq) last.blocks.push(b); else out.push({ faq: false, blocks: [b] });
+      i++;
+    }
+  }
+  return out;
+}
+
 export function EntryBody({ body }: { body: string }) {
   const blocks = body.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
   return (
     <div className="space-y-5 text-[17px] leading-8 text-neutral-700">
+      {chunk(blocks).map((c, ci) => c.faq ? <FaqList key={`f${ci}`} items={c.items.map((x) => ({ q: x.q, a: x.a.join("\n\n") }))} /> : <Plain key={`p${ci}`} blocks={c.blocks} />)}
+    </div>
+  );
+}
+
+function Plain({ blocks }: { blocks: string[] }) {
+  return (
+    <>
       {group(blocks).map((n, i) => {
         if (n.t === "stats") {
           return (
@@ -79,23 +98,6 @@ export function EntryBody({ body }: { body: string }) {
                   <p className="text-3xl font-extrabold leading-none sm:text-4xl" style={{ color: "var(--site)" }}>{fmt(s.value)}{s.suffix}</p>
                   <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-neutral-600 sm:text-sm">{s.label}</p>
                 </div>
-              ))}
-            </div>
-          );
-        }
-        if (n.t === "faq") {
-          return (
-            <div key={i} className="my-6 space-y-3">
-              {n.items.map((f, k) => (
-                <details key={k} className="group rounded-2xl border border-neutral-200 bg-white shadow-sm open:border-[color:var(--site)] open:shadow-md">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-base font-semibold text-neutral-900 [&::-webkit-details-marker]:hidden">
-                    <span>{f.q}</span>
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-lg font-bold text-white transition-transform group-open:rotate-45" style={{ backgroundColor: "var(--site)" }} aria-hidden>+</span>
-                  </summary>
-                  <div className="space-y-3 border-t border-neutral-100 px-5 py-4 text-base leading-7 text-neutral-700">
-                    {f.a.map((t, j) => <p key={j} className="whitespace-pre-line">{inline(t)}</p>)}
-                  </div>
-                </details>
               ))}
             </div>
           );
@@ -142,6 +144,6 @@ export function EntryBody({ body }: { body: string }) {
         }
         return <p key={i} className="whitespace-pre-line">{inline(b)}</p>;
       })}
-    </div>
+    </>
   );
 }

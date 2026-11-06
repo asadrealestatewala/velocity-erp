@@ -21,7 +21,7 @@ export default async function BlogPost({ params }: Props) {
   const base = await siteBase();
   return (
     <article>
-      <header className="px-5 py-12 text-white sm:py-16" style={{ background: "linear-gradient(135deg, var(--site), #171717)" }}>
+      <header className="px-5 py-12 text-white sm:py-16" style={{ background: e.cover ? `linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,.55)), url("${e.cover.replace(/["()\\]/g, "")}") center / cover` : "linear-gradient(135deg, var(--site), #171717)" }}>
         <div className="mx-auto max-w-3xl">
           <a href={`${base}/blog`} className="text-sm text-white/80 hover:underline">← All posts</a>
           <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">{e.title}</h1>

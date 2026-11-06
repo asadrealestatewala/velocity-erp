@@ -30,12 +30,9 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function SitePage() {
   const s = (await publishedWebsite())!;
   const base = await siteBase();
-  const [models, showrooms] = await Promise.all([
+  const [models] = await Promise.all([
     s.showModels
       ? db.bikeModel.findMany({ where: { isActive: true, availability: { not: "DISCONTINUED" } }, orderBy: { displayOrder: "asc" }, select: { id: true, name: true, category: true, description: true, imageFileId: true, price: true, currency: true, specifications: true } })
-      : [],
-    s.showShowrooms
-      ? db.dealership.findMany({ where: { status: "ACTIVE", acceptsLeads: true }, orderBy: { name: "asc" }, select: { id: true, name: true, address: true, phone: true } })
       : [],
   ]);
   const c = s.primaryColor;
@@ -159,7 +156,7 @@ export default async function SitePage() {
                   ))}
                 </ul>
               )}
-              {label && link && <a href={link.startsWith("/#") ? `${base}${link}` : link} className={`${btn} mt-6 text-white`} style={{ backgroundColor: c }}>{label}</a>}
+              {label && link && <a href={link === "/#showrooms" ? `${base}/showrooms` : link.startsWith("/#") ? `${base}${link}` : link} className={`${btn} mt-6 text-white`} style={{ backgroundColor: c }}>{label}</a>}
             </div>
             {image && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -207,7 +204,7 @@ export default async function SitePage() {
         <section className="bg-neutral-100 px-5 py-14">
           <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-2">
             {cards.map(([title, text, link]) => (
-              <a key={title} href={link ? (link.startsWith("/#") ? `${base}${link}` : link) : undefined} className="block rounded-3xl bg-white p-8 text-center shadow-sm transition hover:shadow-md">
+              <a key={title} href={link ? (link === "/#showrooms" ? `${base}/showrooms` : link.startsWith("/#") ? `${base}${link}` : link) : undefined} className="block rounded-3xl bg-white p-8 text-center shadow-sm transition hover:shadow-md">
                 {s.logoUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={s.logoUrl} alt="" className="mx-auto h-8 w-auto" />
@@ -276,21 +273,6 @@ export default async function SitePage() {
               ))}
             </div>
           </div>
-        </section>
-      )}
-
-      {showrooms.length > 0 && (
-        <section id="showrooms" className="mx-auto max-w-5xl px-5 py-10 sm:py-14">
-          <h2 className="text-2xl font-bold">Showrooms</h2>
-          <ul className="mt-6 grid gap-4 sm:grid-cols-2">
-            {showrooms.map((d) => (
-              <li key={d.id} className="rounded-2xl border border-neutral-200 p-4">
-                <p className="font-semibold">{d.name}</p>
-                {d.address && <p className="text-sm text-neutral-600">{d.address}</p>}
-                {d.phone && <p className="text-sm"><a href={`tel:${d.phone}`} style={{ color: c }}>{d.phone}</a></p>}
-              </li>
-            ))}
-          </ul>
         </section>
       )}
 

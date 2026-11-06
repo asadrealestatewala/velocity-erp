@@ -15,7 +15,7 @@ import { platformDb } from "@/server/platform/client";
 import { decryptSecret, encryptSecret, sha256 } from "@/server/platform/crypto";
 import { platformRateLimit } from "@/server/platform/guard";
 import { runLifecycle } from "@/server/platform/lifecycle";
-import { deletionBlocker } from "@/server/platform/purge";
+import { deletionBlocker, purgeWorkspace } from "@/server/platform/purge";
 import { recordManualBackup } from "@/server/platform/backups";
 import { clearAnnouncementCache } from "@/server/platform/announcements";
 import { clearFlagCache, FLAG_KEY_RE } from "@/server/platform/flags";
@@ -708,5 +708,27 @@ export async function setOwnerPasswordAction(id: string, input: z.input<typeof o
     const r = await setOwnerPassword(id, v.password, v.mustChange ?? true);
     await platformAudit({ admin: a, action: "tenant.owner_password_set", targetType: "Tenant", targetId: id, reason: v.reason, detail: { slug: r.slug, owner: r.email, mustChange: v.mustChange ?? true } });
     return { ok: true as const, message: `Password set for ${r.email}. They were signed out everywhere${(v.mustChange ?? true) ? " and must choose a new password at next sign-in" : ""}. Share it securely.` };
+  });
+}
+
+/** Erases a suspended or cancelled workspace's data immediately instead of waiting for the retention window. Owner-only; the operator must type the workspace code. */
+export async function deleteWorkspaceNowAction(id: string, input: { confirmSlug: string; reason: string }) {
+  return runAction(async () => {
+    const a = await requireAdminAction("tenants.delete");
+    const why = reasonSchema.parse(input.reason);
+    const t = await platformDb().tenant.findUnique({ where: { id } });
+    if (!t) throw new AppError("Workspace not found.", "NOT_FOUND");
+    const blocker = deletionBlocker(t);
+    if (blocker) throw new AppError(blocker);
+    if (String(input.confirmSlug ?? "").trim().toLowerCase() !== t.slug) throw new AppError(`Type the workspace code (${t.slug}) to confirm.`, "VALIDATION", { confirmSlug: "Does not match" });
+    await platformAudit({ admin: a, action: "tenant.delete_now_requested", targetType: "Tenant", targetId: id, reason: why, detail: { slug: t.slug } });
+    try {
+      const r = await purgeWorkspace(t, new Date(), a, true);
+      return { ok: true as const, message: `All data of ${t.slug} was erased (${r.files} files${r.dropped ? ", database removed" : ", database left in place: it is on the customer's own connection"}).` };
+    } catch (e) {
+      await platformAudit({ admin: a, action: "tenant.delete_now_failed", targetType: "Tenant", targetId: id, reason: why, detail: { slug: t.slug, error: (e as Error).message.slice(0, 300) } }).catch(() => {});
+      console.error(`[purge] manual erase of ${t.slug} failed`, e);
+      throw new AppError("Erasing failed part-way. Nothing was marked as deleted; check the audit log and try again.");
+    }
   });
 }

@@ -23,17 +23,27 @@ export async function purgeDueWorkspaces(now = new Date()): Promise<string[]> {
   const done: string[] = [];
   for (const t of due) {
     try {
-      const files = await deleteWorkspaceFiles(t).catch(() => 0);
-      // A workspace on its own database connection belongs to the customer's infrastructure: we never drop schemas there.
-      const dropped = !t.dbUrlEnc;
-      if (dropped) await dropSchema(t.dbSchema);
-      await platformDb().tenant.update({ where: { id: t.id }, data: { dataPurgedAt: now, status: "CANCELLED", ownerName: null, ownerEmail: null, ownerEmailHash: null, notes: null, confirmTokenHash: null, deletionScheduledFor: null } });
-      invalidateTenant(t.slug);
-      await platformAudit({ admin: null, action: "tenant.data_purged", targetType: "Tenant", targetId: t.id, detail: { slug: t.slug, filesDeleted: files, schemaDropped: dropped, ownConnection: Boolean(t.dbUrlEnc) } });
+      await purgeWorkspace(t, now, null);
       done.push(t.slug);
     } catch (e) {
       console.error(`[purge] ${t.slug} failed`, e);
     }
   }
   return done;
+}
+
+/**
+ * Erases one workspace's data now: uploaded files, then the whole schema; personal fields on the tenant row are cleared and
+ * invoices/payments are kept. With `strict` (a person is waiting for the answer) a file-deletion failure aborts before anything
+ * is dropped, so nothing is half-erased; the scheduled job tolerates it as before.
+ */
+export async function purgeWorkspace(t: Tenant, now: Date, admin: { id: string; email: string } | null, strict = false) {
+  const files = strict ? await deleteWorkspaceFiles(t) : await deleteWorkspaceFiles(t).catch(() => 0);
+  // A workspace on its own database connection belongs to the customer's infrastructure: we never drop schemas there.
+  const dropped = !t.dbUrlEnc;
+  if (dropped) await dropSchema(t.dbSchema);
+  await platformDb().tenant.update({ where: { id: t.id }, data: { dataPurgedAt: now, status: "CANCELLED", ownerName: null, ownerEmail: null, ownerEmailHash: null, notes: null, confirmTokenHash: null, deletionScheduledFor: null } });
+  invalidateTenant(t.slug);
+  await platformAudit({ admin, action: "tenant.data_purged", targetType: "Tenant", targetId: t.id, detail: { slug: t.slug, filesDeleted: files, schemaDropped: dropped, ownConnection: Boolean(t.dbUrlEnc), ...(admin ? { manual: true } : {}) } });
+  return { files, dropped };
 }

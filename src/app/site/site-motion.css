@@ -78,18 +78,17 @@
   .sm-on details[open] > :not(summary) { animation: sm-up .45s cubic-bezier(.16, 1, .3, 1); }
   .sm-on details summary span[aria-hidden] { transition: rotate .35s cubic-bezier(.16, 1, .3, 1); }
 
-  /* Spec callouts around the hero bike: cards slide in from each side and a brand line draws toward the bike. */
-  .sm-on .sm-spec-bike[data-sm="img"].sm-in img { animation: sm-float 6s ease-in-out 1.6s infinite; }
+  /* Spec "expand": callouts start tucked in behind the bike and fan outward as the section scrolls into view (--sm-p, 0..1, set from JS). */
+  .sm-on .sm-spec { --sm-p: 1; }
+  .sm-on .sm-spec-bike { transform: scale(calc(.86 + .14 * var(--sm-p))); will-change: transform; }
+  .sm-on .sm-spec-bike img { animation: sm-float 6s ease-in-out infinite; }
   @keyframes sm-float { 50% { transform: translateY(-8px); } }
-  .sm-on .sm-callout { position: relative; }
-  .sm-on .sm-callout[data-sm="up"].sm-in { animation: sm-in-l 1s cubic-bezier(.16, 1, .3, 1) var(--sm-d, 0ms) backwards; }
-  .sm-on .sm-callout-r[data-sm="up"].sm-in { animation-name: sm-in-r; }
-  @keyframes sm-in-l { from { opacity: 0; transform: translateX(-60px); } }
-  @keyframes sm-in-r { from { opacity: 0; transform: translateX(60px); } }
+  .sm-on .sm-callout { position: relative; opacity: var(--sm-p); transform: translateY(calc((1 - var(--sm-p)) * 40px)) scale(calc(.9 + .1 * var(--sm-p))); will-change: transform, opacity; }
   @media (min-width: 768px) {
-    .sm-on .sm-callout::after { content: ""; position: absolute; top: 50%; height: 2px; width: 0; background: var(--site, #ff5f00); transition: width .8s cubic-bezier(.16, 1, .3, 1) .5s; }
+    .sm-on .sm-callout-l { transform: translateX(calc((1 - var(--sm-p)) * 160px)) scale(calc(.9 + .1 * var(--sm-p))); }
+    .sm-on .sm-callout-r { transform: translateX(calc((1 - var(--sm-p)) * -160px)) scale(calc(.9 + .1 * var(--sm-p))); }
+    .sm-on .sm-callout::after { content: ""; position: absolute; top: 50%; height: 2px; width: calc(var(--sm-p) * 24px); background: var(--site, #ff5f00); }
     .sm-on .sm-callout-l::after { left: 100%; }
     .sm-on .sm-callout-r::after { right: 100%; }
-    .sm-on .sm-callout.sm-in::after { width: 24px; }
   }
 }

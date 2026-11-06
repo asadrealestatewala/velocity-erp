@@ -57,7 +57,7 @@ export default async function SitePage() {
         // eslint-disable-next-line @next/next/no-img-element
         <img src={s.heroImageUrl} alt={s.heroTitle} className="block h-auto w-full" fetchPriority="high" decoding="async" />
       )}
-      <section className={`relative px-5 text-center text-white ${bannerMode ? "py-8 sm:py-10" : "py-12 sm:py-20"}`} style={{ backgroundColor: c }}>
+      <section data-sm-hero className={`relative overflow-hidden px-5 text-center text-white ${bannerMode ? "py-8 sm:py-10" : "py-12 sm:py-20"}`} style={{ backgroundColor: c }}>
         {s.heroImageUrl && !bannerMode && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={s.heroImageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-40" decoding="async" />
@@ -207,7 +207,7 @@ export default async function SitePage() {
               <a key={title} href={link ? (link === "/#showrooms" ? `${base}/showrooms` : link.startsWith("/#") ? `${base}${link}` : link) : undefined} className="block rounded-3xl bg-white p-8 text-center shadow-sm transition hover:shadow-md">
                 {s.logoUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={s.logoUrl} alt="" className="mx-auto h-8 w-auto" />
+                  <img src={s.logoUrl} alt="" data-sm-skip className="mx-auto h-8 w-auto" />
                 )}
                 <h3 className="mt-4 text-2xl font-extrabold uppercase" style={{ color: c }}>{title}</h3>
                 {text && <p className="mt-3 text-sm text-neutral-500">{text}</p>}

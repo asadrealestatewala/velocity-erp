@@ -1,0 +1,61 @@
+/* Public website motion layer. Everything is scoped to .sm-on (added by SiteMotion) and only applies when the visitor has not asked for reduced motion. */
+.sm-progress { position: fixed; inset: 0 0 auto 0; z-index: 60; height: 3px; background: linear-gradient(90deg, color-mix(in srgb, var(--site, #ff5f00), #000 28%), var(--site, #ff5f00)); transform: scaleX(0); transform-origin: 0 50%; pointer-events: none; }
+.sm-dots { position: fixed; right: 18px; top: 50%; z-index: 40; display: none; flex-direction: column; gap: 4px; translate: 0 -50%; }
+.sm-dots a { display: block; width: 28px; height: 18px; position: relative; }
+.sm-dots a::after { content: ""; position: absolute; right: 0; top: 50%; height: 3px; width: 10px; border-radius: 3px; translate: 0 -50%; background: currentColor; opacity: .45; transition: width .35s cubic-bezier(.16,1,.3,1), opacity .3s, background-color .3s; }
+.sm-dots a[aria-current] ::after, .sm-dots a[aria-current]::after { width: 28px; opacity: 1; background: var(--site, #ff5f00); }
+.sm-dots { color: #717071; } /* brand dark grey */
+@media (min-width: 1280px) { .sm-dots { display: flex; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.sm-on) { scroll-behavior: smooth; scroll-padding-top: 4.5rem; }
+
+  /* Reveal: hidden until scrolled into view, then rise/fade with a per-element stagger (--sm-d). */
+  .sm-on [data-sm]:not(.sm-in) { opacity: 0; }
+  .sm-on [data-sm="up"].sm-in { animation: sm-up .9s cubic-bezier(.16, 1, .3, 1) var(--sm-d, 0ms) backwards; }
+  .sm-on [data-sm="img"].sm-in { animation: sm-img 1.1s cubic-bezier(.16, 1, .3, 1) var(--sm-d, 0ms) backwards; }
+  @keyframes sm-up { from { opacity: 0; transform: translateY(28px); } }
+  @keyframes sm-img { from { opacity: 0; transform: scale(1.06); clip-path: inset(0 0 12% 0 round 16px); } }
+
+  /* Headlines: words slide up out of a mask. */
+  .sm-on h1[data-sm-h1] { opacity: 1; }
+  .sm-w { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: .12em; margin-bottom: -.12em; }
+  .sm-w > span { display: inline-block; transform: translateY(115%); }
+  .sm-on h1.sm-in .sm-w > span { transform: none; animation: sm-word 1s cubic-bezier(.16, 1, .3, 1) var(--sm-d, 0ms) backwards; }
+  @keyframes sm-word { from { transform: translateY(115%); } }
+
+  /* Section headings get an accent rule that draws in. */
+  .sm-on section h2[data-sm]::after { content: ""; display: block; height: 3px; width: 0; margin-top: .6rem; border-radius: 3px; background: var(--site, #ff5f00); transition: width .9s cubic-bezier(.16, 1, .3, 1) .3s; }
+  .sm-on section h2[data-sm].sm-in::after { width: 44px; }
+  .sm-on section[class*="text-white"] h2[data-sm]::after, .sm-on section[class*="bg-neutral-900"] h2[data-sm]::after { background: #fff; }
+  .sm-on section h2.text-center::after { margin-inline: auto; }
+
+  /* Hero: background image is parallaxed from JS; give it a compositor layer. */
+  .sm-on [data-sm-hero] img.absolute { will-change: transform; transform: scale(1.06); }
+
+  /* Header compacts and gains a soft shadow once the page scrolls. */
+  .sm-on header { transition: box-shadow .35s, background-color .35s; }
+  .sm-on header > div { transition: padding .35s cubic-bezier(.16, 1, .3, 1); }
+  .sm-on header.sm-scrolled { box-shadow: 0 6px 24px rgba(0, 0, 0, .08); }
+  .sm-on header.sm-scrolled > div { padding-top: .35rem; padding-bottom: .35rem; }
+  .sm-on header nav a { position: relative; }
+  .sm-on header nav a::after { content: ""; position: absolute; left: 0; right: 0; bottom: -3px; height: 2px; background: var(--site, #ff5f00); transform: scaleX(0); transform-origin: 0 50%; transition: transform .35s cubic-bezier(.16, 1, .3, 1); }
+  .sm-on header nav a:hover::after, .sm-on header nav a:focus-visible::after { transform: scaleX(1); }
+
+  /* Hover: cards lift, images zoom inside their frame, buttons nudge. */
+  .sm-on section a.block, .sm-on section .snap-x > div { transition: transform .45s cubic-bezier(.16, 1, .3, 1), box-shadow .45s; }
+  .sm-on section a.block:hover, .sm-on section .snap-x > div:hover { transform: translateY(-8px); box-shadow: 0 22px 44px -18px rgba(0, 0, 0, .3); }
+  .sm-on section a.block img, .sm-on section .snap-x > div img { transition: transform .8s cubic-bezier(.16, 1, .3, 1); }
+  .sm-on section a.block:hover img, .sm-on section .snap-x > div:hover img { transform: scale(1.04); }
+  /* Logos are never animated or scaled (brand guide: logo clear space and proportions). */
+  .sm-on img[data-sm-skip] { transform: none !important; }
+  .sm-on section a.rounded-full, .sm-on footer a.rounded-full { transition: transform .3s cubic-bezier(.16, 1, .3, 1), box-shadow .3s; }
+  .sm-on section a.rounded-full:hover, .sm-on footer a.rounded-full:hover { transform: translateY(-3px); box-shadow: 0 12px 24px -10px rgba(0, 0, 0, .35); }
+  .sm-on section a.rounded-full:active { transform: translateY(0) scale(.97); }
+  .sm-on footer ul a { transition: color .2s, padding-left .3s cubic-bezier(.16, 1, .3, 1); }
+  .sm-on footer ul a:hover { padding-left: 6px; }
+
+  /* Accordion (FAQ / why-choose-us): content eases in when opened. */
+  .sm-on details[open] > :not(summary) { animation: sm-up .45s cubic-bezier(.16, 1, .3, 1); }
+  .sm-on details summary span[aria-hidden] { transition: rotate .35s cubic-bezier(.16, 1, .3, 1); }
+}

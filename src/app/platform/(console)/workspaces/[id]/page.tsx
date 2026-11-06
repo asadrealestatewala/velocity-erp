@@ -4,7 +4,7 @@ import { Badge, Card, CardHeader, PageHeader, DescriptionList } from "@/componen
 import { ActionForm, ReasonButton, RunButton } from "@/components/platform/console";
 import { db as tenantDb } from "@/lib/db";
 import { startViewAsAction } from "@/server/actions/impersonation";
-import { changeOwnerEmailAction, resendOwnerConfirmationAction } from "@/server/actions/platform";
+import { changeOwnerEmailAction, resendOwnerConfirmationAction, setOwnerPasswordAction } from "@/server/actions/platform";
 import { cancelDeletionAction, scheduleDeletionAction } from "@/server/actions/platform";
 import { setFlagOverrideAction } from "@/server/actions/platform";
 import { flagsFor } from "@/server/platform/flags";
@@ -82,6 +82,17 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
                   confirmLabel="Change email"
                   action={changeOwnerEmailAction.bind(null, t.id)}
                   extra={[{ name: "email", label: "New email", placeholder: "owner@company.com" }]}
+                />
+                <ReasonButton
+                  label="Set owner password"
+                  title="Set the owner's password"
+                  description="Sets a new password for the owner's login without sending an email. They are signed out everywhere. The password is never stored or logged in plain text; share it with them securely."
+                  confirmLabel="Set password"
+                  action={setOwnerPasswordAction.bind(null, t.id)}
+                  extra={[
+                    { name: "password", label: "New password", type: "password", hint: "At least 10 characters with a letter and a number." },
+                    { name: "mustChange", label: "Make them choose a new password at next sign-in", type: "checkbox", defaultValue: true },
+                  ]}
                 />
                 {!t.emailConfirmedAt && t.ownerEmail && <RunButton label="Resend confirmation" action={resendOwnerConfirmationAction.bind(null, t.id)} />}
                 {t.status === "SUSPENDED" ? (

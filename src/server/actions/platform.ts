@@ -26,7 +26,7 @@ import { getPlatformSettings, savePlatformSettings } from "@/server/platform/set
 import { addDays, addInterval, changeSubscription, trialPatch } from "@/server/platform/subscriptions";
 import { invalidateTenant } from "@/server/platform/tenants";
 import { webhookUrl } from "@/server/platform/stripe";
-import { changeOwnerEmail, sendOwnerConfirmation } from "@/server/platform/owner-email";
+import { changeOwnerEmail, sendOwnerConfirmation, setOwnerPassword } from "@/server/platform/owner-email";
 
 const reasonSchema = z.string().trim().min(3, "A reason is required").max(300);
 const tempPassword = () => `Yd-${randomBytes(6).toString("base64url")}-${randomInt(10, 99)}`;
@@ -695,5 +695,18 @@ export async function resendOwnerConfirmationAction(id: string) {
     const sent = await sendOwnerConfirmation(id, a.email);
     await platformAudit({ admin: a, action: "tenant.owner_confirmation_resent", targetType: "Tenant", targetId: id, detail: { slug: t.slug, to: t.ownerEmail } });
     return { ok: true as const, message: sent.delivered ? `Confirmation email sent to ${t.ownerEmail}.` : `Email isn't set up on this server; confirmation link: ${sent.url}` };
+  });
+}
+
+const ownerPasswordSchema = z.object({ password: passwordSchema, mustChange: z.boolean().optional(), reason: reasonSchema });
+
+/** Platform staff: sets the owner's password directly. The password is never logged, audited or stored in plain text. */
+export async function setOwnerPasswordAction(id: string, input: z.input<typeof ownerPasswordSchema>) {
+  return runAction(async () => {
+    const a = await requireAdminAction("tenants.manage");
+    const v = ownerPasswordSchema.parse(input);
+    const r = await setOwnerPassword(id, v.password, v.mustChange ?? true);
+    await platformAudit({ admin: a, action: "tenant.owner_password_set", targetType: "Tenant", targetId: id, reason: v.reason, detail: { slug: r.slug, owner: r.email, mustChange: v.mustChange ?? true } });
+    return { ok: true as const, message: `Password set for ${r.email}. They were signed out everywhere${(v.mustChange ?? true) ? " and must choose a new password at next sign-in" : ""}. Share it securely.` };
   });
 }

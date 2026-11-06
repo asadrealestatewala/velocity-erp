@@ -66,3 +66,23 @@ export async function sendOwnerConfirmation(tenantId: string, sentByEmail: strin
   const sent = await sendTemplate("confirm-email", t.ownerEmail, { name: (t.ownerName ?? "there").split(" ")[0], workspaceName: t.name, workspaceCode: t.slug, confirmUrl: url, trialLine: "" }, { tenantId, sentByEmail });
   return { delivered: !!sent.delivered, url };
 }
+
+/** Sets the owner's password directly (no email). Signs the owner out everywhere; optionally forces a change at next sign-in. */
+export async function setOwnerPassword(tenantId: string, password: string, mustChange: boolean): Promise<{ slug: string; email: string }> {
+  const t = await platformDb().tenant.findUnique({ where: { id: tenantId } });
+  if (!t) throw new AppError("Workspace not found.", "NOT_FOUND");
+  if (t.isLegacy) throw new AppError("The default workspace's owner is managed from its own Users page.");
+  if (t.dataPurgedAt || !t.ownerEmail) throw new AppError("This workspace has no owner on file.");
+  const email = t.ownerEmail.toLowerCase();
+  const passwordHash = await bcrypt.hash(password, 12);
+  await runInTenant(t.slug, async () => {
+    const owner = (await tenantDb.user.findUnique({ where: { email } })) ?? (await tenantDb.user.findFirst({ where: { role: { key: "SUPER_ADMIN" } }, orderBy: { createdAt: "asc" } }));
+    if (!owner) throw new AppError("This workspace has no owner login. Use \"Change owner email\" to create one.");
+    await tenantDb.$transaction([
+      tenantDb.user.update({ where: { id: owner.id }, data: { passwordHash, mustChangePassword: mustChange, isActive: true } }),
+      tenantDb.session.deleteMany({ where: { userId: owner.id } }),
+      tenantDb.passwordResetToken.deleteMany({ where: { userId: owner.id } }),
+    ]);
+  });
+  return { slug: t.slug, email };
+}

@@ -1,5 +1,8 @@
 import { notFound } from "next/navigation";
+import { Montserrat } from "next/font/google";
 import { parsePairs, publishedWebsite, siteBase } from "@/server/website";
+
+const montserrat = Montserrat({ subsets: ["latin"], display: "swap" });
 
 export const dynamic = "force-dynamic";
 
@@ -9,9 +12,14 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const base = await siteBase();
   const wa = s.whatsapp.replace(/\D/g, "");
   return (
-    <div className="min-h-dvh bg-white text-neutral-900" style={{ ["--site" as string]: s.primaryColor }}>
+    <div className={`min-h-dvh bg-white text-neutral-900 ${montserrat.className}`} style={{ ["--site" as string]: s.primaryColor }}>
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-neutral-200 bg-white/95 px-5 py-3 backdrop-blur">
-        <a href={base || "/"} className="text-lg font-bold" style={{ color: s.primaryColor }}>{s.siteName}</a>
+        <a href={base || "/"} className="text-lg font-bold" style={{ color: s.primaryColor }}>
+          {s.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={s.logoUrl} alt={s.siteName} className="h-8 w-auto" />
+          ) : s.siteName}
+        </a>
         <nav className="flex items-center gap-4 text-sm font-medium">
           {s.showModels && <a href={`${base}/#models`}>Models</a>}
           {s.showInventory && <a href={`${base}/inventory`}>In stock</a>}

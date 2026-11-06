@@ -17,6 +17,7 @@ const schema = z.object({
   heroTitle: z.string().trim().min(1, "Enter a headline").max(100),
   heroSubtitle: z.string().trim().max(300),
   heroImageUrl: imageUrl,
+  logoUrl: imageUrl,
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a colour like #e11d2e"),
   about: z.string().trim().max(3000),
   phone: z.string().trim().max(40),

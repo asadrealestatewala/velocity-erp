@@ -9,6 +9,8 @@ export type WebsiteConfig = {
   heroTitle: string;
   heroSubtitle: string;
   heroImageUrl: string;
+  /** Logo shown in the header instead of the business name. https:// link or a path such as /brand/yadea-vi-logo.png. */
+  logoUrl: string;
   primaryColor: string;
   about: string;
   phone: string;
@@ -47,6 +49,7 @@ export const DEFAULT_WEBSITE: WebsiteConfig = {
   heroTitle: "Ride the future",
   heroSubtitle: "Explore our range, visit a showroom or book a test drive in minutes.",
   heroImageUrl: "",
+  logoUrl: "",
   primaryColor: "#e11d2e",
   about: "",
   phone: "",

@@ -1,5 +1,5 @@
 /** First-run guidance for the central CRM. Completion is derived from real records — nothing is stored or faked. */
-export type SetupCounts = { contacts: number; dealerAssignedLeads: number; tasks: number; publishedForms: number; activeUsers: number };
+export type SetupCounts = { contacts: number; dealerAssignedLeads: number; tasks: number; publishedForms: number; activeUsers: number; websitePublished?: boolean };
 export type SetupStep = { key: string; label: string; hint: string; href: string; done: boolean };
 
 type Can = (perm: string) => boolean;
@@ -11,6 +11,7 @@ export function buildSetupChecklist(counts: SetupCounts, can: Can): SetupStep[] 
     { key: "assign", perm: "leads.assign", label: "Assign a lead to a dealership", hint: "Routed leads appear in that dealership's portal.", href: "/crm/contacts?assigned=no", done: counts.dealerAssignedLeads > 0 },
     { key: "task", perm: "tasks.manage", label: "Schedule a follow-up", hint: "Follow-ups keep leads moving and earn XP when completed on time.", href: "/crm/tasks", done: counts.tasks > 0 },
     { key: "team", perm: "users.manage", label: "Invite a team member", hint: "Give colleagues their own sign-in and role.", href: "/crm/users", done: counts.activeUsers > 1 },
+    { key: "website", perm: "settings.manage", label: "Publish your free website", hint: "Your website is ready on its own address. Review it in Website, tick Published and save.", href: "/crm/website", done: !!counts.websitePublished },
   ];
   return steps.filter((s) => can(s.perm)).map(({ perm: _perm, ...s }) => s);
 }

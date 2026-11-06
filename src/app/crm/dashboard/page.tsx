@@ -13,6 +13,7 @@ import { AlertCards, DashboardHero, FunnelCard, GamificationCard, LeaderboardCar
 import { LevelUp } from "@/components/dashboard/level-up";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { buildSetupChecklist } from "@/lib/setup-checklist";
+import { getWebsite } from "@/server/website";
 import { Celebrate } from "@/components/gamification/celebrate";
 import { can } from "@/server/authz";
 import { BadgeGrid } from "@/components/gamification/badges";
@@ -89,7 +90,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       db.task.count(),
       db.form.count({ where: { status: "PUBLISHED" } }),
       db.user.count({ where: { isActive: true } }),
-    ]).then(([contacts, dealerAssignedLeads, tasks, publishedForms, activeUsers]) => ({ contacts, dealerAssignedLeads, tasks, publishedForms, activeUsers })),
+      getWebsite().then((w) => w.published).catch(() => false),
+    ]).then(([contacts, dealerAssignedLeads, tasks, publishedForms, activeUsers, websitePublished]) => ({ contacts, dealerAssignedLeads, tasks, publishedForms, activeUsers, websitePublished })),
   ]);
   const setupSteps = buildSetupChecklist(setupCounts, (perm) => can(user, perm as Parameters<typeof can>[1]));
   const level = levelFor(progress.totalPoints);

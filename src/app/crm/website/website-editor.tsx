@@ -16,6 +16,9 @@ export function WebsiteEditor({ initial, forms, appUrl, addresses }: { initial: 
       {(p) => <Input {...p} type={extra.type} placeholder={extra.placeholder} value={f[k] as string} onChange={(e) => set(k, e.target.value as never)} />}
     </Field>
   );
+  const area = (k: keyof WebsiteConfig, label: string, help: string) => (
+    <Field label={label} help={help} error={fieldErrors[k]}>{(p) => <Textarea {...p} rows={4} value={f[k] as string} onChange={(e) => set(k, e.target.value as never)} />}</Field>
+  );
   const formSelect = (k: "testDriveFormSlug" | "contactFormSlug", label: string) => (
     <Field label={label} error={fieldErrors[k]} help="Only published forms are listed.">
       {(p) => (
@@ -51,6 +54,13 @@ export function WebsiteEditor({ initial, forms, appUrl, addresses }: { initial: 
         {text("address", "Address")}
         {formSelect("testDriveFormSlug", "“Book a test drive” opens")}
         {formSelect("contactFormSlug", "“Contact us” opens")}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        {area("statsText", "Key numbers", "One per line: value | label")}
+        {area("highlightsText", "Why choose us / technology", "One per line: title | description")}
+        {area("programsText", "Finance and lease programs", "One per line: title | description")}
+        {area("socialsText", "Social links", "One per line: Facebook | https://...")}
+        {area("navLinksText", "Extra menu links", "One per line: label | /forms/slug or https://...")}
       </div>
       <div className="flex flex-wrap gap-6">
         <Checkbox label="Show bike models" checked={f.showModels} onChange={(e) => set("showModels", e.target.checked)} />

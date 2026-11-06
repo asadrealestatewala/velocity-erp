@@ -30,6 +30,11 @@ const schema = z.object({
   contactFormSlug: slug,
   seoTitle: z.string().trim().max(70),
   seoDescription: z.string().trim().max(160),
+  statsText: z.string().max(1500),
+  highlightsText: z.string().max(3000),
+  programsText: z.string().max(3000),
+  socialsText: z.string().max(1000),
+  navLinksText: z.string().max(1000),
 });
 
 export async function saveWebsiteAction(input: z.input<typeof schema>) {

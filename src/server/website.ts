@@ -24,7 +24,21 @@ export type WebsiteConfig = {
   contactFormSlug: string;
   seoTitle: string;
   seoDescription: string;
+  /** Home-page sections. One item per line, fields separated by " | ". */
+  statsText: string; // "9 years | Global No.1 in sales"
+  highlightsText: string; // "Title | Short description" (why choose us / technology)
+  programsText: string; // "Title | Short description" (finance / lease options)
+  socialsText: string; // "Facebook | https://..."
+  navLinksText: string; // extra header links: "Support | /forms/contact"
 };
+
+/** Parse "a | b" lines into pairs. */
+export function parsePairs(text: string): { a: string; b: string }[] {
+  return text.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
+    const [a, ...rest] = l.split("|");
+    return { a: a!.trim(), b: rest.join("|").trim() };
+  });
+}
 
 export const DEFAULT_WEBSITE: WebsiteConfig = {
   published: false,
@@ -46,6 +60,11 @@ export const DEFAULT_WEBSITE: WebsiteConfig = {
   contactFormSlug: "general-inquiry",
   seoTitle: "",
   seoDescription: "",
+  statsText: "",
+  highlightsText: "",
+  programsText: "",
+  socialsText: "",
+  navLinksText: "",
 };
 
 const KEY = "website";

@@ -49,7 +49,9 @@ export default async function SitePage() {
   const bannerMode = slides.length > 0 || (s.heroPlainImage && !!s.heroImageUrl);
   const posts = s.insightsTitle ? (await getSiteEntries()).filter((e) => e.kind === "post" && e.published).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3) : [];
   const featured = s.featuredTitle ? models.filter((m) => m.imageFileId) : [];
-  const spotlight = models.find((m) => m.imageFileId && specLines(m.specifications).length >= 3);
+  // Spotlight model for the "Engineered" section: prefer one with a photo, then the most spec lines (real data only).
+  const spotlight = [...models].filter((m) => specLines(m.specifications).length >= 1)
+    .sort((x, y) => Number(!!y.imageFileId) - Number(!!x.imageFileId) || specLines(y.specifications).length - specLines(x.specifications).length)[0];
   const spotlightSpecs = spotlight ? specLines(spotlight.specifications) : [];
   const btn = "inline-block rounded-full px-5 py-2.5 text-sm sm:px-6 sm:py-3 font-semibold";
 
@@ -123,9 +125,13 @@ export default async function SitePage() {
                 ))}
               </ul>
               <a href={`${base}/models/${spotlight.id}`} className="sm-spec-bike order-1 block md:order-2" aria-label={spotlight.name}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/api/files/${spotlight.imageFileId}`} alt={spotlight.name} className="mx-auto aspect-[4/3] w-full object-contain" loading="lazy" decoding="async" />
-                <span className="mt-2 block text-center text-sm font-semibold">{spotlight.name}</span>
+                {spotlight.imageFileId ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={`/api/files/${spotlight.imageFileId}`} alt={spotlight.name} className="mx-auto aspect-[4/3] w-full object-contain" loading="lazy" decoding="async" />
+                ) : (
+                  <span className="grid aspect-[4/3] w-full place-items-center rounded-3xl bg-neutral-50 text-2xl font-extrabold" style={{ color: c }}>{spotlight.name}</span>
+                )}
+                {spotlight.imageFileId && <span className="mt-2 block text-center text-sm font-semibold">{spotlight.name}</span>}
               </a>
               <ul data-sm-nofx className="order-3 grid gap-4">
                 {spotlightSpecs.filter((_, i) => i % 2 === 1).map(([k, v]) => (

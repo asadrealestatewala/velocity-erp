@@ -111,7 +111,7 @@ export function SiteMotion() {
         const y = scrollY; const max = document.documentElement.scrollHeight - innerHeight;
         if (bar.current) bar.current.style.transform = `scaleX(${max > 0 ? Math.min(1, y / max) : 0})`;
         header?.classList.toggle("sm-scrolled", y > 8);
-        if (heroImg && hero && y < hero.offsetTop + hero.offsetHeight) heroImg.style.transform = `translate3d(0, ${(y - hero.offsetTop) * 0.18}px, 0) scale(1.1)`;
+        if (heroImg && hero && y < hero.offsetTop + hero.offsetHeight) heroImg.style.transform = `translate3d(0, ${(y - hero.offsetTop) * 0.14}px, 0) scale(1.06)`;
       });
     };
     addEventListener("scroll", onScroll, { passive: true }); onScroll();

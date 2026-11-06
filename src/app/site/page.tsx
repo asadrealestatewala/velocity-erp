@@ -207,7 +207,7 @@ export default async function SitePage() {
               <a key={title} href={link ? (link === "/#showrooms" ? `${base}/showrooms` : link.startsWith("/#") ? `${base}${link}` : link) : undefined} className="block rounded-3xl bg-white p-8 text-center shadow-sm transition hover:shadow-md">
                 {s.logoUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={s.logoUrl} alt="" className="mx-auto h-8 w-auto" />
+                  <img src={s.logoUrl} alt="" data-sm-skip className="mx-auto h-8 w-auto" />
                 )}
                 <h3 className="mt-4 text-2xl font-extrabold uppercase" style={{ color: c }}>{title}</h3>
                 {text && <p className="mt-3 text-sm text-neutral-500">{text}</p>}

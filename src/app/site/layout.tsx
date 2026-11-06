@@ -11,6 +11,9 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   if (!s) notFound();
   const base = await siteBase();
   const entries = (await getSiteEntries()).filter((e) => e.published);
+  const LEGAL = /privacy|terms|refund|return|subsid/i; // long legal / policy pages live in the footer, not the header
+  const headerPages = entries.filter((e) => e.kind === "page" && !LEGAL.test(e.slug));
+  const footerPages = entries.filter((e) => e.kind === "page" && LEGAL.test(e.slug));
   const hasPosts = entries.some((e) => e.kind === "post");
   const wa = s.whatsapp.replace(/\D/g, "");
   return (
@@ -22,11 +25,11 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
             <img src={s.logoUrl} alt={s.siteName} className="h-8 w-auto" />
           ) : s.siteName}
         </a>
-        <nav className="flex items-center gap-4 text-sm font-medium">
+        <nav className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm font-medium">
           {s.showModels && <a href={`${base}/#models`}>Models</a>}
           {s.showInventory && <a href={`${base}/inventory`}>In stock</a>}
           {s.showShowrooms && <a href={`${base}/#showrooms`}>Showrooms</a>}
-          {entries.filter((e) => e.kind === "page").map((e) => <a key={e.slug} href={`${base}/p/${e.slug}`}>{e.title}</a>)}
+          {headerPages.map((e) => <a key={e.slug} href={`${base}/p/${e.slug}`}>{e.title}</a>)}
           {hasPosts && <a href={`${base}/blog`}>Blog</a>}
           {parsePairs(s.navLinksText).map((l) => <a key={l.a} href={l.b || "#"}>{l.a}</a>)}
           <a href="#contact">Contact</a>
@@ -42,6 +45,9 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
           {s.email && <p>Email: <a href={`mailto:${s.email}`} className="underline">{s.email}</a></p>}
           {parsePairs(s.socialsText).length > 0 && (
             <p className="flex flex-wrap gap-4 pt-2">{parsePairs(s.socialsText).map((l) => <a key={l.a} href={l.b} className="underline" target="_blank" rel="noreferrer">{l.a}</a>)}</p>
+          )}
+          {footerPages.length > 0 && (
+            <p className="flex flex-wrap gap-4 pt-2">{footerPages.map((e) => <a key={e.slug} href={`${base}/p/${e.slug}`} className="underline">{e.title}</a>)}</p>
           )}
           <p className="pt-4 text-xs text-neutral-500">© {new Date().getFullYear()} {s.siteName}</p>
         </div>

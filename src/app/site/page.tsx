@@ -30,8 +30,12 @@ export default async function SitePage() {
 
   return (
     <>
-      <section className="relative px-5 py-20 text-center text-white" style={{ backgroundColor: c }}>
-        {s.heroImageUrl && (
+      {s.heroPlainImage && s.heroImageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={s.heroImageUrl} alt={s.heroTitle} className="block h-auto w-full" />
+      )}
+      <section className={`relative px-5 text-center text-white ${s.heroPlainImage && s.heroImageUrl ? "py-10" : "py-20"}`} style={{ backgroundColor: c }}>
+        {s.heroImageUrl && !s.heroPlainImage && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={s.heroImageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-40" />
         )}

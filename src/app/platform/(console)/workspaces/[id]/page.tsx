@@ -5,7 +5,7 @@ import { ActionForm, ReasonButton, RunButton } from "@/components/platform/conso
 import { db as tenantDb } from "@/lib/db";
 import { startViewAsAction } from "@/server/actions/impersonation";
 import { changeOwnerEmailAction, resendOwnerConfirmationAction, setOwnerPasswordAction } from "@/server/actions/platform";
-import { cancelDeletionAction, scheduleDeletionAction } from "@/server/actions/platform";
+import { cancelDeletionAction, deleteWorkspaceNowAction, scheduleDeletionAction } from "@/server/actions/platform";
 import { setFlagOverrideAction } from "@/server/actions/platform";
 import { flagsFor } from "@/server/platform/flags";
 import { changePlanAction, grantAddOnAction, recordPaymentAction, saveNotesAction, setSiteDomainAction, setWorkspaceStatusAction, trialAction } from "@/server/actions/platform";
@@ -139,11 +139,23 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
                 {can("tenants.delete") && (t.deletionScheduledFor ? (
                   <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-red-50 px-4 py-3 text-red-900">
                     <span>Deletion is scheduled: all data is erased after <strong>{fmtDateTime(t.deletionScheduledFor)}</strong>{t.deletionReason ? ` (${t.deletionReason})` : ""}.</span>
-                    <RunButton label="Cancel deletion" action={cancelDeletionAction.bind(null, t.id)} />
+                    <span className="flex gap-2">
+                      <RunButton label="Cancel deletion" action={cancelDeletionAction.bind(null, t.id)} />
+                      <ReasonButton
+                    label="Delete now"
+                    title="Erase this workspace's data now?"
+                    description="Skips the retention window. All data and uploaded files are permanently erased immediately and this cannot be undone. Invoices and payments are kept. Download an export first if the customer wants a copy."
+                    variant="danger"
+                    confirmLabel="Erase permanently"
+                    action={deleteWorkspaceNowAction.bind(null, t.id)}
+                    extra={[{ name: "confirmSlug", label: `Type the workspace code (${t.slug}) to confirm`, placeholder: t.slug }]}
+                  />
+                    </span>
                   </div>
                 ) : deletionBlocker(t) ? (
                   <p className="text-ink-500">{deletionBlocker(t)}</p>
                 ) : (
+                  <div className="flex flex-wrap gap-2">
                   <ReasonButton
                     label="Schedule deletion"
                     title="Schedule deletion of this workspace?"
@@ -153,6 +165,16 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
                     action={scheduleDeletionAction.bind(null, t.id)}
                     extra={[{ name: "confirmSlug", label: `Type the workspace code (${t.slug}) to confirm`, placeholder: t.slug }]}
                   />
+                    <ReasonButton
+                    label="Delete now"
+                    title="Erase this workspace's data now?"
+                    description="Skips the retention window. All data and uploaded files are permanently erased immediately and this cannot be undone. Invoices and payments are kept. Download an export first if the customer wants a copy."
+                    variant="danger"
+                    confirmLabel="Erase permanently"
+                    action={deleteWorkspaceNowAction.bind(null, t.id)}
+                    extra={[{ name: "confirmSlug", label: `Type the workspace code (${t.slug}) to confirm`, placeholder: t.slug }]}
+                  />
+                  </div>
                 ))}
               </>
             )}

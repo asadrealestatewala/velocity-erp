@@ -49,11 +49,11 @@ export default async function Home() {
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:py-24">
           <div>
             <p className="mb-3 inline-block rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">ERP for bike and car dealer networks</p>
-            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Every lead, every dealership, one view.</h1>
+            <h1 className="text-[2rem] font-bold leading-tight tracking-tight sm:text-5xl">Every lead, every dealership, one view.</h1>
             <p className="mt-4 max-w-xl text-lg text-ink-600">Capture inquiries from every channel, route test drives to the right showroom, and run orders and ledgers with your dealers. Your own private workspace, ready in minutes.</p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <ButtonLink href="/signup" size="lg">{trialDays > 0 ? `Start your ${trialDays}-day free trial` : "Create your workspace"}</ButtonLink>
-              <ButtonLink href="/pricing" size="lg" variant="secondary">See pricing</ButtonLink>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <ButtonLink href="/signup" size="lg" className="w-full sm:w-auto">{trialDays > 0 ? `Start your ${trialDays}-day free trial` : "Create your workspace"}</ButtonLink>
+              <ButtonLink href="/pricing" size="lg" variant="secondary" className="w-full sm:w-auto">See pricing</ButtonLink>
             </div>
             <p className="mt-3 text-sm text-ink-500">No card needed to start.</p>
           </div>

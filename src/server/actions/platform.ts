@@ -26,6 +26,7 @@ import { getPlatformSettings, savePlatformSettings } from "@/server/platform/set
 import { addDays, addInterval, changeSubscription, trialPatch } from "@/server/platform/subscriptions";
 import { invalidateTenant } from "@/server/platform/tenants";
 import { webhookUrl } from "@/server/platform/stripe";
+import { changeOwnerEmail, sendOwnerConfirmation } from "@/server/platform/owner-email";
 
 const reasonSchema = z.string().trim().min(3, "A reason is required").max(300);
 const tempPassword = () => `Yd-${randomBytes(6).toString("base64url")}-${randomInt(10, 99)}`;
@@ -664,5 +665,34 @@ export async function migrateAllAction() {
     await platformAudit({ admin: a, action: "system.migrate_all", detail: { workspaces: r.length, failed: failed.map((f) => f.slug) } });
     if (failed.length) throw new AppError(`${failed.length} workspace(s) failed: ${failed.map((f) => `${f.slug}: ${f.error}`).join("; ")}`);
     return { ok: true as const, message: `All ${r.length} workspaces are up to date (${r.reduce((n, x) => n + x.applied.length, 0)} migrations applied).` };
+  });
+}
+
+const ownerEmailSchema = z.object({ email: z.string().trim().toLowerCase().email("Enter a valid email address").max(160), reason: reasonSchema });
+
+/** Platform staff: changes a workspace owner's sign-in email (platform record + the owner's login in the company database), marks it unconfirmed and sends a new confirmation link. */
+export async function changeOwnerEmailAction(id: string, input: z.input<typeof ownerEmailSchema>) {
+  return runAction(async () => {
+    const a = await requireAdminAction("tenants.manage");
+    const v = ownerEmailSchema.parse(input);
+    const r = await changeOwnerEmail(id, v.email);
+    refreshTenant(r.slug);
+    await platformAudit({ admin: a, action: "tenant.owner_email_changed", targetType: "Tenant", targetId: id, reason: v.reason, detail: { slug: r.slug, from: r.from, to: r.to } });
+    const sent = await sendOwnerConfirmation(id, a.email);
+    return { ok: true as const, message: sent.delivered ? `Owner email changed to ${r.to}. A confirmation link was sent there.` : `Owner email changed to ${r.to}. Email isn't set up on this server; confirmation link: ${sent.url}` };
+  });
+}
+
+/** Platform staff: sends a fresh confirmation link to the owner's current email (the old link stops working). */
+export async function resendOwnerConfirmationAction(id: string) {
+  return runAction(async () => {
+    const a = await requireAdminAction("tenants.manage");
+    const t = await platformDb().tenant.findUnique({ where: { id } });
+    if (!t) throw new AppError("Workspace not found.", "NOT_FOUND");
+    if (t.emailConfirmedAt) return { ok: true as const, message: "This owner's email is already confirmed." };
+    if (!(await platformRateLimit(`confirm:${id}`, 5, 3600))) throw new AppError("Please wait a little before sending another email.", "RATE_LIMITED");
+    const sent = await sendOwnerConfirmation(id, a.email);
+    await platformAudit({ admin: a, action: "tenant.owner_confirmation_resent", targetType: "Tenant", targetId: id, detail: { slug: t.slug, to: t.ownerEmail } });
+    return { ok: true as const, message: sent.delivered ? `Confirmation email sent to ${t.ownerEmail}.` : `Email isn't set up on this server; confirmation link: ${sent.url}` };
   });
 }

@@ -4,6 +4,7 @@ import { Badge, Card, CardHeader, PageHeader, DescriptionList } from "@/componen
 import { ActionForm, ReasonButton, RunButton } from "@/components/platform/console";
 import { db as tenantDb } from "@/lib/db";
 import { startViewAsAction } from "@/server/actions/impersonation";
+import { changeOwnerEmailAction, resendOwnerConfirmationAction } from "@/server/actions/platform";
 import { cancelDeletionAction, scheduleDeletionAction } from "@/server/actions/platform";
 import { setFlagOverrideAction } from "@/server/actions/platform";
 import { flagsFor } from "@/server/platform/flags";
@@ -74,6 +75,15 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
             )}
             {!t.isLegacy && can("tenants.manage") && (
               <div className="mt-4 flex flex-wrap gap-2">
+                <ReasonButton
+                  label="Change owner email"
+                  title="Change the owner's email"
+                  description="Replaces the email the owner signs in with. The new address is marked unconfirmed and gets a confirmation link. Your reason is saved in the audit log."
+                  confirmLabel="Change email"
+                  action={changeOwnerEmailAction.bind(null, t.id)}
+                  extra={[{ name: "email", label: "New email", placeholder: "owner@company.com" }]}
+                />
+                {!t.emailConfirmedAt && t.ownerEmail && <RunButton label="Resend confirmation" action={resendOwnerConfirmationAction.bind(null, t.id)} />}
                 {t.status === "SUSPENDED" ? (
                   <ReasonButton label="Reactivate" title="Reactivate this workspace?" variant="primary" action={setWorkspaceStatusAction.bind(null, t.id)} fixed={{ status: "ACTIVE" }} />
                 ) : (

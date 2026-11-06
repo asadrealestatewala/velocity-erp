@@ -16,7 +16,11 @@ export default async function BlogIndex({ searchParams }: { searchParams: Promis
   const base = await siteBase();
   const posts = (await getSiteEntries()).filter((e) => e.kind === "post" && e.published).sort((a, b) => b.date.localeCompare(a.date));
   const pageCount = Math.max(1, Math.ceil(posts.length / PER_PAGE));
-  const page = Math.min(Math.max(1, Number((await searchParams).p) || 1), page    <section>
+  const page = Math.min(Math.max(1, Number((await searchParams).p) || 1), pageCount);
+  const feature = page === 1 ? posts[0] : undefined;
+  const shown = posts.slice((page - 1) * PER_PAGE + (page === 1 ? 1 : 0), page * PER_PAGE);
+  return (
+    <section>
       {feature ? (
         <a href={`${base}/blog/${feature.slug}`} className="relative block px-5 py-20 text-white sm:py-28" style={{ background: okImg(feature.cover) ? `linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.65)), url("${okImg(feature.cover)}") center/cover no-repeat` : "linear-gradient(135deg, var(--site), #171717)" }}>
           <div className="mx-auto max-w-5xl">
@@ -42,12 +46,6 @@ export default async function BlogIndex({ searchParams }: { searchParams: Promis
                   {p.summary && <p className="mt-2 line-clamp-3 text-sm text-neutral-600">{p.summary}</p>}
                   <span className="mt-auto pt-4 text-sm font-semibold" style={{ color: s.primaryColor }}>Read more →</span>
                 </div>
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
-more →</span>
               </a>
             </li>
           ))}

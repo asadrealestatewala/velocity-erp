@@ -157,9 +157,10 @@ export type SiteEntry = {
   published: boolean;
   /** Pages only: false keeps the page out of the header menu (it is still linked from the footer). Missing means shown. */
   inMenu?: boolean;
-  /** Pages only: optional cover photo (https or site-relative URL) behind the page header. Missing means the brand gradient. */
+  /** Optional cover photo (https or site-relative URL) behind the page header. Missing means the brand gradient. */
   cover?: string;
 };
+// Posts reuse `cover` as the card / hero image.
 
 const CONTENT_KEY = "website-content";
 

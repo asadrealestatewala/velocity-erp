@@ -26,9 +26,12 @@ export function ContentEditor({ initial }: { initial: SiteEntry[] }) {
             <Field label="Date">{(p) => <Input {...p} type="date" value={x.date} onChange={(e) => upd(i, { date: e.target.value })} />}</Field>
           </div>
           <Field label="Short summary">{(p) => <Input {...p} value={x.summary} onChange={(e) => upd(i, { summary: e.target.value })} />}</Field>
-          <Field label="Text" help="Plain text. A blank line starts a new paragraph.">{(p) => <Textarea {...p} rows={8} value={x.body} onChange={(e) => upd(i, { body: e.target.value })} />}</Field>
+          <Field label="Text" help={"Plain text. A blank line starts a new paragraph. Start a line with \"## \" for a heading, or with \"- \" for a bullet list."}>{(p) => <Textarea {...p} rows={8} value={x.body} onChange={(e) => upd(i, { body: e.target.value })} />}</Field>
           <div className="flex items-center justify-between">
-            <Checkbox label="Published" checked={x.published} onChange={(e) => upd(i, { published: e.target.checked })} />
+            <div className="flex flex-wrap gap-6">
+              <Checkbox label="Published" checked={x.published} onChange={(e) => upd(i, { published: e.target.checked })} />
+              {x.kind === "page" && <Checkbox label="Show in header menu" checked={x.inMenu !== false} onChange={(e) => upd(i, { inMenu: e.target.checked })} />}
+            </div>
             <Button type="button" variant="ghost" onClick={() => setItems((a) => a.filter((_, j) => j !== i))}>Remove</Button>
           </div>
         </div>

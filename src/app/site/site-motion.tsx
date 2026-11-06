@@ -103,6 +103,8 @@ export function SiteMotion() {
 
     // 5. Scroll: progress bar, compact header, hero parallax (one rAF-throttled listener).
     const header = root.querySelector("header");
+    const setHeaderH = () => header && root.style.setProperty("--sm-header", `${header.offsetHeight}px`);
+    if (!lite) { setHeaderH(); addEventListener("resize", setHeaderH); cleanups.push(() => removeEventListener("resize", setHeaderH)); }
     const heroImg = root.querySelector<HTMLElement>("[data-sm-hero] img.absolute");
     const hero = root.querySelector<HTMLElement>("[data-sm-hero]");
     let raf = 0;

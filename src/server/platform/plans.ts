@@ -9,14 +9,14 @@ import { platformDb } from "./client";
 export const DEFAULT_PLANS = [
   {
     key: "starter", name: "Starter", description: "For a brand with a handful of showrooms.", sortOrder: 1, isRecommended: false,
-    maxUsers: 5, maxDealerships: 3, maxContacts: 2_000, maxStorageMb: 1_024, apiAccess: false, website: false, procurement: false, assistant: true,
-    features: ["Central CRM and lead pipeline", "Up to 5 staff logins", "Up to 3 dealerships", "Public test-drive and inquiry forms", "Built-in assistant"],
+    maxUsers: 5, maxDealerships: 3, maxContacts: 2_000, maxStorageMb: 1_024, apiAccess: false, website: true, procurement: false, assistant: true,
+    features: ["Central CRM and lead pipeline", "Up to 5 staff logins", "Up to 3 dealerships", "Public test-drive and inquiry forms", "Free website on your own subdomain", "Built-in assistant"],
     prices: { PKR: { MONTH: 9_900, YEAR: 99_000 }, USD: { MONTH: 39, YEAR: 390 } },
   },
   {
     key: "growth", name: "Growth", description: "For a growing dealer network.", sortOrder: 2, isRecommended: true,
     maxUsers: 20, maxDealerships: 15, maxContacts: 20_000, maxStorageMb: 10_240, apiAccess: true, website: true, procurement: true, assistant: true,
-    features: ["Everything in Starter", "Up to 20 staff logins and 15 dealerships", "Dealer portal with goals, XP and leaderboard", "Procurement and dealer ledger", "Website and API access"],
+    features: ["Everything in Starter", "Up to 20 staff logins and 15 dealerships", "Dealer portal with goals, XP and leaderboard", "Procurement and dealer ledger", "API access"],
     prices: { PKR: { MONTH: 29_900, YEAR: 299_000 }, USD: { MONTH: 119, YEAR: 1_190 } },
   },
   {
@@ -89,7 +89,7 @@ export async function entitlementsFor(t: Pick<Tenant, "id" | "isLegacy" | "planK
   if (t.isLegacy) return { ...UNLIMITED, planKey: t.planKey };
   await ensureDefaultPlans();
   const plan = t.planKey ? await platformDb().plan.findUnique({ where: { key: t.planKey } }) : null;
-  if (!plan) return { planKey: t.planKey, maxUsers: 1, maxDealerships: 0, maxContacts: 0, maxStorageMb: 0, apiAccess: false, website: false, procurement: false, assistant: false };
+  if (!plan) return { planKey: t.planKey, maxUsers: 1, maxDealerships: 0, maxContacts: 0, maxStorageMb: 0, apiAccess: false, website: true, procurement: false, assistant: false };
   const addOns = await platformDb().tenantAddOn.findMany({ where: { tenantId: t.id }, include: { addOn: true } });
   const sum = (f: (a: (typeof addOns)[number]["addOn"]) => number) => addOns.reduce((n, x) => n + f(x.addOn) * x.quantity, 0);
   return {
@@ -99,7 +99,7 @@ export async function entitlementsFor(t: Pick<Tenant, "id" | "isLegacy" | "planK
     maxContacts: plan.maxContacts + sum((a) => a.extraContacts),
     maxStorageMb: plan.maxStorageMb + sum((a) => a.extraStorageMb),
     apiAccess: plan.apiAccess || addOns.some((x) => x.addOn.giveApiAccess),
-    website: plan.website,
+    website: true, // the website builder is free on every plan (plan.website is kept for compatibility)
     procurement: plan.procurement,
     assistant: plan.assistant,
   };

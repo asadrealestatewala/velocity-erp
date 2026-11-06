@@ -10,6 +10,8 @@ export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
 const RESERVED = new Set([
   "www", "app", "api", "admin", "platform", "login", "signup", "portal", "crm", "procurement", "forms", "w", "static", "support",
   "billing", "mail", "status", "docs", "blog", "help", "demo", "test", "staging", "pricing", "legal", "privacy", "terms", "yadea", "default",
+  // Names that must never become a tenant website (subdomain): infrastructure, mail, DNS and brand look-alikes.
+  "root", "dashboard", "console", "dev", "beta", "cdn", "assets", "files", "img", "images", "media", "ftp", "smtp", "imap", "pop", "pop3", "webmail", "email", "ns", "ns1", "ns2", "mx", "dns", "vpn", "secure", "ssl", "auth", "account", "accounts", "my", "sandbox", "preview", "web", "site", "sites", "velocity", "velocityerp", "agentify", "agentifyerp", "sales", "info", "contact", "team", "staff", "administrator", "postmaster", "hostmaster", "webmaster", "abuse", "noreply", "no-reply",
 ]);
 export const isValidSlug = (s: string) => SLUG_RE.test(s) && !s.includes("--");
 export const isReservedSlug = (s: string) => RESERVED.has(s);
@@ -105,7 +107,7 @@ export async function tenantSlugForHost(rawHost: string): Promise<string | null>
   let slug: string | null = null;
   if (SITE_BASE_DOMAIN && host.endsWith("." + SITE_BASE_DOMAIN)) {
     const sub = host.slice(0, -(SITE_BASE_DOMAIN.length + 1));
-    if (isValidSlug(sub)) slug = sub;
+    if (isValidSlug(sub) && (!isReservedSlug(sub) || sub === DEFAULT_SLUG)) slug = sub;
   }
   if (!slug) {
     const t = await platformDb().tenant.findUnique({ where: { siteDomain: host }, select: { slug: true, status: true } });

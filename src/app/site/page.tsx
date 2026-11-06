@@ -1,7 +1,25 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { fmtMoney } from "@/lib/utils";
-import { parsePairs, parseRows, publishedWebsite, siteBase } from "@/server/website";
+import { fmtDate } from "@/lib/utils";
+import { getSiteEntries, parsePairs, parseRows, publishedWebsite, siteBase } from "@/server/website";
+import { HeroSlider } from "./hero-slider";
+
+const SPEC_ROWS: [string, string[]][] = [
+  ["Battery", ["battery_type"]],
+  ["Capacity", ["battery_capacity"]],
+  ["Motor", ["rated_motor_power", "peak_motor_power"]],
+  ["Top speed", ["max_speed"]],
+  ["Range", ["range"]],
+];
+const norm = (k: string) => k.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+function specLines(specs: unknown): [string, string][] {
+  const map = new Map(Object.entries((specs ?? {}) as Record<string, unknown>).map(([k, v]) => [norm(k), v]));
+  return SPEC_ROWS.flatMap(([label, keys]) => {
+    const key = keys.find((k) => typeof map.get(k) === "string" && map.get(k) !== "");
+    return key ? [[label, String(map.get(key))] as [string, string]] : [];
+  });
+}
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await publishedWebsite();
@@ -14,7 +32,7 @@ export default async function SitePage() {
   const base = await siteBase();
   const [models, showrooms] = await Promise.all([
     s.showModels
-      ? db.bikeModel.findMany({ where: { isActive: true, availability: { not: "DISCONTINUED" } }, orderBy: { displayOrder: "asc" }, select: { id: true, name: true, category: true, description: true, imageFileId: true, price: true, currency: true } })
+      ? db.bikeModel.findMany({ where: { isActive: true, availability: { not: "DISCONTINUED" } }, orderBy: { displayOrder: "asc" }, select: { id: true, name: true, category: true, description: true, imageFileId: true, price: true, currency: true, specifications: true } })
       : [],
     s.showShowrooms
       ? db.dealership.findMany({ where: { status: "ACTIVE", acceptsLeads: true }, orderBy: { name: "asc" }, select: { id: true, name: true, address: true, phone: true } })
@@ -29,16 +47,21 @@ export default async function SitePage() {
   const impact = parseRows(s.impactText);
   const cards = parseRows(s.cardsText);
   const darkWhy = !!s.highlightsTitle;
+  const slides = parseRows(s.slidesText).filter((r) => r[0]).map((r) => ({ src: r[0]!, href: r[1] ? (r[1].startsWith("/#") ? `${base}${r[1]}` : r[1]) : "", alt: r[2] ?? "" }));
+  const blocks = parseRows(s.blocksText);
+  const bannerMode = slides.length > 0 || (s.heroPlainImage && !!s.heroImageUrl);
+  const posts = s.insightsTitle ? (await getSiteEntries()).filter((e) => e.kind === "post" && e.published).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3) : [];
+  const featured = s.featuredTitle ? models.filter((m) => m.imageFileId) : [];
   const btn = "inline-block rounded-full px-5 py-2.5 text-sm sm:px-6 sm:py-3 font-semibold";
 
   return (
     <>
-      {s.heroPlainImage && s.heroImageUrl && (
+      {slides.length > 0 ? <HeroSlider slides={slides} color={c} /> : s.heroPlainImage && s.heroImageUrl && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={s.heroImageUrl} alt={s.heroTitle} className="block h-auto w-full" fetchPriority="high" decoding="async" />
       )}
-      <section className={`relative px-5 text-center text-white ${s.heroPlainImage && s.heroImageUrl ? "py-8 sm:py-10" : "py-12 sm:py-20"}`} style={{ backgroundColor: c }}>
-        {s.heroImageUrl && !s.heroPlainImage && (
+      <section className={`relative px-5 text-center text-white ${bannerMode ? "py-8 sm:py-10" : "py-12 sm:py-20"}`} style={{ backgroundColor: c }}>
+        {s.heroImageUrl && !bannerMode && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={s.heroImageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-40" decoding="async" />
         )}
@@ -56,6 +79,36 @@ export default async function SitePage() {
         <section className="mx-auto max-w-3xl px-5 py-10 sm:py-14">
           <h2 className="text-2xl font-bold">About us</h2>
           <p className="mt-3 whitespace-pre-line text-neutral-700">{s.about}</p>
+        </section>
+      )}
+
+      {featured.length > 0 && (
+        <section id="latest" className="bg-white px-5 py-10 sm:py-14">
+          <div className="mx-auto max-w-6xl">
+            <h2 className="text-2xl font-bold">{s.featuredTitle}</h2>
+            <div className="-mx-5 mt-6 flex snap-x snap-mandatory gap-5 overflow-x-auto px-5 pb-4">
+              {featured.map((m) => (
+                <div key={m.id} className="w-72 shrink-0 snap-start overflow-hidden rounded-2xl border border-neutral-200 bg-white sm:w-80">
+                  <a href={`${base}/models/${m.id}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`/api/files/${m.imageFileId}`} alt={m.name} className="aspect-[4/3] w-full bg-white object-contain" loading="lazy" decoding="async" />
+                  </a>
+                  <div className="p-4">
+                    <h3 className="text-lg font-bold">{m.name}</h3>
+                    <dl className="mt-3 space-y-1 text-sm">
+                      {specLines(m.specifications).map(([k, v]) => (
+                        <div key={k} className="flex justify-between gap-3 border-b border-neutral-100 pb-1"><dt className="text-neutral-500">{k}</dt><dd className="text-right font-medium">{v}</dd></div>
+                      ))}
+                    </dl>
+                    <div className="mt-4 flex gap-2 text-sm font-semibold">
+                      <a href={`${base}/models/${m.id}`} className="rounded-full border border-neutral-300 px-4 py-2">Learn more</a>
+                      {testDrive && <a href={`${testDrive}?model=${m.id}`} className="rounded-full px-4 py-2 text-white" style={{ backgroundColor: c }}>Book a test ride</a>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
       )}
 
@@ -92,6 +145,29 @@ export default async function SitePage() {
           </dl>
         </section>
       )}
+
+      {blocks.map(([title, text, points, label, link, image], k) => (
+        <section key={title} className={`px-5 py-12 sm:py-16 ${k % 2 === 0 ? "bg-neutral-900 text-white" : "bg-white text-neutral-900"}`}>
+          <div className={`mx-auto grid max-w-5xl items-center gap-8 ${image ? "md:grid-cols-2" : ""}`}>
+            <div>
+              <h2 className="text-2xl font-extrabold sm:text-3xl">{title}</h2>
+              {text && <p className={`mt-4 ${k % 2 === 0 ? "text-neutral-300" : "text-neutral-600"}`}>{text}</p>}
+              {points && (
+                <ul className="mt-5 flex flex-wrap gap-2">
+                  {points.split(";").map((x) => x.trim()).filter(Boolean).map((x) => (
+                    <li key={x} className="rounded-full px-4 py-1.5 text-sm font-semibold text-white" style={{ backgroundColor: c }}>{x}</li>
+                  ))}
+                </ul>
+              )}
+              {label && link && <a href={link.startsWith("/#") ? `${base}${link}` : link} className={`${btn} mt-6 text-white`} style={{ backgroundColor: c }}>{label}</a>}
+            </div>
+            {image && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={image} alt="" className="w-full rounded-2xl object-cover" loading="lazy" decoding="async" />
+            )}
+          </div>
+        </section>
+      ))}
 
       {highlights.length > 0 && !darkWhy && (
         <section id="why" className="mx-auto max-w-5xl px-5 py-14">
@@ -166,6 +242,26 @@ export default async function SitePage() {
         </section>
       )}
 
+      {posts.length > 0 && (
+        <section id="insights" className="bg-neutral-50 px-5 py-10 sm:py-14">
+          <div className="mx-auto max-w-5xl">
+            <div className="flex items-end justify-between gap-4">
+              <h2 className="text-2xl font-bold">{s.insightsTitle}</h2>
+              <a href={`${base}/blog`} className="text-sm font-semibold" style={{ color: c }}>View all →</a>
+            </div>
+            <div className="mt-6 grid gap-5 md:grid-cols-3">
+              {posts.map((p) => (
+                <a key={p.slug} href={`${base}/blog/${p.slug}`} className="block rounded-2xl border border-neutral-200 bg-white p-5 transition hover:shadow-md">
+                  <p className="text-xs text-neutral-500">{fmtDate(p.date)}</p>
+                  <h3 className="mt-1 font-semibold">{p.title}</h3>
+                  {p.summary && <p className="mt-2 line-clamp-3 text-sm text-neutral-600">{p.summary}</p>}
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {programs.length > 0 && (
         <section id="programs" className="bg-neutral-50 px-5 py-10 sm:py-14">
           <div className="mx-auto max-w-5xl">
@@ -195,6 +291,14 @@ export default async function SitePage() {
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {s.subscribeTitle && (
+        <section className="px-5 py-12 text-center text-white" style={{ backgroundColor: c }}>
+          <h2 className="text-2xl font-extrabold">{s.subscribeTitle}</h2>
+          {s.subscribeText && <p className="mx-auto mt-3 max-w-xl opacity-90">{s.subscribeText}</p>}
+          {contact && <a href={contact} className={`${btn} mt-6 bg-white`} style={{ color: c }}>Subscribe</a>}
         </section>
       )}
     </>

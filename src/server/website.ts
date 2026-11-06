@@ -42,6 +42,17 @@ export type WebsiteConfig = {
   impactText: string;
   /** Info cards (stores, support...): "Title | text | link" per line. */
   cardsText: string;
+  /** Banner slider: "image | optional link | optional alt" per line. Replaces the single plain hero banner when set. */
+  slidesText: string;
+  /** Heading of the "latest models" slider (empty hides it). Shows models with their key specs. */
+  featuredTitle: string;
+  /** Feature blocks: "Title | Text | point; point; point | optional button label | optional button link | optional image" per line. */
+  blocksText: string;
+  /** Heading of the latest-blog-posts section on the home page (empty hides it). */
+  insightsTitle: string;
+  /** Subscribe box: heading and text (empty heading hides it). The button opens the contact form. */
+  subscribeTitle: string;
+  subscribeText: string;
 };
 
 /** Parse "a | b | c" lines into trimmed columns. */
@@ -89,6 +100,12 @@ export const DEFAULT_WEBSITE: WebsiteConfig = {
   impactTitle: "",
   impactText: "",
   cardsText: "",
+  slidesText: "",
+  featuredTitle: "",
+  blocksText: "",
+  insightsTitle: "",
+  subscribeTitle: "",
+  subscribeText: "",
 };
 
 const KEY = "website";

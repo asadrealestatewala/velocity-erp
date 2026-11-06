@@ -42,6 +42,12 @@ const schema = z.object({
   impactTitle: z.string().trim().max(100),
   impactText: z.string().max(2000),
   cardsText: z.string().max(2000),
+  slidesText: z.string().max(2000),
+  featuredTitle: z.string().trim().max(100),
+  blocksText: z.string().max(6000),
+  insightsTitle: z.string().trim().max(100),
+  subscribeTitle: z.string().trim().max(100),
+  subscribeText: z.string().trim().max(300),
 });
 
 export async function saveWebsiteAction(input: z.input<typeof schema>) {

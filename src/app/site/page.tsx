@@ -4,6 +4,7 @@ import { fmtMoney } from "@/lib/utils";
 import { fmtDate } from "@/lib/utils";
 import { getSiteEntries, parsePairs, parseRows, publishedWebsite, siteBase } from "@/server/website";
 import { HeroSlider } from "./hero-slider";
+import { ExplodedScooter } from "./exploded-scooter";
 
 const SPEC_ROWS: [string, string[]][] = [
   ["Battery", ["battery_type"]],
@@ -53,6 +54,18 @@ export default async function SitePage() {
   const spotlight = [...models].filter((m) => specLines(m.specifications).length >= 1)
     .sort((x, y) => Number(!!y.imageFileId) - Number(!!x.imageFileId) || specLines(y.specifications).length - specLines(x.specifications).length)[0];
   const spotlightSpecs = spotlight ? specLines(spotlight.specifications) : [];
+  const spec = new Map(Object.entries((spotlight?.specifications ?? {}) as Record<string, unknown>).map(([k, v]) => [norm(k), typeof v === "string" ? v : ""]));
+  const sp = (...k: string[]) => k.map((x) => spec.get(x)).filter(Boolean).join(" · ");
+  const explodedLabels = spotlight ? [
+    { part: "battery", title: "Battery", value: sp("battery_type", "battery_capacity") },
+    { part: "motor", title: "Motor", value: [spec.get("rated_motor_power"), spec.get("peak_motor_power") && `${spec.get("peak_motor_power")} peak`].filter(Boolean).join(" · ") },
+    { part: "headlight", title: "Headlamp", value: sp("headlamp") },
+    { part: "frontWheel", title: "Tyres", value: sp("tyre_size") },
+    { part: "fork", title: "Suspension", value: sp("shock_absorption") },
+    { part: "handlebar", title: "Top speed", value: sp("max_speed") },
+    { part: "floor", title: "Range", value: sp("range") },
+    { part: "rearWheel", title: "Brakes", value: sp("brake_type") },
+  ].filter((l) => l.value) : [];
   const btn = "inline-block rounded-full px-5 py-2.5 text-sm sm:px-6 sm:py-3 font-semibold";
 
   return (
@@ -142,6 +155,8 @@ export default async function SitePage() {
           </div>
         </section>
       )}
+
+      {spotlight && explodedLabels.length >= 3 && <ExplodedScooter labels={explodedLabels} name={spotlight.name} color={c} />}
 
       {models.length > 0 && (
         <section id="models" className="bg-neutral-50 px-5 py-10 sm:py-14">

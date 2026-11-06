@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getSiteEntries, publishedWebsite } from "@/server/website";
+import { EntryBody } from "../../entry-body";
 
 type Props = { params: Promise<{ slug: string }> };
 const find = async (slug: string) => (await getSiteEntries()).find((e) => e.kind === "page" && e.published && e.slug === slug) ?? null;
@@ -19,7 +20,7 @@ export default async function SitePageEntry({ params }: Props) {
   return (
     <article className="mx-auto max-w-3xl px-5 py-12">
       <h1 className="text-3xl font-bold">{e.title}</h1>
-      <div className="mt-6 whitespace-pre-line leading-relaxed text-neutral-800">{e.body}</div>
+      <div className="mt-6"><EntryBody body={e.body} /></div>
     </article>
   );
 }

@@ -120,6 +120,8 @@ export type SiteEntry = {
   body: string;
   date: string; // ISO day
   published: boolean;
+  /** Pages only: false keeps the page out of the header menu (it is still linked from the footer). Missing means shown. */
+  inMenu?: boolean;
 };
 
 const CONTENT_KEY = "website-content";

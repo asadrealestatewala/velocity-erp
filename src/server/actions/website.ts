@@ -59,6 +59,7 @@ const entrySchema = z.object({
   body: z.string().max(30000),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a date like 2026-11-06"),
   published: z.boolean(),
+  inMenu: z.boolean().optional(),
 });
 
 export async function saveSiteEntriesAction(input: z.input<typeof entrySchema>[]) {

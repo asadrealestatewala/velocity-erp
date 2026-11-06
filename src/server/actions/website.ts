@@ -5,7 +5,7 @@ import { requireUser } from "@/server/authz";
 import { audit } from "@/server/audit";
 import { runAction } from "@/server/errors";
 import { assertModule } from "@/server/platform/guard";
-import { saveWebsite } from "@/server/website";
+import { saveSiteEntries, saveWebsite } from "@/server/website";
 
 const slug = z.string().trim().regex(/^[a-z0-9-]*$/, "Use lowercase letters, numbers and dashes").max(80);
 const imageUrl = z.string().trim().max(500).refine((v) => v === "" || v.startsWith("/") || /^https:\/\//.test(v), "Use an https:// link or a path starting with /");
@@ -46,5 +46,33 @@ export async function saveWebsiteAction(input: z.input<typeof schema>) {
     await audit({ userId: user.id, action: data.published ? "website.save_published" : "website.save_draft", entityType: "Website" });
     revalidatePath("/site");
     return { ok: true as const, message: data.published ? "Website saved and live." : "Website saved (not published)." };
+  });
+}
+
+const entrySchema = z.object({
+  slug: z.string().trim().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Use lowercase letters, numbers and dashes").max(80),
+  kind: z.enum(["post", "page"]),
+  title: z.string().trim().min(1, "Enter a title").max(150),
+  summary: z.string().trim().max(300),
+  body: z.string().max(30000),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a date like 2026-11-06"),
+  published: z.boolean(),
+});
+
+export async function saveSiteEntriesAction(input: z.input<typeof entrySchema>[]) {
+  return runAction(async () => {
+    const user = await requireUser("settings.manage");
+    await assertModule("website");
+    const entries = z.array(entrySchema).max(200).parse(input);
+    const slugs = new Set<string>();
+    for (const e of entries) {
+      const key = `${e.kind}:${e.slug}`;
+      if (slugs.has(key)) throw new Error(`Two entries share the address "${e.slug}"`);
+      slugs.add(key);
+    }
+    await saveSiteEntries(entries);
+    await audit({ userId: user.id, action: "website.content_save", entityType: "Website" });
+    revalidatePath("/site");
+    return { ok: true as const, message: "Pages and blog saved." };
   });
 }

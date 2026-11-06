@@ -104,3 +104,26 @@ export async function siteAddresses() {
   const subdomain = SITE_BASE_DOMAIN ? `https://${t.slug}.${SITE_BASE_DOMAIN}` : null;
   return { slug: t.slug, subdomain, customDomain: t.siteDomain ? `https://${t.siteDomain}` : null };
 }
+
+/** Blog posts and simple pages (About, FAQ, Support...). Stored as one JSON row (key "website-content"); bodies are plain text. */
+export type SiteEntry = {
+  slug: string;
+  kind: "post" | "page";
+  title: string;
+  summary: string;
+  body: string;
+  date: string; // ISO day
+  published: boolean;
+};
+
+const CONTENT_KEY = "website-content";
+
+export async function getSiteEntries(): Promise<SiteEntry[]> {
+  const row = await db.setting.findUnique({ where: { key: CONTENT_KEY } });
+  return Array.isArray(row?.value) ? (row!.value as unknown as SiteEntry[]) : [];
+}
+
+export async function saveSiteEntries(entries: SiteEntry[]) {
+  const value = entries as unknown as object;
+  await db.setting.upsert({ where: { key: CONTENT_KEY }, create: { key: CONTENT_KEY, value }, update: { value } });
+}

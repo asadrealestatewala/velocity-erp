@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { parsePairs, publishedWebsite, siteBase } from "@/server/website";
+import { getSiteEntries, parsePairs, publishedWebsite, siteBase } from "@/server/website";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +7,8 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const s = await publishedWebsite();
   if (!s) notFound();
   const base = await siteBase();
+  const entries = (await getSiteEntries()).filter((e) => e.published);
+  const hasPosts = entries.some((e) => e.kind === "post");
   const wa = s.whatsapp.replace(/\D/g, "");
   return (
     <div className="min-h-dvh bg-white text-neutral-900" style={{ ["--site" as string]: s.primaryColor }}>
@@ -16,6 +18,8 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
           {s.showModels && <a href={`${base}/#models`}>Models</a>}
           {s.showInventory && <a href={`${base}/inventory`}>In stock</a>}
           {s.showShowrooms && <a href={`${base}/#showrooms`}>Showrooms</a>}
+          {entries.filter((e) => e.kind === "page").map((e) => <a key={e.slug} href={`${base}/p/${e.slug}`}>{e.title}</a>)}
+          {hasPosts && <a href={`${base}/blog`}>Blog</a>}
           {parsePairs(s.navLinksText).map((l) => <a key={l.a} href={l.b || "#"}>{l.a}</a>)}
           <a href="#contact">Contact</a>
         </nav>

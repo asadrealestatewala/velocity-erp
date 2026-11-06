@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { Montserrat } from "next/font/google";
+import { MobileMenu, type MenuLink } from "./mobile-menu";
 import { getSiteEntries, parsePairs, publishedWebsite, siteBase } from "@/server/website";
 
 const montserrat = Montserrat({ subsets: ["latin"], display: "swap" });
@@ -12,25 +13,37 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const base = await siteBase();
   const entries = (await getSiteEntries()).filter((e) => e.published);
   const hasPosts = entries.some((e) => e.kind === "post");
+  const links: MenuLink[] = [
+    ...(s.showModels ? [{ label: "Models", href: `${base}/#models` }] : []),
+    ...(s.showInventory ? [{ label: "In stock", href: `${base}/inventory` }] : []),
+    ...(s.showShowrooms ? [{ label: "Showrooms", href: `${base}/#showrooms` }] : []),
+    ...entries.filter((e) => e.kind === "page" && e.inMenu !== false).map((e) => ({ label: e.title, href: `${base}/p/${e.slug}` })),
+    ...(hasPosts ? [{ label: "Blog", href: `${base}/blog` }] : []),
+    ...parsePairs(s.navLinksText).map((l) => ({ label: l.a, href: l.b || "#" })),
+    { label: "Contact", href: "#contact" },
+  ];
+  const testDrive = s.testDriveFormSlug ? `/forms/${s.testDriveFormSlug}` : null;
   const wa = s.whatsapp.replace(/\D/g, "");
   return (
     <div className={`min-h-dvh bg-white text-neutral-900 ${montserrat.className}`} style={{ ["--site" as string]: s.primaryColor }}>
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-neutral-200 bg-white/95 px-5 py-3 backdrop-blur">
-        <a href={base || "/"} className="text-lg font-bold" style={{ color: s.primaryColor }}>
-          {s.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={s.logoUrl} alt={s.siteName} className="h-8 w-auto" />
-          ) : s.siteName}
-        </a>
-        <nav className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm font-medium">
-          {s.showModels && <a href={`${base}/#models`}>Models</a>}
-          {s.showInventory && <a href={`${base}/inventory`}>In stock</a>}
-          {s.showShowrooms && <a href={`${base}/#showrooms`}>Showrooms</a>}
-          {entries.filter((e) => e.kind === "page" && e.inMenu !== false).map((e) => <a key={e.slug} href={`${base}/p/${e.slug}`}>{e.title}</a>)}
-          {hasPosts && <a href={`${base}/blog`}>Blog</a>}
-          {parsePairs(s.navLinksText).map((l) => <a key={l.a} href={l.b || "#"}>{l.a}</a>)}
-          <a href="#contact">Contact</a>
-        </nav>
+      <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white/95 backdrop-blur">
+        <div className="relative flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5 md:py-3">
+          <a href={base || "/"} className="shrink-0 text-lg font-bold" style={{ color: s.primaryColor }}>
+            {s.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={s.logoUrl} alt={s.siteName} className="h-8 w-auto" fetchPriority="high" />
+            ) : s.siteName}
+          </a>
+          <nav aria-label="Main" className="hidden flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm font-medium md:flex">
+            {links.map((l) => <a key={l.label + l.href} href={l.href}>{l.label}</a>)}
+          </nav>
+          <div className="flex items-center gap-2">
+            {testDrive && (
+              <a href={testDrive} className="rounded-full px-3.5 py-2 text-xs font-semibold text-white md:hidden" style={{ backgroundColor: s.primaryColor }}>Book a test drive</a>
+            )}
+            <MobileMenu links={links} color={s.primaryColor} />
+          </div>
+        </div>
       </header>
       {children}
       <footer id="contact" className="bg-neutral-900 px-5 py-12 text-neutral-200">

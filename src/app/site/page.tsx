@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { fmtMoney } from "@/lib/utils";
-import { publishedWebsite, siteBase } from "@/server/website";
+import { parsePairs, publishedWebsite, siteBase } from "@/server/website";
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await publishedWebsite();
@@ -23,6 +23,9 @@ export default async function SitePage() {
   const c = s.primaryColor;
   const testDrive = s.testDriveFormSlug ? `/forms/${s.testDriveFormSlug}` : null;
   const contact = s.contactFormSlug ? `/forms/${s.contactFormSlug}` : null;
+  const stats = parsePairs(s.statsText);
+  const highlights = parsePairs(s.highlightsText);
+  const programs = parsePairs(s.programsText);
   const btn = "inline-block rounded-full px-6 py-3 text-sm font-semibold";
 
   return (
@@ -67,6 +70,47 @@ export default async function SitePage() {
                     {m.price != null && <p className="mt-3 font-bold" style={{ color: c }}>{fmtMoney(m.price.toString(), m.currency)}</p>}
                   </div>
                 </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {stats.length > 0 && (
+        <section className="px-5 py-14 text-white" style={{ backgroundColor: c }}>
+          <dl className="mx-auto grid max-w-5xl gap-6 text-center sm:grid-cols-2 lg:grid-cols-4">
+            {stats.map((x) => (
+              <div key={x.a}><dt className="text-3xl font-extrabold">{x.a}</dt><dd className="mt-1 text-sm opacity-90">{x.b}</dd></div>
+            ))}
+          </dl>
+        </section>
+      )}
+
+      {highlights.length > 0 && (
+        <section id="why" className="mx-auto max-w-5xl px-5 py-14">
+          <h2 className="text-2xl font-bold">Why choose us</h2>
+          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {highlights.map((x) => (
+              <div key={x.a} className="rounded-2xl border border-neutral-200 p-5">
+                <h3 className="font-semibold" style={{ color: c }}>{x.a}</h3>
+                <p className="mt-2 text-sm text-neutral-600">{x.b}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {programs.length > 0 && (
+        <section id="programs" className="bg-neutral-50 px-5 py-14">
+          <div className="mx-auto max-w-5xl">
+            <h2 className="text-2xl font-bold">Ownership programs</h2>
+            <div className="mt-6 grid gap-5 sm:grid-cols-2">
+              {programs.map((x) => (
+                <div key={x.a} className="rounded-2xl border border-neutral-200 bg-white p-5">
+                  <h3 className="font-semibold">{x.a}</h3>
+                  <p className="mt-2 text-sm text-neutral-600">{x.b}</p>
+                  {contact && <a href={contact} className="mt-4 inline-block text-sm font-semibold" style={{ color: c }}>Enquire →</a>}
+                </div>
               ))}
             </div>
           </div>

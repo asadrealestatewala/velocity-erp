@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { publishedWebsite, siteBase } from "@/server/website";
+import { parsePairs, publishedWebsite, siteBase } from "@/server/website";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +16,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
           {s.showModels && <a href={`${base}/#models`}>Models</a>}
           {s.showInventory && <a href={`${base}/inventory`}>In stock</a>}
           {s.showShowrooms && <a href={`${base}/#showrooms`}>Showrooms</a>}
+          {parsePairs(s.navLinksText).map((l) => <a key={l.a} href={l.b || "#"}>{l.a}</a>)}
           <a href="#contact">Contact</a>
         </nav>
       </header>
@@ -27,6 +28,9 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
           {s.phone && <p>Phone: <a href={`tel:${s.phone}`} className="underline">{s.phone}</a></p>}
           {wa && <p>WhatsApp: <a href={`https://wa.me/${wa}`} className="underline">+{wa}</a></p>}
           {s.email && <p>Email: <a href={`mailto:${s.email}`} className="underline">{s.email}</a></p>}
+          {parsePairs(s.socialsText).length > 0 && (
+            <p className="flex flex-wrap gap-4 pt-2">{parsePairs(s.socialsText).map((l) => <a key={l.a} href={l.b} className="underline" target="_blank" rel="noreferrer">{l.a}</a>)}</p>
+          )}
           <p className="pt-4 text-xs text-neutral-500">© {new Date().getFullYear()} {s.siteName}</p>
         </div>
       </footer>

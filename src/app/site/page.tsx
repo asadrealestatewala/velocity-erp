@@ -4,7 +4,7 @@ import { fmtMoney } from "@/lib/utils";
 import { fmtDate } from "@/lib/utils";
 import { getSiteEntries, parsePairs, parseRows, publishedWebsite, siteBase } from "@/server/website";
 import { HeroSlider } from "./hero-slider";
-import { ExplodedScooter } from "./exploded-scooter";
+import { PhotoTour } from "./photo-tour";
 
 const SPEC_ROWS: [string, string[]][] = [
   ["Battery", ["battery_type"]],
@@ -50,21 +50,23 @@ export default async function SitePage() {
   const bannerMode = slides.length > 0 || (s.heroPlainImage && !!s.heroImageUrl);
   const posts = s.insightsTitle ? (await getSiteEntries()).filter((e) => e.kind === "post" && e.published).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3) : [];
   const featured = s.featuredTitle ? models.filter((m) => m.imageFileId) : [];
-  // Spotlight model for the "Engineered" section: prefer one with a photo, then the most spec lines (real data only).
+  // Spotlight model: the GT70 when it is in the catalogue, otherwise one with a photo and the most spec lines (real data only).
+  const gt70 = (m: { name: string }) => /gt\s*-?70/i.test(m.name);
   const spotlight = [...models].filter((m) => specLines(m.specifications).length >= 1)
-    .sort((x, y) => Number(!!y.imageFileId) - Number(!!x.imageFileId) || specLines(y.specifications).length - specLines(x.specifications).length)[0];
+    .sort((x, y) => Number(gt70(y)) - Number(gt70(x)) || Number(!!y.imageFileId) - Number(!!x.imageFileId) || specLines(y.specifications).length - specLines(x.specifications).length)[0];
   const spotlightSpecs = spotlight ? specLines(spotlight.specifications) : [];
-  const spec = new Map(Object.entries((spotlight?.specifications ?? {}) as Record<string, unknown>).map(([k, v]) => [norm(k), typeof v === "string" ? v : ""]));
+  // Photo tour: positions were checked by eye against the real GT70 product photo (x, y as fractions of the image), so it only runs for that photo.
+  const tourModel = models.find((m) => gt70(m) && /7280/.test(m.name) && m.imageFileId) ?? models.find((m) => gt70(m) && m.imageFileId);
+  const spec = new Map(Object.entries((tourModel?.specifications ?? {}) as Record<string, unknown>).map(([k, v]) => [norm(k), typeof v === "string" ? v : ""]));
   const sp = (...k: string[]) => k.map((x) => spec.get(x)).filter(Boolean).join(" · ");
-  const explodedLabels = spotlight ? [
-    { part: "battery", title: "Battery", value: sp("battery_type", "battery_capacity") },
-    { part: "motor", title: "Motor", value: [spec.get("rated_motor_power"), spec.get("peak_motor_power") && `${spec.get("peak_motor_power")} peak`].filter(Boolean).join(" · ") },
-    { part: "headlight", title: "Headlamp", value: sp("headlamp") },
-    { part: "frontWheel", title: "Tyres", value: sp("tyre_size") },
-    { part: "fork", title: "Suspension", value: sp("shock_absorption") },
-    { part: "handlebar", title: "Top speed", value: sp("max_speed") },
-    { part: "floor", title: "Range", value: sp("range") },
-    { part: "rearWheel", title: "Brakes", value: sp("brake_type") },
+  const tourPoints = tourModel ? [
+    { x: 0.35, y: 0.46, title: "Headlamp", value: sp("headlamp") },
+    { x: 0.51, y: 0.21, title: "Top speed", value: sp("max_speed") },
+    { x: 0.34, y: 0.71, title: "Suspension", value: sp("shock_absorption") },
+    { x: 0.30, y: 0.78, title: "Brakes", value: sp("brake_type") },
+    { x: 0.58, y: 0.66, title: "Range", value: sp("range") },
+    { x: 0.67, y: 0.52, title: "Battery", value: sp("battery_type", "battery_capacity") },
+    { x: 0.68, y: 0.76, title: "Motor", value: [spec.get("motor_type") && `${spec.get("motor_type")} motor`, spec.get("rated_motor_power"), spec.get("peak_motor_power") && `${spec.get("peak_motor_power")} peak`].filter(Boolean).join(" · ") },
   ].filter((l) => l.value) : [];
   const btn = "inline-block rounded-full px-5 py-2.5 text-sm sm:px-6 sm:py-3 font-semibold";
 
@@ -156,7 +158,7 @@ export default async function SitePage() {
         </section>
       )}
 
-      {spotlight && explodedLabels.length >= 3 && <ExplodedScooter labels={explodedLabels} name={spotlight.name} color={c} />}
+      {tourModel && tourPoints.length >= 3 && <PhotoTour src={`/api/files/${tourModel.imageFileId}`} name={tourModel.name} points={tourPoints} color={c} />}
 
       {models.length > 0 && (
         <section id="models" className="bg-neutral-50 px-5 py-10 sm:py-14">

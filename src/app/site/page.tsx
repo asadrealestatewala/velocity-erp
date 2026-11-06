@@ -49,6 +49,8 @@ export default async function SitePage() {
   const bannerMode = slides.length > 0 || (s.heroPlainImage && !!s.heroImageUrl);
   const posts = s.insightsTitle ? (await getSiteEntries()).filter((e) => e.kind === "post" && e.published).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3) : [];
   const featured = s.featuredTitle ? models.filter((m) => m.imageFileId) : [];
+  const spotlight = models.find((m) => m.imageFileId && specLines(m.specifications).length >= 3);
+  const spotlightSpecs = spotlight ? specLines(spotlight.specifications) : [];
   const btn = "inline-block rounded-full px-5 py-2.5 text-sm sm:px-6 sm:py-3 font-semibold";
 
   return (
@@ -104,6 +106,32 @@ export default async function SitePage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {spotlight && (
+        <section id="engineered" className="overflow-hidden bg-white px-5 py-12 sm:py-20">
+          <div className="mx-auto max-w-6xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: c }}>{spotlight.category || "Performance"}</p>
+            <h2 className="mt-2 text-2xl font-extrabold sm:text-4xl">Engineered inside and out</h2>
+            <div className="sm-spec mt-8 grid items-center gap-6 md:grid-cols-[1fr_1.2fr_1fr]">
+              <ul data-sm-nofx className="order-2 grid gap-4 md:order-1">
+                {spotlightSpecs.filter((_, i) => i % 2 === 0).map(([k, v]) => (
+                  <li key={k} className="sm-callout sm-callout-l rounded-2xl border border-neutral-200 p-4 md:text-right"><p className="text-xs uppercase tracking-wide text-neutral-500">{k}</p><p className="mt-1 text-lg font-bold">{v}</p></li>
+                ))}
+              </ul>
+              <a href={`${base}/models/${spotlight.id}`} className="sm-spec-bike order-1 block md:order-2" aria-label={spotlight.name}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/api/files/${spotlight.imageFileId}`} alt={spotlight.name} className="mx-auto aspect-[4/3] w-full object-contain" loading="lazy" decoding="async" />
+                <span className="mt-2 block text-center text-sm font-semibold">{spotlight.name}</span>
+              </a>
+              <ul data-sm-nofx className="order-3 grid gap-4">
+                {spotlightSpecs.filter((_, i) => i % 2 === 1).map(([k, v]) => (
+                  <li key={k} className="sm-callout sm-callout-r rounded-2xl border border-neutral-200 p-4"><p className="text-xs uppercase tracking-wide text-neutral-500">{k}</p><p className="mt-1 text-lg font-bold">{v}</p></li>
+                ))}
+              </ul>
             </div>
           </div>
         </section>

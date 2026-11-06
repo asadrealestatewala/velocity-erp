@@ -105,6 +105,7 @@ export function SiteMotion() {
     const header = root.querySelector("header");
     const setHeaderH = () => header && root.style.setProperty("--sm-header", `${header.offsetHeight}px`);
     if (!lite) { setHeaderH(); addEventListener("resize", setHeaderH); cleanups.push(() => removeEventListener("resize", setHeaderH)); }
+    const specs = Array.from(root.querySelectorAll<HTMLElement>(".sm-spec"));
     const heroImg = root.querySelector<HTMLElement>("[data-sm-hero] img.absolute");
     const hero = root.querySelector<HTMLElement>("[data-sm-hero]");
     let raf = 0;
@@ -115,6 +116,11 @@ export function SiteMotion() {
         const y = scrollY; const max = document.documentElement.scrollHeight - innerHeight;
         if (bar.current) bar.current.style.transform = `scaleX(${max > 0 ? Math.min(1, y / max) : 0})`;
         header?.classList.toggle("sm-scrolled", y > 8);
+        // Scroll-scrubbed "expand" progress (0..1) for exploded-view style groups.
+        specs.forEach((el) => {
+          const r = el.getBoundingClientRect();
+          el.style.setProperty("--sm-p", String(Math.max(0, Math.min(1, (innerHeight * 0.9 - r.top) / (r.height * 0.8 + 1)))));
+        });
         if (heroImg && hero && y < hero.offsetTop + hero.offsetHeight) heroImg.style.transform = `translate3d(0, ${(y - hero.offsetTop) * 0.14}px, 0) scale(1.06)`;
       });
     };

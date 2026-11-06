@@ -121,7 +121,7 @@ export default async function SitePage() {
             <div className="sm-spec mt-8 grid items-center gap-6 md:grid-cols-[1fr_1.2fr_1fr]">
               <ul data-sm-nofx className="order-2 grid gap-4 md:order-1">
                 {spotlightSpecs.filter((_, i) => i % 2 === 0).map(([k, v]) => (
-                  <li key={k} className="sm-callout sm-callout-l rounded-2xl border border-neutral-200 p-4 md:text-right"><p className="text-xs uppercase tracking-wide text-neutral-500">{k}</p><p className="mt-1 text-lg font-bold">{v}</p></li>
+                  <li key={k} data-sm-nofx className="sm-callout sm-callout-l rounded-2xl border border-neutral-200 p-4 md:text-right"><p className="text-xs uppercase tracking-wide text-neutral-500">{k}</p><p className="mt-1 text-lg font-bold">{v}</p></li>
                 ))}
               </ul>
               <a href={`${base}/models/${spotlight.id}`} className="sm-spec-bike order-1 block md:order-2" aria-label={spotlight.name}>
@@ -135,7 +135,7 @@ export default async function SitePage() {
               </a>
               <ul data-sm-nofx className="order-3 grid gap-4">
                 {spotlightSpecs.filter((_, i) => i % 2 === 1).map(([k, v]) => (
-                  <li key={k} className="sm-callout sm-callout-r rounded-2xl border border-neutral-200 p-4"><p className="text-xs uppercase tracking-wide text-neutral-500">{k}</p><p className="mt-1 text-lg font-bold">{v}</p></li>
+                  <li key={k} data-sm-nofx className="sm-callout sm-callout-r rounded-2xl border border-neutral-200 p-4"><p className="text-xs uppercase tracking-wide text-neutral-500">{k}</p><p className="mt-1 text-lg font-bold">{v}</p></li>
                 ))}
               </ul>
             </div>

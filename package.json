@@ -27,6 +27,7 @@
     "forms:refresh-templates": "tsx --conditions=react-server scripts/refresh-form-templates.ts",
     "postinstall": "node scripts/embed-migrations.mjs && prisma generate && prisma generate --schema prisma/platform/schema.prisma",
     "platform:deploy": "prisma migrate deploy --schema prisma/platform/schema.prisma",
+    "website:seed": "tsx --conditions=react-server scripts/seed-website.ts",
     "platform:lifecycle": "tsx --conditions=react-server scripts/run-lifecycle.ts",
     "tenants:export": "tsx --conditions=react-server scripts/export-workspace.ts",
     "tenants:migrate": "tsx --conditions=react-server scripts/migrate-tenants.ts",

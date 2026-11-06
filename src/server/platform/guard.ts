@@ -55,7 +55,7 @@ export async function assertWithinPlan(limit: keyof typeof LABEL, adding = 1): P
 }
 
 /** Throws unless the plan includes a module ("procurement" | "apiAccess" | "assistant"). */
-export async function assertModule(module: keyof Pick<Entitlements, "procurement" | "apiAccess" | "assistant">): Promise<void> {
+export async function assertModule(module: keyof Pick<Entitlements, "procurement" | "apiAccess" | "assistant" | "website">): Promise<void> {
   const t = await currentTenant();
   if (t.isLegacy) return;
   const ent = await entitlementsFor(t);

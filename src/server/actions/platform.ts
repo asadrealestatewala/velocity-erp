@@ -189,6 +189,21 @@ export async function saveNotesAction(id: string, input: { notes: string }) {
   });
 }
 
+/** Connects (or clears) the custom domain that serves a workspace's public website. DNS (CNAME to the app host) is the operator's job. */
+export async function setSiteDomainAction(id: string, input: { domain: string }) {
+  return runAction(async () => {
+    const a = await requireAdminAction("tenants.manage");
+    const raw = String(input.domain ?? "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+    if (raw && !/^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/.test(raw)) throw new AppError("Enter a domain like www.example.com.", "VALIDATION");
+    const taken = raw ? await platformDb().tenant.findFirst({ where: { siteDomain: raw, NOT: { id } }, select: { slug: true } }) : null;
+    if (taken) throw new AppError(`That domain is already used by "${taken.slug}".`, "VALIDATION");
+    const t = await platformDb().tenant.update({ where: { id }, data: { siteDomain: raw || null } });
+    refreshTenant(t.slug);
+    await platformAudit({ admin: a, action: "tenant.site_domain", targetType: "Tenant", targetId: id, detail: { domain: raw || null } });
+    return { ok: true as const, message: raw ? "Domain saved. Point its DNS at this app and add it to your host." : "Domain removed." };
+  });
+}
+
 // ───────────────────────── payments, refunds
 
 export async function confirmPaymentAction(id: string) {
@@ -228,7 +243,7 @@ export async function refundAction(invoiceId: string, input: z.input<typeof refu
 const planSchema = z.object({
   name: z.string().trim().min(2).max(60), description: z.string().trim().max(200).optional().nullable(),
   maxUsers: z.number().int().min(1), maxDealerships: z.number().int().min(0), maxContacts: z.number().int().min(0), maxStorageMb: z.number().int().min(0),
-  apiAccess: z.boolean(), procurement: z.boolean(), assistant: z.boolean(), isVisible: z.boolean(), isRecommended: z.boolean(), trialEligible: z.boolean(),
+  apiAccess: z.boolean(), website: z.boolean(), procurement: z.boolean(), assistant: z.boolean(), isVisible: z.boolean(), isRecommended: z.boolean(), trialEligible: z.boolean(),
   graceDays: z.number().int().min(0).max(60), features: z.array(z.string().trim().min(1).max(120)).max(12),
 });
 const lines = (x: unknown) => (typeof x === "string" ? x.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : x);

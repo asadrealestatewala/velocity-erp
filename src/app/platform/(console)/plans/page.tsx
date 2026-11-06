@@ -38,6 +38,7 @@ export default async function PlansPage() {
                 { name: "features", label: "Feature bullets (one per line)", type: "textarea", defaultValue: (Array.isArray(p.features) ? (p.features as string[]) : []).join("\n") },
                 { name: "procurement", label: "Includes procurement & inventory", type: "checkbox", defaultValue: p.procurement },
                 { name: "assistant", label: "Includes the AI assistant", type: "checkbox", defaultValue: p.assistant },
+                { name: "website", label: "Includes the public website builder", type: "checkbox", defaultValue: p.website },
                 { name: "apiAccess", label: "Includes API access", type: "checkbox", defaultValue: p.apiAccess },
                 { name: "isVisible", label: "Show on the pricing page", type: "checkbox", defaultValue: p.isVisible },
                 { name: "isRecommended", label: "Mark as recommended", type: "checkbox", defaultValue: p.isRecommended },

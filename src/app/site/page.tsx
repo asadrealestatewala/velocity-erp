@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
 import { fmtMoney } from "@/lib/utils";
-import { parsePairs, publishedWebsite, siteBase } from "@/server/website";
+import { parsePairs, parseRows, publishedWebsite, siteBase } from "@/server/website";
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await publishedWebsite();
@@ -26,6 +26,9 @@ export default async function SitePage() {
   const stats = parsePairs(s.statsText);
   const highlights = parsePairs(s.highlightsText);
   const programs = parsePairs(s.programsText);
+  const impact = parseRows(s.impactText);
+  const cards = parseRows(s.cardsText);
+  const darkWhy = !!s.highlightsTitle;
   const btn = "inline-block rounded-full px-5 py-2.5 text-sm sm:px-6 sm:py-3 font-semibold";
 
   return (
@@ -90,8 +93,8 @@ export default async function SitePage() {
         </section>
       )}
 
-      {highlights.length > 0 && (
-        <section id="why" className="mx-auto max-w-5xl px-5 py-10 sm:py-14">
+      {highlights.length > 0 && !darkWhy && (
+        <section id="why" className="mx-auto max-w-5xl px-5 py-14">
           <h2 className="text-2xl font-bold">Why choose us</h2>
           <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {highlights.map((x) => (
@@ -100,6 +103,65 @@ export default async function SitePage() {
                 <p className="mt-2 text-sm text-neutral-600">{x.b}</p>
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {highlights.length > 0 && darkWhy && (
+        <section id="why" className="bg-neutral-800 px-5 py-14 text-white">
+          <div className="mx-auto max-w-5xl">
+            <h2 className="text-2xl font-bold">{s.highlightsTitle}</h2>
+            {s.highlightsIntro && <p className="mt-4 max-w-2xl text-neutral-200">{s.highlightsIntro}</p>}
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {highlights.map((x) => (
+                <details key={x.a} className="group rounded-xl bg-black p-6">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
+                    <h3 className="text-lg font-semibold">{x.a}</h3>
+                    <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white text-xl font-bold leading-none text-black group-open:rotate-45">+</span>
+                  </summary>
+                  <p className="mt-4 text-sm text-neutral-300">{x.b}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {cards.length > 0 && (
+        <section className="bg-neutral-100 px-5 py-14">
+          <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-2">
+            {cards.map(([title, text, link]) => (
+              <a key={title} href={link ? (link.startsWith("/#") ? `${base}${link}` : link) : undefined} className="block rounded-3xl bg-white p-8 text-center shadow-sm transition hover:shadow-md">
+                {s.logoUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.logoUrl} alt="" className="mx-auto h-8 w-auto" />
+                )}
+                <h3 className="mt-4 text-2xl font-extrabold uppercase" style={{ color: c }}>{title}</h3>
+                {text && <p className="mt-3 text-sm text-neutral-500">{text}</p>}
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {impact.length > 0 && (
+        <section id="impact" className="bg-neutral-800 px-5 py-14 text-white">
+          <div className="mx-auto max-w-5xl">
+            {s.impactTitle && <h2 className="text-center text-3xl font-extrabold">{s.impactTitle}</h2>}
+            <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {impact.map(([value, label, image]) => (
+                <div key={value} className="relative flex min-h-56 flex-col justify-center overflow-hidden rounded-3xl bg-black p-6">
+                  {image && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
+                  )}
+                  <div className="relative">
+                    <p className="text-2xl font-extrabold sm:text-3xl" style={{ color: c }}>{value}</p>
+                    <p className="mt-2 text-neutral-100">{label}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       )}

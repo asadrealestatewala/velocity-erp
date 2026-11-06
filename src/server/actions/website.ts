@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/server/authz";
 import { audit } from "@/server/audit";
 import { runAction } from "@/server/errors";
+import { assertModule } from "@/server/platform/guard";
 import { saveWebsite } from "@/server/website";
 
 const slug = z.string().trim().regex(/^[a-z0-9-]*$/, "Use lowercase letters, numbers and dashes").max(80);
@@ -24,6 +25,7 @@ const schema = z.object({
   address: z.string().trim().max(300),
   showModels: z.boolean(),
   showShowrooms: z.boolean(),
+  showInventory: z.boolean(),
   testDriveFormSlug: slug,
   contactFormSlug: slug,
   seoTitle: z.string().trim().max(70),
@@ -33,6 +35,7 @@ const schema = z.object({
 export async function saveWebsiteAction(input: z.input<typeof schema>) {
   return runAction(async () => {
     const user = await requireUser("settings.manage");
+    await assertModule("website");
     const data = schema.parse(input);
     await saveWebsite(data);
     await audit({ userId: user.id, action: data.published ? "website.save_published" : "website.save_draft", entityType: "Website" });

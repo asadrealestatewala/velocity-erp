@@ -7,7 +7,7 @@ import { startViewAsAction } from "@/server/actions/impersonation";
 import { cancelDeletionAction, scheduleDeletionAction } from "@/server/actions/platform";
 import { setFlagOverrideAction } from "@/server/actions/platform";
 import { flagsFor } from "@/server/platform/flags";
-import { changePlanAction, grantAddOnAction, recordPaymentAction, saveNotesAction, setWorkspaceStatusAction, trialAction } from "@/server/actions/platform";
+import { changePlanAction, grantAddOnAction, recordPaymentAction, saveNotesAction, setSiteDomainAction, setWorkspaceStatusAction, trialAction } from "@/server/actions/platform";
 import { adminCan, requireAdminPage } from "@/server/platform/admin-auth";
 import { deletionBlocker } from "@/server/platform/purge";
 import { invoiceNumber, METHOD_LABEL } from "@/server/platform/billing";
@@ -258,6 +258,15 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
               );
             })}
           </ul>
+        </Card>
+      )}
+
+      {can("tenants.manage") && (
+        <Card className="mt-4">
+          <CardHeader title="Website domain" description="Custom domain for this workspace's public website. Point its CNAME at the app, add it to the host, then save it here." />
+          <div className="p-5">
+            <ActionForm submitLabel="Save domain" action={setSiteDomainAction.bind(null, t.id)} fields={[{ name: "domain", label: "Domain", optional: true, defaultValue: t.siteDomain ?? "" }]} />
+          </div>
         </Card>
       )}
 

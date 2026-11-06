@@ -7,10 +7,12 @@ import type { Tenant } from "@yadea/platform-client";
 import { AppError } from "@/server/errors";
 import { billingState } from "./billing-state";
 import { maintenanceActive } from "./settings";
-import { cachedTenant, DEFAULT_SLUG, getTenant, listActiveTenants, tenantDbUrl } from "./tenants";
+import { cachedTenant, DEFAULT_SLUG, getTenant, listActiveTenants, tenantDbUrl, tenantSlugForHost } from "./tenants";
 
 export const TENANT_COOKIE = "yadea_tenant";
 export const TENANT_HEADER = "x-tenant";
+/** Set by the middleware when the request arrived on a workspace website hostname (custom domain or subdomain). */
+export const SITE_HOST_HEADER = "x-site-host";
 /** Present while a platform operator is "viewing as" a workspace user. While it is set, every database write in a request is refused. */
 export const VIEW_AS_COOKIE = "yadea_viewas";
 
@@ -33,6 +35,8 @@ const requestSlug = cache(async (): Promise<string | null> => {
     const h = await headers();
     const fromHeader = h.get(TENANT_HEADER)?.toLowerCase();
     if (fromHeader) return fromHeader;
+    const siteHost = h.get(SITE_HOST_HEADER);
+    if (siteHost) return (await tenantSlugForHost(siteHost)) ?? "__unknown_site__";
     const jar = await cookies();
     return jar.get(TENANT_COOKIE)?.value?.toLowerCase() ?? null;
   } catch (e) {

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { FaqList } from "./faq-list";
 
 /**
  * Renders a page or post body written as plain text: "## " / "### " headings, "- " list items,
@@ -40,10 +41,43 @@ function inline(text: string): ReactNode {
   return parts.map((p, i) => (p.startsWith("**") && p.endsWith("**") && p.length > 4 ? <strong key={i}>{p.slice(2, -2)}</strong> : p));
 }
 
+type Chunk = { faq: false; blocks: string[] } | { faq: true; items: { q: string; a: string[] }[] };
+const isHeading = (b: string) => /^#{2,3} /.test(b);
+const isQuestion = (b: string) => isHeading(b) && /\?$/.test(b.trim());
+
+/** Headings that end in "?" followed by their answer paragraphs are collected into an interactive FAQ list. */
+function chunk(blocks: string[]): Chunk[] {
+  const out: Chunk[] = [];
+  let i = 0;
+  while (i < blocks.length) {
+    const b = blocks[i];
+    if (isQuestion(b)) {
+      const item = { q: b.replace(/^#{2,3} /, ""), a: [] as string[] };
+      i++;
+      while (i < blocks.length && !isHeading(blocks[i])) item.a.push(blocks[i++]);
+      const last = out[out.length - 1];
+      if (last?.faq) last.items.push(item); else out.push({ faq: true, items: [item] });
+    } else {
+      const last = out[out.length - 1];
+      if (last && !last.faq) last.blocks.push(b); else out.push({ faq: false, blocks: [b] });
+      i++;
+    }
+  }
+  return out;
+}
+
 export function EntryBody({ body }: { body: string }) {
   const blocks = body.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
   return (
     <div className="space-y-5 text-[17px] leading-8 text-neutral-700">
+      {chunk(blocks).map((c, ci) => c.faq ? <FaqList key={`f${ci}`} items={c.items.map((x) => ({ q: x.q, a: x.a.join("\n\n") }))} /> : <Plain key={`p${ci}`} blocks={c.blocks} />)}
+    </div>
+  );
+}
+
+function Plain({ blocks }: { blocks: string[] }) {
+  return (
+    <>
       {group(blocks).map((n, i) => {
         if (n.t === "stats") {
           return (
@@ -88,6 +122,6 @@ export function EntryBody({ body }: { body: string }) {
         }
         return <p key={i} className="whitespace-pre-line">{inline(b)}</p>;
       })}
-    </div>
+    </>
   );
 }

@@ -157,6 +157,8 @@ export type SiteEntry = {
   published: boolean;
   /** Pages only: false keeps the page out of the header menu (it is still linked from the footer). Missing means shown. */
   inMenu?: boolean;
+  /** Optional cover photo shown behind the page or post heading (https:// link or a path starting with /). */
+  cover?: string;
 };
 
 const CONTENT_KEY = "website-content";

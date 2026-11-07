@@ -13,6 +13,11 @@ const SPEC_ROWS: [string, string[]][] = [
   ["Top speed", ["max_speed"]],
   ["Range", ["range"]],
 ];
+/** Home-page text blocks that get a cover photo behind them (matched by title). The photo ships with the site, so no upload is needed. */
+const COVER_BLOCKS: [RegExp, string][] = [
+  [/ttfar/i, "/brand/battery-city-cover.jpg"],
+  [/lithium\s+iron\s+phosphate/i, "/brand/battery-city-cover.jpg"],
+];
 const norm = (k: string) => k.toLowerCase().replace(/[^a-z0-9]+/g, "_");
 function specLines(specs: unknown): [string, string][] {
   const map = new Map(Object.entries((specs ?? {}) as Record<string, unknown>).map(([k, v]) => [norm(k), v]));
@@ -194,20 +199,42 @@ export default async function SitePage() {
         </section>
       )}
 
-      {blocks.map(([title, text, points, label, link, image], k) => (
+      {blocks.map(([title, text, points, label, link, image], k) => {
+        const cover = COVER_BLOCKS.find(([re]) => re.test(title ?? ""))?.[1];
+        const pills = points && (
+          <ul className="mt-5 flex flex-wrap gap-2">
+            {points.split(";").map((x) => x.trim()).filter(Boolean).map((x) => (
+              <li key={x} className="rounded-full px-4 py-1.5 text-sm font-semibold text-white" style={{ backgroundColor: c }}>{x}</li>
+            ))}
+          </ul>
+        );
+        const cta = label && link && <a href={link === "/#showrooms" ? `${base}/showrooms` : link.startsWith("/#") ? `${base}${link}` : link} className={`${btn} mt-6 text-white`} style={{ backgroundColor: c }}>{label}</a>;
+        if (cover) {
+          // Cover-photo block: the photo sits behind the text; a white wash keeps the copy readable (strong on phones, fading to the photo on desktop).
+          return (
+            <section key={title} className="relative overflow-hidden bg-white px-5 py-12 text-neutral-900 sm:py-16 md:py-24">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover object-[78%_center]" loading="lazy" decoding="async" />
+              <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-white/95 via-white/70 to-white/5 md:bg-gradient-to-r md:from-white/95 md:via-white/75 md:to-white/0" />
+              <div className="relative mx-auto max-w-5xl">
+                <div className="max-w-xl pb-40 md:pb-16">
+                  <h2 className="text-2xl font-extrabold sm:text-3xl">{title}</h2>
+                  {text && <p className="mt-4 text-neutral-700">{text}</p>}
+                  {pills}
+                  {cta}
+                </div>
+              </div>
+            </section>
+          );
+        }
+        return (
         <section key={title} className={`px-5 py-12 sm:py-16 ${k % 2 === 0 ? "bg-neutral-50 text-neutral-900" : "bg-white text-neutral-900"}`}>
           <div className={`mx-auto grid max-w-5xl items-center gap-8 ${image ? "md:grid-cols-2" : ""}`}>
             <div>
               <h2 className="text-2xl font-extrabold sm:text-3xl">{title}</h2>
               {text && <p className="mt-4 text-neutral-600">{text}</p>}
-              {points && (
-                <ul className="mt-5 flex flex-wrap gap-2">
-                  {points.split(";").map((x) => x.trim()).filter(Boolean).map((x) => (
-                    <li key={x} className="rounded-full px-4 py-1.5 text-sm font-semibold text-white" style={{ backgroundColor: c }}>{x}</li>
-                  ))}
-                </ul>
-              )}
-              {label && link && <a href={link === "/#showrooms" ? `${base}/showrooms` : link.startsWith("/#") ? `${base}${link}` : link} className={`${btn} mt-6 text-white`} style={{ backgroundColor: c }}>{label}</a>}
+              {pills}
+              {cta}
             </div>
             {image && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -215,7 +242,8 @@ export default async function SitePage() {
             )}
           </div>
         </section>
-      ))}
+        );
+      })}
 
       {highlights.length > 0 && !darkWhy && (
         <section id="why" className="mx-auto max-w-5xl px-5 py-14">

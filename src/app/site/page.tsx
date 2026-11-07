@@ -4,7 +4,7 @@ import { fmtMoney } from "@/lib/utils";
 import { fmtDate } from "@/lib/utils";
 import { getSiteEntries, parsePairs, parseRows, publishedWebsite, siteBase } from "@/server/website";
 import { HeroSlider } from "./hero-slider";
-import { PhotoTour } from "./photo-tour";
+import { PhotoExplode, type Feature } from "./photo-explode";
 
 const SPEC_ROWS: [string, string[]][] = [
   ["Battery", ["battery_type"]],
@@ -68,19 +68,20 @@ export default async function SitePage() {
   }).filter((m, i, a): m is NonNullable<typeof m> => !!m && a.indexOf(m) === i);
   const popular = popularPicks.length > 0 ? popularPicks : models;
   const spotlightSpecs = spotlight ? specLines(spotlight.specifications) : [];
-  // Photo tour: positions were checked by eye against the real GT70 product photo (x, y as fractions of the image), so it only runs for that photo.
-  const tourModel = models.find((m) => gt70(m) && /7280/.test(m.name) && m.imageFileId) ?? models.find((m) => gt70(m) && m.imageFileId);
+  // GT70 "come apart" section: uses the bundled GT70-with-trunk photo, and only real spec values (a feature without a value is skipped).
+  const tourModel = models.find((m) => gt70(m) && /7280/.test(m.name)) ?? models.find((m) => gt70(m));
   const spec = new Map(Object.entries((tourModel?.specifications ?? {}) as Record<string, unknown>).map(([k, v]) => [norm(k), typeof v === "string" ? v : ""]));
   const sp = (...k: string[]) => k.map((x) => spec.get(x)).filter(Boolean).join(" · ");
-  const tourPoints = tourModel ? [
-    { x: 0.35, y: 0.46, title: "Headlamp", value: sp("headlamp") },
-    { x: 0.51, y: 0.21, title: "Top speed", value: sp("max_speed") },
-    { x: 0.34, y: 0.71, title: "Suspension", value: sp("shock_absorption") },
-    { x: 0.30, y: 0.78, title: "Brakes", value: sp("brake_type") },
-    { x: 0.58, y: 0.66, title: "Range", value: sp("range") },
-    { x: 0.67, y: 0.52, title: "Battery", value: sp("battery_type", "battery_capacity") },
-    { x: 0.68, y: 0.76, title: "Motor", value: [spec.get("motor_type") && `${spec.get("motor_type")} motor`, spec.get("rated_motor_power"), spec.get("peak_motor_power") && `${spec.get("peak_motor_power")} peak`].filter(Boolean).join(" · ") },
-  ].filter((l) => l.value) : [];
+  const tourFeatures = tourModel ? ([
+    { part: "top", title: "Top speed", value: sp("max_speed") },
+    { part: "front", title: "Headlamp", value: sp("headlamp") },
+    { part: "wheel", title: "Suspension", value: sp("shock_absorption") },
+    { part: "wheel", title: "Brakes", value: sp("brake_type") },
+    { part: "body", title: "Battery", value: sp("battery_type", "battery_capacity") },
+    { part: "body", title: "Range", value: sp("range") },
+    { part: "rear", title: "Motor", value: [spec.get("motor_type") && `${spec.get("motor_type")} motor`, spec.get("rated_motor_power"), spec.get("peak_motor_power") && `${spec.get("peak_motor_power")} peak`].filter(Boolean).join(" · ") },
+  ] as Feature[]).filter((l) => l.value) : [];
+  const tourName = (tourModel?.name ?? "").replace(/\s*-?\s*72[58]0\b/i, "").trim();
   const btn = "inline-block rounded-full px-5 py-2.5 text-sm sm:px-6 sm:py-3 font-semibold";
 
   return (
@@ -171,7 +172,7 @@ export default async function SitePage() {
         </section>
       )}
 
-      {tourModel && tourPoints.length >= 3 && <PhotoTour src={`/api/files/${tourModel.imageFileId}`} name={tourModel.name} points={tourPoints} color={c} />}
+      {tourModel && tourFeatures.length >= 3 && <PhotoExplode src="/brand/gt70-trunk.webp" name={tourName} features={tourFeatures} color={c} />}
 
       {popular.length > 0 && (
         <section id="models" className="bg-neutral-50 px-5 py-10 sm:py-14">

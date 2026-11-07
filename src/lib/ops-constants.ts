@@ -10,6 +10,28 @@ export const SALES_ORDER_STATUS: Record<string, StatusMeta> = {
   CANCELLED: { label: "Cancelled", tone: "gray" },
 };
 
+export const QUOTATION_STATUS: Record<string, StatusMeta> = {
+  DRAFT: { label: "Draft", tone: "amber" },
+  SENT: { label: "Sent", tone: "blue" },
+  ACCEPTED: { label: "Accepted", tone: "green" },
+  REJECTED: { label: "Rejected", tone: "red" },
+  CONVERTED: { label: "Converted to order", tone: "green" },
+};
+
+export const INVOICE_STATUS: Record<string, StatusMeta> = {
+  ISSUED: { label: "Unpaid", tone: "amber" },
+  PAID: { label: "Paid", tone: "green" },
+  VOID: { label: "Void", tone: "gray" },
+};
+
+export const RETURN_STATUS: Record<string, StatusMeta> = {
+  PENDING: { label: "Awaiting approval", tone: "amber" },
+  COMPLETED: { label: "Refunded", tone: "green" },
+  REJECTED: { label: "Rejected", tone: "red" },
+};
+
+export const REFUND_METHOD_LABEL = { CASH: "Cash", BANK_TRANSFER: "Bank transfer", CARD: "Card", CHEQUE: "Cheque", MOBILE_WALLET: "Mobile wallet", STORE_CREDIT: "Store credit" } as const;
+
 export const PROCUREMENT_STATUS: Record<string, StatusMeta> = {
   SUBMITTED: { label: "Received", tone: "blue" },
   APPROVED: { label: "Approved", tone: "violet" },

@@ -20,6 +20,7 @@ export default async function SitePageEntry({ params }: Props) {
   const e = await find(slug);
   if (!e) notFound();
   const isSupport = /support|help|ticket/i.test(e.slug);
+  const contactHref = site?.contactFormSlug ? `/forms/${site.contactFormSlug}` : `${base}/#contact`;
   const own = e.cover && /^(https:\/\/|\/)[^\s"'()]+$/.test(e.cover) ? e.cover : null;
   const cover = own ?? (isSupport ? "/brand/support-cover.jpg" : null);
   return (
@@ -32,8 +33,9 @@ export default async function SitePageEntry({ params }: Props) {
             <p className="text-xs font-bold uppercase tracking-[0.25em] sm:text-sm" style={{ color: "var(--site)" }}>Customer care</p>
             <h1 className="mt-3 max-w-2xl text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl">{e.title}</h1>
             <div className="mt-5 h-1 w-14 rounded-full" style={{ backgroundColor: "var(--site)" }} />
-            {e.summary && <p className="mt-5 max-w-xl text-base font-medium leading-7 text-neutral-700 sm:text-lg sm:leading-8">{e.summary}</p>}
-            <ShareButton title={e.title} light />
+            {/* The stored summary is one long run-on paragraph, so the hero shows a short subline built from its facts instead. */}
+            <p className="mt-5 max-w-xl text-base font-medium leading-7 text-neutral-700 sm:text-lg sm:leading-8">Register your product and our team will reply within 48 business hours.</p>
+            <a href={contactHref} className="mt-7 inline-flex items-center rounded-full px-8 py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg" style={{ backgroundColor: "var(--site)" }}>Submit a ticket</a>
           </div>
         </header>
       ) : (
@@ -48,7 +50,7 @@ export default async function SitePageEntry({ params }: Props) {
       )}
       <div className="mx-auto max-w-3xl px-5 py-10 sm:py-14">
         <EntryBody body={e.body} />
-        {site && isSupport && <SupportContact phone={site.phone} email={site.email} whatsapp={site.whatsapp} contactHref={site.contactFormSlug ? `/forms/${site.contactFormSlug}` : `${base}/#contact`} />}
+        {site && isSupport && <SupportContact phone={site.phone} email={site.email} whatsapp={site.whatsapp} contactHref={contactHref} />}
       </div>
     </article>
   );

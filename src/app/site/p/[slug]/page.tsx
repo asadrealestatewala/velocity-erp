@@ -49,7 +49,7 @@ export default async function SitePageEntry({ params }: Props) {
       </header>
       )}
       <div className="mx-auto max-w-3xl px-5 py-10 sm:py-14">
-        <EntryBody body={e.body} />
+        <EntryBody body={e.body} contactHref={contactHref} />
         {site && isSupport && <SupportContact phone={site.phone} email={site.email} whatsapp={site.whatsapp} contactHref={contactHref} />}
       </div>
     </article>

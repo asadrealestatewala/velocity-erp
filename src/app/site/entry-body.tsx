@@ -99,11 +99,11 @@ function splitTokens(b: string): string[] {
   return lines;
 }
 
-export function EntryBody({ body }: { body: string }) {
+export function EntryBody({ body, contactHref }: { body: string; contactHref?: string }) {
   const blocks = body.replace(/\r\n?/g, "\n").split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean).flatMap(splitTokens);
   return (
     <div className="space-y-5 text-[17px] leading-8 text-neutral-700">
-      {chunk(blocks).map((c, ci) => c.faq ? <FaqList key={`f${ci}`} items={c.items.map((x) => ({ q: x.q, a: x.a.join("\n\n") }))} /> : <Plain key={`p${ci}`} blocks={c.blocks} />)}
+      {chunk(blocks).map((c, ci) => c.faq ? <FaqList key={`f${ci}`} items={c.items.map((x) => ({ q: x.q, a: x.a.join("\n\n") }))} contactHref={contactHref} /> : <Plain key={`p${ci}`} blocks={c.blocks} />)}
     </div>
   );
 }

@@ -85,7 +85,7 @@ export default async function SiteModelPage({ params }: Props) {
       <section className="mx-auto max-w-6xl px-5 pb-10 pt-6 sm:pt-8">
         <nav aria-label="Breadcrumb" className="text-sm text-neutral-500">
           <a href={base || "/"} className="hover:underline">Home</a><span className="mx-2">›</span>
-          <a href={`${base}/#models`} className="hover:underline">Models</a><span className="mx-2">›</span>
+          <a href={`${base}/models`} className="hover:underline">Models</a><span className="mx-2">›</span>
           <span className="font-semibold text-neutral-800">{m.name}</span>
         </nav>
         <div className="mt-6 grid gap-8 lg:grid-cols-2 lg:gap-12">

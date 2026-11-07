@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 export type FaqItem = { q: string; a: string };
 
 /** Interactive FAQ: search box, expand/collapse all, and one accordion row per question. */
-export function FaqList({ items }: { items: FaqItem[] }) {
+export function FaqList({ items, contactHref }: { items: FaqItem[]; contactHref?: string }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<Set<number>>(new Set());
   const shown = useMemo(() => {
@@ -31,7 +31,10 @@ export function FaqList({ items }: { items: FaqItem[] }) {
                     <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-lg leading-none text-white transition-transform" style={{ backgroundColor: "var(--site)", transform: isOpen ? "rotate(45deg)" : undefined }}>+</span>
                   </button>
                 </h3>
-                {isOpen && <div className="space-y-3 border-t border-neutral-100 px-5 py-4 text-[15px] leading-7 text-neutral-700">{x.a.split("\n\n").map((p, k) => <p key={k} className="whitespace-pre-line">{p}</p>)}</div>}
+                {isOpen && <div className="space-y-3 border-t border-neutral-100 px-5 py-4 text-[15px] leading-7 text-neutral-700">{x.a.split("\n\n").flatMap((p) => p.split(/\n(?=\s*contact us\s*$)/i)).map((p, k) =>
+                  contactHref && /^\s*contact us\s*$/i.test(p)
+                    ? <a key={k} href={contactHref} className="inline-block rounded-full px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-white" style={{ backgroundColor: "var(--site)" }}>Contact us</a>
+                    : <p key={k} className="whitespace-pre-line">{p}</p>)}</div>}
               </li>
             );
           })}

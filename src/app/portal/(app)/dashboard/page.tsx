@@ -16,6 +16,9 @@ import { Celebrate } from "@/components/gamification/celebrate";
 import { fmtDateTime, fmtMoney, fmtRelative, fullName } from "@/lib/utils";
 import { ACTIVITY_LABELS } from "@/server/services/activity";
 import { TEST_DRIVE_STATUS } from "@/lib/constants";
+import { SetupChecklist } from "@/components/dashboard/setup-checklist";
+import { buildDealerChecklist } from "@/lib/dealer-onboarding";
+import { getDealerSetupCounts } from "@/server/services/dealer-setup";
 
 export const metadata = { title: "Dealer dashboard" };
 
@@ -56,6 +59,7 @@ export default async function PortalDashboard({ searchParams }: { searchParams: 
         can(user, "ledger.view") ? Promise.all(ids.map((id) => dealerBalance(id))).then((all) => all.reduce((s, b) => s + b.balance, 0)) : Promise.resolve(null),
       ])
     : null;
+  const setupSteps = ids[0] ? buildDealerChecklist(await getDealerSetupCounts(ids[0]), (perm) => can(user, perm as Parameters<typeof can>[1])) : [];
   const company = byOrigin.find((o) => o.origin === "COMPANY")?._count._all ?? 0;
   const walkin = byOrigin.find((o) => o.origin === "DEALERSHIP_WALK_IN")?._count._all ?? 0;
   const earnedMap = new Map(earned.map((e) => [e.achievementId, e.earnedAt]));
@@ -74,6 +78,8 @@ export default async function PortalDashboard({ searchParams }: { searchParams: 
           { label: "Converted", value: String(kpi.converted) },
         ]}
       />
+
+      <SetupChecklist steps={setupSteps} userId={user.id} />
 
       {/* Gamified hero */}
       <div className="mb-4 grid gap-3 lg:grid-cols-3">

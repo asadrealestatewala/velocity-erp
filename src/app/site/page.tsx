@@ -130,9 +130,9 @@ export default async function SitePage() {
                         <div key={k} className="flex justify-between gap-3 border-b border-neutral-100 pb-1"><dt className="text-neutral-500">{k}</dt><dd className="text-right font-medium">{v}</dd></div>
                       ))}
                     </dl>
-                    <div className="mt-4 flex gap-2 text-sm font-semibold">
-                      <a href={`${base}/models/${m.id}`} className="rounded-full border border-neutral-300 px-4 py-2">Learn more</a>
-                      {testDrive && <a href={`${testDrive}?model=${m.id}`} className="rounded-full px-4 py-2 text-white" style={{ backgroundColor: c }}>Book a test ride</a>}
+                    <div className="mt-4 flex gap-2 text-[12.5px] font-semibold leading-none sm:text-sm">
+                      <a href={`${base}/models/${m.id}`} className="flex-1 whitespace-nowrap rounded-full border border-neutral-300 px-1.5 py-3 text-center">Learn more</a>
+                      {testDrive && <a href={`${testDrive}?model=${m.id}`} className="flex-1 whitespace-nowrap rounded-full px-1.5 py-3 text-center text-white" style={{ backgroundColor: c }}>Book a test ride</a>}
                     </div>
                   </div>
                 </div>

@@ -13,6 +13,8 @@ const SPEC_ROWS: [string, string[]][] = [
   ["Top speed", ["max_speed"]],
   ["Range", ["range"]],
 ];
+/** Home "Popular Products": these models, in this order (first match per pattern; the full list stays on the Models page). */
+const POPULAR: RegExp[] = [/gt\s*-?70/i, /ruibin/i, /t5l/i, /velax/i, /keeness/i];
 const norm = (k: string) => k.toLowerCase().replace(/[^a-z0-9]+/g, "_");
 function specLines(specs: unknown): [string, string][] {
   const map = new Map(Object.entries((specs ?? {}) as Record<string, unknown>).map(([k, v]) => [norm(k), v]));
@@ -54,6 +56,12 @@ export default async function SitePage() {
   const gt70 = (m: { name: string }) => /gt\s*-?70/i.test(m.name);
   const spotlight = [...models].filter((m) => specLines(m.specifications).length >= 1)
     .sort((x, y) => Number(gt70(y)) - Number(gt70(x)) || Number(!!y.imageFileId) - Number(!!x.imageFileId) || specLines(y.specifications).length - specLines(x.specifications).length)[0];
+  // Popular products: pick the first model matching each pattern (T5L prefers the plain "T5L" over variants); fall back to the full list if none match.
+  const popularPicks = POPULAR.map((re) => {
+    const hits = models.filter((m) => re.test(m.name));
+    return hits.find((m) => /^(yadea\s+)?t5l$/i.test(m.name.trim())) ?? hits[0];
+  }).filter((m, i, a): m is NonNullable<typeof m> => !!m && a.indexOf(m) === i);
+  const popular = popularPicks.length > 0 ? popularPicks : models;
   const spotlightSpecs = spotlight ? specLines(spotlight.specifications) : [];
   // Photo tour: positions were checked by eye against the real GT70 product photo (x, y as fractions of the image), so it only runs for that photo.
   const tourModel = models.find((m) => gt70(m) && /7280/.test(m.name) && m.imageFileId) ?? models.find((m) => gt70(m) && m.imageFileId);
@@ -160,12 +168,15 @@ export default async function SitePage() {
 
       {tourModel && tourPoints.length >= 3 && <PhotoTour src={`/api/files/${tourModel.imageFileId}`} name={tourModel.name} points={tourPoints} color={c} />}
 
-      {models.length > 0 && (
+      {popular.length > 0 && (
         <section id="models" className="bg-neutral-50 px-5 py-10 sm:py-14">
           <div className="mx-auto max-w-5xl">
-            <h2 className="text-2xl font-bold">Our models</h2>
+            <div className="flex items-end justify-between gap-4">
+              <h2 className="text-2xl font-bold">Popular Products</h2>
+              <a href={`${base}/models`} className="text-sm font-semibold" style={{ color: c }}>View all models →</a>
+            </div>
             <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {models.map((m) => (
+              {popular.map((m) => (
                 <a key={m.id} href={`${base}/models/${m.id}`} className="block overflow-hidden rounded-2xl border border-neutral-200 bg-white transition hover:shadow-md">
                   {m.imageFileId && (
                     // eslint-disable-next-line @next/next/no-img-element

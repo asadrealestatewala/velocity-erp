@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  BarChart3, Bell, BookOpen, Bike, Boxes, CalendarClock, ShieldCheck, Wrench, Building2, CheckSquare, ChevronDown, ClipboardList, FileCheck2, FileText, Folder, Footprints, History, Inbox, KanbanSquare, LifeBuoy,
+  BarChart3, Bell, BookOpen, Bike, Boxes, CalendarClock, ShieldCheck, Wrench, Building2, CheckSquare, ChevronDown, ClipboardList, FileCheck2, FileText, Folder, Globe, Footprints, History, Inbox, KanbanSquare, LifeBuoy,
   LayoutDashboard, List, LogOut, Menu as MenuIcon, Package, PanelLeftClose, PanelLeftOpen, Plus, Receipt, Search, Settings, Share2, Shield, Sparkles, Store, Trophy, Truck, UserCheck, Users, UsersRound, Wallet, X, Zap, KeyRound, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,7 @@ import { AnnouncementBar, type AnnouncementItem } from "./announcement-bar";
 import { AssistantWidget, type AssistantConfig } from "@/components/assistant/assistant-widget";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  "layout-dashboard": LayoutDashboard, users: Users, kanban: KanbanSquare, inbox: Inbox, "file-text": FileText, bike: Bike,
+  "layout-dashboard": LayoutDashboard, users: Users, kanban: KanbanSquare, inbox: Inbox, "file-text": FileText, globe: Globe, bike: Bike,
   store: Store, "file-check": FileCheck2, zap: Zap, "check-square": CheckSquare, "bar-chart": BarChart3, bell: Bell, shield: Shield,
   settings: Settings, history: History, trophy: Trophy, "user-check": UserCheck, list: List, building: Building2, footprints: Footprints,
   "users-round": UsersRound, boxes: Boxes, "clipboard-list": ClipboardList, truck: Truck, wallet: Wallet, receipt: Receipt, folder: Folder, package: Package,
@@ -281,7 +281,7 @@ export function AppShell({
         </div>
       )}
 
-      <header className="sticky top-0 z-30 flex h-[72px] items-center gap-3 border-b border-ink-200/80 bg-white/85 px-4 backdrop-blur-md sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-30 flex h-[calc(72px+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] items-center gap-3 border-b border-ink-200/80 bg-white/85 px-4 backdrop-blur-md sm:px-6 lg:px-8">
         <span aria-hidden className="hairline-gradient pointer-events-none absolute inset-x-0 -bottom-px h-px" />
         <button className="rounded-md p-2 text-ink-600 hover:bg-ink-100 lg:hidden" onClick={() => setOpen(true)} aria-label="Open menu">
           <MenuIcon className="h-5 w-5" />

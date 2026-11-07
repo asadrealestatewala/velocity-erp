@@ -10,6 +10,8 @@ export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
 const RESERVED = new Set([
   "www", "app", "api", "admin", "platform", "login", "signup", "portal", "crm", "procurement", "forms", "w", "static", "support",
   "billing", "mail", "status", "docs", "blog", "help", "demo", "test", "staging", "pricing", "legal", "privacy", "terms", "yadea", "default",
+  // Names that must never become a tenant website (subdomain): infrastructure, mail, DNS and brand look-alikes.
+  "root", "dashboard", "console", "dev", "beta", "cdn", "assets", "files", "img", "images", "media", "ftp", "smtp", "imap", "pop", "pop3", "webmail", "email", "ns", "ns1", "ns2", "mx", "dns", "vpn", "secure", "ssl", "auth", "account", "accounts", "my", "sandbox", "preview", "web", "site", "sites", "velocity", "velocityerp", "agentify", "agentifyerp", "sales", "info", "contact", "team", "staff", "administrator", "postmaster", "hostmaster", "webmaster", "abuse", "noreply", "no-reply",
 ]);
 export const isValidSlug = (s: string) => SLUG_RE.test(s) && !s.includes("--");
 export const isReservedSlug = (s: string) => RESERVED.has(s);
@@ -33,7 +35,7 @@ function legacyFallback(): Tenant {
     ownerName: null, ownerEmail: null, ownerEmailHash: null, timezone: process.env.APP_TIMEZONE || "Asia/Karachi", currency: "PKR", countryCode: "92",
     emailConfirmedAt: now, confirmTokenHash: null, confirmExpiresAt: null, notes: null, subStatus: "ACTIVE", planKey: null, interval: "MONTH", priceAmount: 0,
     priceCurrency: "PKR", trialStartedAt: null, trialEndsAt: null, currentPeriodStart: null, currentPeriodEnd: null, graceUntil: null, cancelAtPeriodEnd: false,
-    couponCode: null, stripeCustomerId: null, stripeSubscriptionId: null, provisionedAt: now, lastSeenAt: null, marketingOptOutAt: null, schemaVersion: 0, deletionRequestedAt: null, deletionScheduledFor: null, deletionReason: null, dataPurgedAt: null, createdAt: now, updatedAt: now,
+    couponCode: null, stripeCustomerId: null, stripeSubscriptionId: null, provisionedAt: now, lastSeenAt: null, marketingOptOutAt: null, siteDomain: null, schemaVersion: 0, deletionRequestedAt: null, deletionScheduledFor: null, deletionReason: null, dataPurgedAt: null, createdAt: now, updatedAt: now,
   };
 }
 
@@ -92,3 +94,26 @@ export async function listActiveTenants(): Promise<Tenant[]> {
     return [legacyFallback()];
   }
 }
+
+/** Base domain whose subdomains serve workspace websites, e.g. "sites.example.com" → yadeapakistan.sites.example.com. */
+export const SITE_BASE_DOMAIN = (process.env.SITE_BASE_DOMAIN || "").toLowerCase().replace(/^\./, "");
+
+/** Which workspace owns this public-website hostname? A verified custom domain, or <slug>.<SITE_BASE_DOMAIN>. */
+export async function tenantSlugForHost(rawHost: string): Promise<string | null> {
+  const host = rawHost.toLowerCase().split(":")[0]!.replace(/\.$/, "");
+  if (!host) return null;
+  const hit = hostCache.get(host);
+  if (hit && Date.now() - hit.at < TTL_MS) return hit.slug;
+  let slug: string | null = null;
+  if (SITE_BASE_DOMAIN && host.endsWith("." + SITE_BASE_DOMAIN)) {
+    const sub = host.slice(0, -(SITE_BASE_DOMAIN.length + 1));
+    if (isValidSlug(sub) && (!isReservedSlug(sub) || sub === DEFAULT_SLUG)) slug = sub;
+  }
+  if (!slug) {
+    const t = await platformDb().tenant.findUnique({ where: { siteDomain: host }, select: { slug: true, status: true } });
+    if (t && t.status === "ACTIVE") slug = t.slug;
+  }
+  hostCache.set(host, { at: Date.now(), slug });
+  return slug;
+}
+const hostCache = new Map<string, { at: number; slug: string | null }>();

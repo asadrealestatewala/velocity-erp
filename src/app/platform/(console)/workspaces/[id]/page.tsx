@@ -4,10 +4,11 @@ import { Badge, Card, CardHeader, PageHeader, DescriptionList } from "@/componen
 import { ActionForm, ReasonButton, RunButton } from "@/components/platform/console";
 import { db as tenantDb } from "@/lib/db";
 import { startViewAsAction } from "@/server/actions/impersonation";
-import { cancelDeletionAction, scheduleDeletionAction } from "@/server/actions/platform";
+import { changeOwnerEmailAction, resendOwnerConfirmationAction, setOwnerPasswordAction } from "@/server/actions/platform";
+import { cancelDeletionAction, deleteWorkspaceNowAction, scheduleDeletionAction } from "@/server/actions/platform";
 import { setFlagOverrideAction } from "@/server/actions/platform";
 import { flagsFor } from "@/server/platform/flags";
-import { changePlanAction, grantAddOnAction, recordPaymentAction, saveNotesAction, setWorkspaceStatusAction, trialAction } from "@/server/actions/platform";
+import { changePlanAction, grantAddOnAction, recordPaymentAction, saveNotesAction, setSiteDomainAction, setWorkspaceStatusAction, trialAction } from "@/server/actions/platform";
 import { adminCan, requireAdminPage } from "@/server/platform/admin-auth";
 import { deletionBlocker } from "@/server/platform/purge";
 import { invoiceNumber, METHOD_LABEL } from "@/server/platform/billing";
@@ -74,6 +75,26 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
             )}
             {!t.isLegacy && can("tenants.manage") && (
               <div className="mt-4 flex flex-wrap gap-2">
+                <ReasonButton
+                  label="Change owner email"
+                  title="Change the owner's email"
+                  description="Replaces the email the owner signs in with. The new address is marked unconfirmed and gets a confirmation link. Your reason is saved in the audit log."
+                  confirmLabel="Change email"
+                  action={changeOwnerEmailAction.bind(null, t.id)}
+                  extra={[{ name: "email", label: "New email", placeholder: "owner@company.com" }]}
+                />
+                <ReasonButton
+                  label="Set owner password"
+                  title="Set the owner's password"
+                  description="Sets a new password for the owner's login without sending an email. They are signed out everywhere. The password is never stored or logged in plain text; share it with them securely."
+                  confirmLabel="Set password"
+                  action={setOwnerPasswordAction.bind(null, t.id)}
+                  extra={[
+                    { name: "password", label: "New password", type: "password", hint: "At least 10 characters with a letter and a number." },
+                    { name: "mustChange", label: "Make them choose a new password at next sign-in", type: "checkbox", defaultValue: true },
+                  ]}
+                />
+                {!t.emailConfirmedAt && t.ownerEmail && <RunButton label="Resend confirmation" action={resendOwnerConfirmationAction.bind(null, t.id)} />}
                 {t.status === "SUSPENDED" ? (
                   <ReasonButton label="Reactivate" title="Reactivate this workspace?" variant="primary" action={setWorkspaceStatusAction.bind(null, t.id)} fixed={{ status: "ACTIVE" }} />
                 ) : (
@@ -118,11 +139,23 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
                 {can("tenants.delete") && (t.deletionScheduledFor ? (
                   <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-red-50 px-4 py-3 text-red-900">
                     <span>Deletion is scheduled: all data is erased after <strong>{fmtDateTime(t.deletionScheduledFor)}</strong>{t.deletionReason ? ` (${t.deletionReason})` : ""}.</span>
-                    <RunButton label="Cancel deletion" action={cancelDeletionAction.bind(null, t.id)} />
+                    <span className="flex gap-2">
+                      <RunButton label="Cancel deletion" action={cancelDeletionAction.bind(null, t.id)} />
+                      <ReasonButton
+                    label="Delete now"
+                    title="Erase this workspace's data now?"
+                    description="Skips the retention window. All data and uploaded files are permanently erased immediately and this cannot be undone. Invoices and payments are kept. Download an export first if the customer wants a copy."
+                    variant="danger"
+                    confirmLabel="Erase permanently"
+                    action={deleteWorkspaceNowAction.bind(null, t.id)}
+                    extra={[{ name: "confirmSlug", label: `Type the workspace code (${t.slug}) to confirm`, placeholder: t.slug }]}
+                  />
+                    </span>
                   </div>
                 ) : deletionBlocker(t) ? (
                   <p className="text-ink-500">{deletionBlocker(t)}</p>
                 ) : (
+                  <div className="flex flex-wrap gap-2">
                   <ReasonButton
                     label="Schedule deletion"
                     title="Schedule deletion of this workspace?"
@@ -132,6 +165,16 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
                     action={scheduleDeletionAction.bind(null, t.id)}
                     extra={[{ name: "confirmSlug", label: `Type the workspace code (${t.slug}) to confirm`, placeholder: t.slug }]}
                   />
+                    <ReasonButton
+                    label="Delete now"
+                    title="Erase this workspace's data now?"
+                    description="Skips the retention window. All data and uploaded files are permanently erased immediately and this cannot be undone. Invoices and payments are kept. Download an export first if the customer wants a copy."
+                    variant="danger"
+                    confirmLabel="Erase permanently"
+                    action={deleteWorkspaceNowAction.bind(null, t.id)}
+                    extra={[{ name: "confirmSlug", label: `Type the workspace code (${t.slug}) to confirm`, placeholder: t.slug }]}
+                  />
+                  </div>
                 ))}
               </>
             )}
@@ -258,6 +301,15 @@ export default async function WorkspaceDetail({ params }: { params: Promise<{ id
               );
             })}
           </ul>
+        </Card>
+      )}
+
+      {can("tenants.manage") && (
+        <Card className="mt-4">
+          <CardHeader title="Website domain" description="Custom domain for this workspace's public website. Point its CNAME at the app, add it to the host, then save it here." />
+          <div className="p-5">
+            <ActionForm submitLabel="Save domain" action={setSiteDomainAction.bind(null, t.id)} fields={[{ name: "domain", label: "Domain", optional: true, defaultValue: t.siteDomain ?? "" }]} />
+          </div>
         </Card>
       )}
 

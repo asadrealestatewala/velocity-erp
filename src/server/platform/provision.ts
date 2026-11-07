@@ -63,6 +63,8 @@ export async function createWorkspace(input: CreateWorkspaceInput): Promise<Crea
     await applyMigrations(schema);
     client = new PrismaClient({ datasourceUrl: tenantDbUrl(tenant) });
     await seedBaseData(client, { companyName: tenant.name, countryCode: tenant.countryCode, owner: { name: input.ownerName, email, password: input.ownerPassword } });
+    // Every workspace gets a starter website (unpublished) on <slug>.SITE_BASE_DOMAIN, ready to review and publish.
+    await client.setting.upsert({ where: { key: "website" }, create: { key: "website", value: { published: false, siteName: tenant.name, email } }, update: {} }).catch((e) => console.error("[provision] starter website", e));
     await db.tenant.update({ where: { id: tenant.id }, data: { status: "ACTIVE", provisionedAt: new Date(), schemaVersion: listMigrations().length } });
     if (trial) {
       await db.trialClaim.upsert({ where: { ownerEmailHash: hash }, create: { ownerEmailHash: hash, tenantId: tenant.id }, update: {} });

@@ -13,6 +13,7 @@ import { AlertCards, DashboardHero, FunnelCard, GamificationCard, LeaderboardCar
 import { LevelUp } from "@/components/dashboard/level-up";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { buildSetupChecklist } from "@/lib/setup-checklist";
+import { getWebsite } from "@/server/website";
 import { Celebrate } from "@/components/gamification/celebrate";
 import { can } from "@/server/authz";
 import { BadgeGrid } from "@/components/gamification/badges";
@@ -22,7 +23,7 @@ import { FilterBar } from "@/components/filters/filter-bar";
 import { BarList, SplitBar, TrendChart } from "@/components/charts/charts";
 import { fmtDateTime, fmtMoney, fmtNumber, fmtRelative, fullName } from "@/lib/utils";
 import { ACTIVITY_LABELS } from "@/server/services/activity";
-import { parseListParams } from "@/components/ui/table";
+import { parseListParams, TableScroll } from "@/components/ui/table";
 
 export const metadata = { title: "Dashboard" };
 
@@ -89,7 +90,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       db.task.count(),
       db.form.count({ where: { status: "PUBLISHED" } }),
       db.user.count({ where: { isActive: true } }),
-    ]).then(([contacts, dealerAssignedLeads, tasks, publishedForms, activeUsers]) => ({ contacts, dealerAssignedLeads, tasks, publishedForms, activeUsers })),
+      getWebsite().then((w) => w.published).catch(() => false),
+    ]).then(([contacts, dealerAssignedLeads, tasks, publishedForms, activeUsers, websitePublished]) => ({ contacts, dealerAssignedLeads, tasks, publishedForms, activeUsers, websitePublished })),
   ]);
   const setupSteps = buildSetupChecklist(setupCounts, (perm) => can(user, perm as Parameters<typeof can>[1]));
   const level = levelFor(progress.totalPoints);
@@ -240,7 +242,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       <Card className="mt-4">
         <CardHeader title="Dealership performance" description="Normalised rates for the selected period — compare outlets of different sizes fairly" action={<Link href="/crm/reports" className="text-xs font-medium text-brand-600 hover:underline">Full report →</Link>} />
-        <div className="overflow-x-auto">
+        <TableScroll>
           <table className="w-full min-w-[760px] text-sm">
             <thead className="bg-ink-50/70">
               <tr>
@@ -264,7 +266,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       </Card>
 
       <Card className="mt-4">

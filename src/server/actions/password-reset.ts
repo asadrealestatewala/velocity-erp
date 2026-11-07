@@ -6,7 +6,8 @@ import { db } from "@/lib/db";
 import { audit } from "@/server/audit";
 import { clientIp } from "@/server/request";
 import { hashIdentifier } from "@/server/rate-limit";
-import { newToken, sha256 } from "@/server/platform/crypto";
+import { emailHash, newToken, sha256 } from "@/server/platform/crypto";
+import { platformDb } from "@/server/platform/client";
 import { platformRateLimit } from "@/server/platform/guard";
 import { workspaceUrl } from "@/server/platform/mail";
 import { sendTemplate } from "@/server/platform/mail-send";
@@ -23,12 +24,17 @@ const RESET_HOURS = 2;
  */
 export async function requestPasswordResetAction(_: ForgotState, formData: FormData): Promise<ForgotState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const slug = String(formData.get("workspace") ?? "").trim().toLowerCase() || DEFAULT_SLUG;
+  let slug = String(formData.get("workspace") ?? "").trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return { error: "Enter a valid email address." };
 
   const ip = hashIdentifier(await clientIp());
   if (!(await platformRateLimit(`forgot:ip:${ip}`, 10, 3600)) || !(await platformRateLimit(`forgot:email:${hashIdentifier(email)}`, 3, 3600))) {
     return { done: true }; // silently throttled: same answer
+  }
+  if (!slug) {
+    // No workspace code given: use the company whose owner has this email (when exactly one does), else the default workspace.
+    const owned = await platformDb().tenant.findMany({ where: { ownerEmailHash: emailHash(email), status: { not: "PROVISIONING" }, dataPurgedAt: null }, select: { slug: true }, take: 2 }).catch(() => []);
+    slug = owned.length === 1 ? owned[0]!.slug : DEFAULT_SLUG;
   }
   const tenant = isValidSlug(slug) ? await getTenant(slug).catch(() => null) : null;
   if (tenant && tenant.status !== "PROVISIONING") {

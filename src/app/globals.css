@@ -103,7 +103,10 @@
 }
 
 @layer base {
-  html { -webkit-text-size-adjust: 100%; }
+  html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
+  /* A grid item defaults to min-width:auto, so a wide table inside an implicit-column grid stretched the whole page sideways on phones.
+     :where() keeps specificity at zero, so any explicit min-w-* still wins; tables then scroll inside their own TableScroll. */
+  main :where(.grid) > * { min-width: 0; }
   body {
     @apply bg-ink-50 text-ink-900 antialiased;
     font-feature-settings: "calt", "kern";
@@ -329,7 +332,7 @@
    Calm, flat, dense. Velocity brand: charcoal wordmark + one magenta accent (the logo gradient is only
    ever used in the logo itself). Scoped to .pf, and to html[data-pf] for portalled UI (dialogs, menus).
    Motion: none by default. Only colour changes ease in (<=100ms); nothing moves, lifts, scales or loops. */
-html[data-pf] {
+html[data-pf], html:not([data-pf]) .pf {
   --pf-bg: #f7f7f8;
   --pf-surface: #ffffff;
   --pf-sunken: #f1f1f3;
@@ -426,3 +429,12 @@ html[data-pf] kbd { font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monosp
 @media (prefers-reduced-motion: reduce) { .hero-float { animation: none; } }
 .hero-bike { transition: transform 0.25s ease-out; will-change: transform; }
 @media (prefers-reduced-motion: reduce) { .hero-bike { transition: none; } }
+
+/* Phones and the installed app: notches/home bar, no iOS focus-zoom, comfortable tap targets, no rubber-band flash. */
+body { overscroll-behavior-y: none; padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+@media (pointer: coarse) {
+  .input, input, select, textarea { font-size: 16px; }
+  button, [role="button"], a.btn, summary { min-height: 40px; }
+}
+main { padding-bottom: max(1.5rem, env(safe-area-inset-bottom)); }
+@media (max-width: 640px) { table { word-break: break-word; } }

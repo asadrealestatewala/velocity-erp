@@ -9,19 +9,19 @@ import { platformDb } from "./client";
 export const DEFAULT_PLANS = [
   {
     key: "starter", name: "Starter", description: "For a brand with a handful of showrooms.", sortOrder: 1, isRecommended: false,
-    maxUsers: 5, maxDealerships: 3, maxContacts: 2_000, maxStorageMb: 1_024, apiAccess: false, procurement: false, assistant: true,
-    features: ["Central CRM and lead pipeline", "Up to 5 staff logins", "Up to 3 dealerships", "Public test-drive and inquiry forms", "Built-in assistant"],
+    maxUsers: 5, maxDealerships: 3, maxContacts: 2_000, maxStorageMb: 1_024, apiAccess: false, website: true, procurement: false, assistant: true,
+    features: ["Central CRM and lead pipeline", "Up to 5 staff logins", "Up to 3 dealerships", "Public test-drive and inquiry forms", "Free website on your own subdomain", "Built-in assistant"],
     prices: { PKR: { MONTH: 9_900, YEAR: 99_000 }, USD: { MONTH: 39, YEAR: 390 } },
   },
   {
     key: "growth", name: "Growth", description: "For a growing dealer network.", sortOrder: 2, isRecommended: true,
-    maxUsers: 20, maxDealerships: 15, maxContacts: 20_000, maxStorageMb: 10_240, apiAccess: true, procurement: true, assistant: true,
-    features: ["Everything in Starter", "Up to 20 staff logins and 15 dealerships", "Dealer portal with goals, XP and leaderboard", "Procurement and dealer ledger", "Website and API access"],
+    maxUsers: 20, maxDealerships: 15, maxContacts: 20_000, maxStorageMb: 10_240, apiAccess: true, website: true, procurement: true, assistant: true,
+    features: ["Everything in Starter", "Up to 20 staff logins and 15 dealerships", "Dealer portal with goals, XP and leaderboard", "Procurement and dealer ledger", "API access"],
     prices: { PKR: { MONTH: 29_900, YEAR: 299_000 }, USD: { MONTH: 119, YEAR: 1_190 } },
   },
   {
     key: "enterprise", name: "Enterprise", description: "For national networks with custom needs.", sortOrder: 3, isRecommended: false,
-    maxUsers: 100, maxDealerships: 100, maxContacts: 250_000, maxStorageMb: 102_400, apiAccess: true, procurement: true, assistant: true,
+    maxUsers: 100, maxDealerships: 100, maxContacts: 250_000, maxStorageMb: 102_400, apiAccess: true, website: true, procurement: true, assistant: true,
     features: ["Everything in Growth", "Up to 100 staff logins and 100 dealerships", "Priority support", "Custom onboarding"],
     prices: { PKR: { MONTH: 79_900, YEAR: 799_000 }, USD: { MONTH: 319, YEAR: 3_190 } },
   },
@@ -65,11 +65,12 @@ export type Entitlements = {
   maxContacts: number | null;
   maxStorageMb: number | null;
   apiAccess: boolean;
+  website: boolean;
   procurement: boolean;
   assistant: boolean;
 };
 
-const UNLIMITED: Entitlements = { planKey: null, maxUsers: null, maxDealerships: null, maxContacts: null, maxStorageMb: null, apiAccess: true, procurement: true, assistant: true };
+const UNLIMITED: Entitlements = { planKey: null, maxUsers: null, maxDealerships: null, maxContacts: null, maxStorageMb: null, apiAccess: true, website: true, procurement: true, assistant: true };
 
 const entCache = new Map<string, { at: number; ent: Entitlements }>();
 /** 60-second cache: entitlements are read on every request (module gating) but change rarely. */
@@ -88,7 +89,7 @@ export async function entitlementsFor(t: Pick<Tenant, "id" | "isLegacy" | "planK
   if (t.isLegacy) return { ...UNLIMITED, planKey: t.planKey };
   await ensureDefaultPlans();
   const plan = t.planKey ? await platformDb().plan.findUnique({ where: { key: t.planKey } }) : null;
-  if (!plan) return { planKey: t.planKey, maxUsers: 1, maxDealerships: 0, maxContacts: 0, maxStorageMb: 0, apiAccess: false, procurement: false, assistant: false };
+  if (!plan) return { planKey: t.planKey, maxUsers: 1, maxDealerships: 0, maxContacts: 0, maxStorageMb: 0, apiAccess: false, website: true, procurement: false, assistant: false };
   const addOns = await platformDb().tenantAddOn.findMany({ where: { tenantId: t.id }, include: { addOn: true } });
   const sum = (f: (a: (typeof addOns)[number]["addOn"]) => number) => addOns.reduce((n, x) => n + f(x.addOn) * x.quantity, 0);
   return {
@@ -98,6 +99,7 @@ export async function entitlementsFor(t: Pick<Tenant, "id" | "isLegacy" | "planK
     maxContacts: plan.maxContacts + sum((a) => a.extraContacts),
     maxStorageMb: plan.maxStorageMb + sum((a) => a.extraStorageMb),
     apiAccess: plan.apiAccess || addOns.some((x) => x.addOn.giveApiAccess),
+    website: true, // the website builder is free on every plan (plan.website is kept for compatibility)
     procurement: plan.procurement,
     assistant: plan.assistant,
   };

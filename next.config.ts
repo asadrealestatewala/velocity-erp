@@ -29,7 +29,9 @@ const nextConfig: NextConfig = {
   async headers() {
     const hsts = process.env.NODE_ENV === "production" ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" }] : [];
     return [
-      { source: "/:path*", headers: [...securityHeaders, ...hsts] },
+      // Public forms may be embedded in a dealer's own website (iframe); everything else stays same-origin only.
+      { source: "/((?!forms/).*)", headers: [...securityHeaders, ...hsts] },
+      { source: "/forms/:path*", headers: [...securityHeaders.filter((h) => h.key !== "X-Frame-Options"), ...hsts] },
       { source: "/platform/:path*", headers: privateHeaders },
       { source: "/api/platform/:path*", headers: privateHeaders },
       { source: "/api/billing/:path*", headers: privateHeaders },

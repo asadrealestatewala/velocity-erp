@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import * as D from "@radix-ui/react-dialog";
 import { Activity, Building2, ChevronRight, CornerDownLeft, Flag, Keyboard, Layers, LayoutDashboard, LifeBuoy, Mail, Megaphone, Menu, Moon, Search, ScrollText, Settings, ShieldCheck, Siren, Sun, TrendingUp, UserCog, Wallet, X } from "lucide-react";
 import { ACCOUNT_ITEM, NAV_GROUPS, isActive, type NavIcon, type NavItem } from "./nav";
-import { currentTheme, setTheme, type Theme } from "./theme";
+import { currentTheme, ensureConsoleTheme, setTheme, type Theme } from "./theme";
 
 const ICONS: Record<NavIcon, typeof Activity> = { overview: LayoutDashboard, workspaces: Building2, payments: Wallet, plans: Layers, settings: Settings, staff: ShieldCheck, audit: ScrollText, system: Activity, account: UserCog, mail: Mail, announcements: Megaphone, support: LifeBuoy, flags: Flag, growth: TrendingUp, status: Siren };
 
@@ -165,7 +165,7 @@ export function Shell({ items, name, role, signOut, canAudit, children }: { item
 
   // The layout's inline boot script has already set the theme; mirror it into state and clean up on leaving the console.
   useEffect(() => {
-    setT(currentTheme());
+    setT(ensureConsoleTheme());
     const mq = matchMedia("(prefers-color-scheme: dark)");
     const onSys = () => { try { if (localStorage.getItem("pf-theme")) return; } catch { /* ignore */ } setTheme(mq.matches ? "dark" : "light"); setT(mq.matches ? "dark" : "light"); };
     mq.addEventListener("change", onSys);

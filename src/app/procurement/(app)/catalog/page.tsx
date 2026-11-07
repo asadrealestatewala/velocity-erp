@@ -1,3 +1,4 @@
+import { TableScroll } from "@/components/ui/table";
 import { Bike, Wrench } from "lucide-react";
 import { db } from "@/lib/db";
 import { can, requireProcurementPage } from "@/server/authz";
@@ -31,7 +32,7 @@ export default async function CatalogPage() {
 
       <Card className="mb-6">
         <CardHeader title="Bike models" description={manageModels ? "Add and edit bike models here, and set the prices dealers pay." : "Set the prices dealers pay. Models are added by an administrator under CRM → Bike models."} />
-        <div className="scrollbar-thin overflow-x-auto">
+        <TableScroll>
           <table className="w-full min-w-[640px]">
             <thead className="bg-ink-50/60"><tr><th className="th">Model</th><th className="th">Code</th><th className="th text-right">Retail price</th><th className="th text-right">Dealer price</th><th className="th">Status</th><th className="th"><span className="sr-only">Actions</span></th></tr></thead>
             <tbody className="divide-y divide-ink-100">
@@ -48,12 +49,12 @@ export default async function CatalogPage() {
               {models.length === 0 && <tr><td colSpan={6}><EmptyState icon={Bike} title="No bike models" description={manageModels ? "Use “New model” above to add the first one." : "Add models under CRM → Bike models."} /></td></tr>}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       </Card>
 
       <Card>
         <CardHeader title="Spare parts" description={`${parts.length} part${parts.length === 1 ? "" : "s"} in the catalogue`} />
-        <div className="scrollbar-thin overflow-x-auto">
+        <TableScroll>
           <table className="w-full min-w-[760px]">
             <thead className="bg-ink-50/60"><tr><th className="th">Part</th><th className="th">SKU</th><th className="th">Category</th><th className="th text-right">Retail price</th><th className="th text-right">Dealer price</th><th className="th">Status</th><th className="th"><span className="sr-only">Edit</span></th></tr></thead>
             <tbody className="divide-y divide-ink-100">
@@ -73,7 +74,7 @@ export default async function CatalogPage() {
               {parts.length === 0 && <tr><td colSpan={7}><EmptyState icon={Wrench} title="No spare parts yet" description="Add the spare parts dealerships can stock and order." action={<ProductDialog />} /></td></tr>}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       </Card>
     </>
   );

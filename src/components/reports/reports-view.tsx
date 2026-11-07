@@ -1,3 +1,4 @@
+import { TableScroll } from "@/components/ui/table";
 import { Download } from "lucide-react";
 import { db } from "@/lib/db";
 import type { CurrentUser } from "@/server/auth/session";
@@ -100,7 +101,7 @@ export async function ReportsView({ user, base, params }: { user: CurrentUser; b
 
       <Card className="mt-4">
         <CardHeader title={central ? "Dealership activity & performance" : "Your outlet performance"} description="Normalised rates allow fair comparison across outlets of different size" />
-        <div className="overflow-x-auto">
+        <TableScroll>
           <table className="w-full min-w-[860px] text-sm">
             <thead className="bg-ink-50/60">
               <tr><th className="th">Dealership</th><th className="th">City</th><th className="th text-right">Leads</th><th className="th text-right">Converted</th><th className="th text-right">Conv. rate</th><th className="th text-right">Test drives</th><th className="th text-right">TD completion</th><th className="th text-right">Avg response</th><th className="th text-right">Points</th><th className="th text-right">Revenue</th></tr>
@@ -117,7 +118,7 @@ export async function ReportsView({ user, base, params }: { user: CurrentUser; b
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       </Card>
       <p className="mt-3 text-xs text-ink-400">Report links: <a className="text-brand-600 hover:underline" href={`${base}/contacts`}>contacts</a> · <a className="text-brand-600 hover:underline" href={`${base}/test-drives`}>test drives</a> · <a className="text-brand-600 hover:underline" href={`${base}/leaderboard`}>leaderboard</a></p>
     </>

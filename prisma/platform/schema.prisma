@@ -112,6 +112,8 @@ model Tenant {
   dataPurgedAt         DateTime?
   /// Set when the owner unsubscribes from product/marketing emails (account and billing emails still go out).
   marketingOptOutAt    DateTime?
+  /// Custom domain that serves this workspace's public website (e.g. www.yadeapakistan.com). Subdomains of SITE_BASE_DOMAIN work without it.
+  siteDomain           String?            @unique
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
@@ -144,6 +146,7 @@ model Plan {
   maxContacts    Int      @default(2000)
   maxStorageMb   Int      @default(1024)
   apiAccess      Boolean  @default(false)
+  website        Boolean  @default(false)
   procurement    Boolean  @default(false)
   assistant      Boolean  @default(true)
   graceDays      Int      @default(7)

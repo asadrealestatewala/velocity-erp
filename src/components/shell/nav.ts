@@ -21,6 +21,7 @@ export const CRM_NAV: NavItem[] = [
   { label: "Knowledge Base", href: "/crm/knowledge", icon: "book-open", perm: "settings.manage" },
   { label: "Users & Permissions", href: "/crm/users", icon: "shield", perm: "users.manage", section: "Admin" },
   { label: "Audit Log", href: "/crm/audit", icon: "history", perm: "audit.view" },
+  { label: "Website", href: "/crm/website", icon: "globe", perm: "settings.manage" },
   { label: "Settings", href: "/crm/settings", icon: "settings", perm: "settings.manage" },
   { label: "Plan & billing", href: "/crm/billing", icon: "wallet", perm: "settings.manage" },
   { label: "Support", href: "/crm/support", icon: "life-buoy" },

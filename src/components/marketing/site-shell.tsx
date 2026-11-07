@@ -10,14 +10,14 @@ export function SiteShell({ children, path }: { children: React.ReactNode; path:
   return (
     <div className="min-h-dvh bg-white text-ink-900">
       <header className="sticky top-0 z-20 border-b border-ink-100 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <Link href="/" aria-label={`${PLATFORM} home`} className="flex items-center gap-2">
-            <Image src="/brand/velocity-logo.png" alt="Velocity" width={900} height={262} className="h-9 w-auto" priority />
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6">
+          <Link href="/" aria-label={`${PLATFORM} home`} className="flex shrink-0 items-center gap-2">
+            <Image src="/brand/velocity-logo.png" alt="Velocity" width={900} height={262} className="h-8 w-auto sm:h-9" priority />
           </Link>
-          <nav aria-label="Main" className="flex items-center gap-1 text-sm font-medium sm:gap-2">
+          <nav aria-label="Main" className="flex items-center gap-0.5 whitespace-nowrap text-sm font-medium sm:gap-2">
             <Link href="/#features" className="hidden rounded-lg px-3 py-2 text-ink-600 hover:bg-ink-50 sm:block">Features</Link>
-            <Link href="/pricing" className="rounded-lg px-3 py-2 text-ink-600 hover:bg-ink-50">Pricing</Link>
-            <Link href="/login" className="rounded-lg px-3 py-2 text-ink-600 hover:bg-ink-50">Sign in</Link>
+            <Link href="/pricing" className="rounded-lg px-2 py-2 text-ink-600 hover:bg-ink-50 sm:px-3">Pricing</Link>
+            <Link href="/login" className="rounded-lg px-2 py-2 text-ink-600 hover:bg-ink-50 sm:px-3">Sign in</Link>
             <ButtonLink href="/signup" size="sm">Start free trial</ButtonLink>
           </nav>
         </div>
@@ -30,6 +30,7 @@ export function SiteShell({ children, path }: { children: React.ReactNode; path:
             <Link href="/pricing" className="hover:underline">Pricing</Link>
             <Link href="/legal/terms" className="hover:underline">Terms</Link>
             <Link href="/legal/privacy" className="hover:underline">Privacy</Link>
+            <Link href="/download" className="hover:underline">Get the app</Link>
             <Link href="/signup" className="hover:underline">Create a workspace</Link>
           </nav>
         </div>

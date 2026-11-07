@@ -15,7 +15,7 @@ import { platformDb } from "@/server/platform/client";
 import { decryptSecret, encryptSecret, sha256 } from "@/server/platform/crypto";
 import { platformRateLimit } from "@/server/platform/guard";
 import { runLifecycle } from "@/server/platform/lifecycle";
-import { deletionBlocker } from "@/server/platform/purge";
+import { deletionBlocker, purgeWorkspace } from "@/server/platform/purge";
 import { recordManualBackup } from "@/server/platform/backups";
 import { clearAnnouncementCache } from "@/server/platform/announcements";
 import { clearFlagCache, FLAG_KEY_RE } from "@/server/platform/flags";
@@ -26,6 +26,7 @@ import { getPlatformSettings, savePlatformSettings } from "@/server/platform/set
 import { addDays, addInterval, changeSubscription, trialPatch } from "@/server/platform/subscriptions";
 import { invalidateTenant } from "@/server/platform/tenants";
 import { webhookUrl } from "@/server/platform/stripe";
+import { changeOwnerEmail, sendOwnerConfirmation, setOwnerPassword } from "@/server/platform/owner-email";
 
 const reasonSchema = z.string().trim().min(3, "A reason is required").max(300);
 const tempPassword = () => `Yd-${randomBytes(6).toString("base64url")}-${randomInt(10, 99)}`;
@@ -189,6 +190,21 @@ export async function saveNotesAction(id: string, input: { notes: string }) {
   });
 }
 
+/** Connects (or clears) the custom domain that serves a workspace's public website. DNS (CNAME to the app host) is the operator's job. */
+export async function setSiteDomainAction(id: string, input: { domain: string }) {
+  return runAction(async () => {
+    const a = await requireAdminAction("tenants.manage");
+    const raw = String(input.domain ?? "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+    if (raw && !/^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/.test(raw)) throw new AppError("Enter a domain like www.example.com.", "VALIDATION");
+    const taken = raw ? await platformDb().tenant.findFirst({ where: { siteDomain: raw, NOT: { id } }, select: { slug: true } }) : null;
+    if (taken) throw new AppError(`That domain is already used by "${taken.slug}".`, "VALIDATION");
+    const t = await platformDb().tenant.update({ where: { id }, data: { siteDomain: raw || null } });
+    refreshTenant(t.slug);
+    await platformAudit({ admin: a, action: "tenant.site_domain", targetType: "Tenant", targetId: id, detail: { domain: raw || null } });
+    return { ok: true as const, message: raw ? "Domain saved. Point its DNS at this app and add it to your host." : "Domain removed." };
+  });
+}
+
 // ───────────────────────── payments, refunds
 
 export async function confirmPaymentAction(id: string) {
@@ -228,7 +244,7 @@ export async function refundAction(invoiceId: string, input: z.input<typeof refu
 const planSchema = z.object({
   name: z.string().trim().min(2).max(60), description: z.string().trim().max(200).optional().nullable(),
   maxUsers: z.number().int().min(1), maxDealerships: z.number().int().min(0), maxContacts: z.number().int().min(0), maxStorageMb: z.number().int().min(0),
-  apiAccess: z.boolean(), procurement: z.boolean(), assistant: z.boolean(), isVisible: z.boolean(), isRecommended: z.boolean(), trialEligible: z.boolean(),
+  apiAccess: z.boolean(), website: z.boolean(), procurement: z.boolean(), assistant: z.boolean(), isVisible: z.boolean(), isRecommended: z.boolean(), trialEligible: z.boolean(),
   graceDays: z.number().int().min(0).max(60), features: z.array(z.string().trim().min(1).max(120)).max(12),
 });
 const lines = (x: unknown) => (typeof x === "string" ? x.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : x);
@@ -649,5 +665,70 @@ export async function migrateAllAction() {
     await platformAudit({ admin: a, action: "system.migrate_all", detail: { workspaces: r.length, failed: failed.map((f) => f.slug) } });
     if (failed.length) throw new AppError(`${failed.length} workspace(s) failed: ${failed.map((f) => `${f.slug}: ${f.error}`).join("; ")}`);
     return { ok: true as const, message: `All ${r.length} workspaces are up to date (${r.reduce((n, x) => n + x.applied.length, 0)} migrations applied).` };
+  });
+}
+
+const ownerEmailSchema = z.object({ email: z.string().trim().toLowerCase().email("Enter a valid email address").max(160), reason: reasonSchema });
+
+/** Platform staff: changes a workspace owner's sign-in email (platform record + the owner's login in the company database), marks it unconfirmed and sends a new confirmation link. */
+export async function changeOwnerEmailAction(id: string, input: z.input<typeof ownerEmailSchema>) {
+  return runAction(async () => {
+    const a = await requireAdminAction("tenants.manage");
+    const v = ownerEmailSchema.parse(input);
+    const r = await changeOwnerEmail(id, v.email);
+    refreshTenant(r.slug);
+    await platformAudit({ admin: a, action: "tenant.owner_email_changed", targetType: "Tenant", targetId: id, reason: v.reason, detail: { slug: r.slug, from: r.from, to: r.to, ...(r.repaired ? { repaired: r.repaired } : {}) } });
+    const sent = await sendOwnerConfirmation(id, a.email);
+    const login = r.tempPassword ? ` The owner login did not exist, so it was created with temporary password ${r.tempPassword} (shown once; they must change it at first sign-in). They can also use "Forgot password".` : r.repaired === "relinked" ? " The workspace's administrator login had a different email and was updated." : "";
+    return { ok: true as const, message: (sent.delivered ? `Owner email changed to ${r.to}. A confirmation link was sent there.` : `Owner email changed to ${r.to}. Email isn't set up on this server; confirmation link: ${sent.url}`) + login };
+  });
+}
+
+/** Platform staff: sends a fresh confirmation link to the owner's current email (the old link stops working). */
+export async function resendOwnerConfirmationAction(id: string) {
+  return runAction(async () => {
+    const a = await requireAdminAction("tenants.manage");
+    const t = await platformDb().tenant.findUnique({ where: { id } });
+    if (!t) throw new AppError("Workspace not found.", "NOT_FOUND");
+    if (t.emailConfirmedAt) return { ok: true as const, message: "This owner's email is already confirmed." };
+    if (!(await platformRateLimit(`confirm:${id}`, 5, 3600))) throw new AppError("Please wait a little before sending another email.", "RATE_LIMITED");
+    const sent = await sendOwnerConfirmation(id, a.email);
+    await platformAudit({ admin: a, action: "tenant.owner_confirmation_resent", targetType: "Tenant", targetId: id, detail: { slug: t.slug, to: t.ownerEmail } });
+    return { ok: true as const, message: sent.delivered ? `Confirmation email sent to ${t.ownerEmail}.` : `Email isn't set up on this server; confirmation link: ${sent.url}` };
+  });
+}
+
+const ownerPasswordSchema = z.object({ password: passwordSchema, mustChange: z.boolean().optional(), reason: reasonSchema });
+
+/** Platform staff: sets the owner's password directly. The password is never logged, audited or stored in plain text. */
+export async function setOwnerPasswordAction(id: string, input: z.input<typeof ownerPasswordSchema>) {
+  return runAction(async () => {
+    const a = await requireAdminAction("tenants.manage");
+    const v = ownerPasswordSchema.parse(input);
+    const r = await setOwnerPassword(id, v.password, v.mustChange ?? true);
+    await platformAudit({ admin: a, action: "tenant.owner_password_set", targetType: "Tenant", targetId: id, reason: v.reason, detail: { slug: r.slug, owner: r.email, mustChange: v.mustChange ?? true } });
+    return { ok: true as const, message: `Password set for ${r.email}. They were signed out everywhere${(v.mustChange ?? true) ? " and must choose a new password at next sign-in" : ""}. Share it securely.` };
+  });
+}
+
+/** Erases a suspended or cancelled workspace's data immediately instead of waiting for the retention window. Owner-only; the operator must type the workspace code. */
+export async function deleteWorkspaceNowAction(id: string, input: { confirmSlug: string; reason: string }) {
+  return runAction(async () => {
+    const a = await requireAdminAction("tenants.delete");
+    const why = reasonSchema.parse(input.reason);
+    const t = await platformDb().tenant.findUnique({ where: { id } });
+    if (!t) throw new AppError("Workspace not found.", "NOT_FOUND");
+    const blocker = deletionBlocker(t);
+    if (blocker) throw new AppError(blocker);
+    if (String(input.confirmSlug ?? "").trim().toLowerCase() !== t.slug) throw new AppError(`Type the workspace code (${t.slug}) to confirm.`, "VALIDATION", { confirmSlug: "Does not match" });
+    await platformAudit({ admin: a, action: "tenant.delete_now_requested", targetType: "Tenant", targetId: id, reason: why, detail: { slug: t.slug } });
+    try {
+      const r = await purgeWorkspace(t, new Date(), a, true);
+      return { ok: true as const, message: `All data of ${t.slug} was erased (${r.files} files${r.dropped ? ", database removed" : ", database left in place: it is on the customer's own connection"}).` };
+    } catch (e) {
+      await platformAudit({ admin: a, action: "tenant.delete_now_failed", targetType: "Tenant", targetId: id, reason: why, detail: { slug: t.slug, error: (e as Error).message.slice(0, 300) } }).catch(() => {});
+      console.error(`[purge] manual erase of ${t.slug} failed`, e);
+      throw new AppError("Erasing failed part-way. Nothing was marked as deleted; check the audit log and try again.");
+    }
   });
 }

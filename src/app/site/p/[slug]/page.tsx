@@ -31,7 +31,7 @@ export default async function SitePageEntry({ params }: Props) {
         <ShareButton title={e.title} light={!!cover} />
       </header>
       <div className="mx-auto max-w-3xl px-5 py-10 sm:py-14">
-        <EntryBody body={e.body} />
+        <EntryBody body={e.body} contactHref={site?.contactFormSlug ? `/forms/${site.contactFormSlug}` : `${base}/#contact`} />
         {site && /support|help|ticket/i.test(e.slug) && <SupportContact phone={site.phone} email={site.email} whatsapp={site.whatsapp} contactHref={site.contactFormSlug ? `/forms/${site.contactFormSlug}` : `${base}/#contact`} />}
       </div>
     </article>

@@ -11,7 +11,7 @@ const WORKSPACE_PATH = /^\/w\/([a-z0-9][a-z0-9-]{1,38}[a-z0-9])(\/.*)?$/;
 // Workspace websites: any hostname other than the app's own (APP_URL) is a customer's site. "/" and the public inventory/model pages
 // are rewritten to /site/*; forms, files and public APIs pass through. The tenant is resolved from the hostname in the data layer.
 const APP_HOST = (() => { try { return process.env.APP_URL ? new URL(process.env.APP_URL).host.toLowerCase() : null; } catch { return null; } })();
-const SITE_PATHS = /^\/(inventory|showrooms|models|blog|(models|blog|p)\/[^/]+)?\/?$/;
+const SITE_PATHS = /^\/(inventory|showrooms|models|become-a-dealer|blog|(models|blog|p)\/[^/]+)?\/?$/;
 
 export function middleware(req: NextRequest) {
   const host = (req.headers.get("host") ?? "").toLowerCase();

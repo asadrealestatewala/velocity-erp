@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { fmtDate } from "@/lib/utils";
 import { getSiteEntries, publishedWebsite, siteBase } from "@/server/website";
+import { coverModels, postCover } from "../post-cover";
 
 const PER_PAGE = 12;
 const okImg = (u?: string) => (u && /^(https:\/\/|\/)[^\s"'()]+$/.test(u) ? u : null);
@@ -14,6 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function BlogIndex({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
   const s = (await publishedWebsite())!;
   const base = await siteBase();
+  const models = await coverModels();
   const posts = (await getSiteEntries()).filter((e) => e.kind === "post" && e.published).sort((a, b) => b.date.localeCompare(a.date));
   const pageCount = Math.max(1, Math.ceil(posts.length / PER_PAGE));
   const page = Math.min(Math.max(1, Number((await searchParams).p) || 1), pageCount);
@@ -39,7 +41,14 @@ export default async function BlogIndex({ searchParams }: { searchParams: Promis
           {shown.map((p) => (
             <li key={p.slug} className="flex">
               <a href={`${base}/blog/${p.slug}`} className="flex w-full flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                <div className="aspect-[16/9] w-full bg-neutral-100" style={{ background: okImg(p.cover) ? `url("${okImg(p.cover)}") center/cover no-repeat` : `linear-gradient(135deg, ${s.primaryColor}, #171717)` }} />
+                {(() => {
+                  const cv = postCover(p, models);
+                  if (!cv) return <div className="aspect-[16/9] w-full" style={{ background: `linear-gradient(135deg, ${s.primaryColor}, #171717)` }} />;
+                  return cv.own
+                    ? <div className="aspect-[16/9] w-full bg-neutral-100" style={{ background: `url("${cv.src}") center/cover no-repeat` }} />
+                    // eslint-disable-next-line @next/next/no-img-element
+                    : <div className="aspect-[16/9] w-full bg-neutral-50 p-3"><img src={cv.src} alt="" className="h-full w-full object-contain" loading="lazy" decoding="async" /></div>;
+                })()}
                 <div className="flex flex-1 flex-col p-5">
                   <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">{fmtDate(p.date)}</p>
                   <span className="mt-2 text-lg font-semibold leading-snug text-neutral-900">{p.title}</span>
